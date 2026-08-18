@@ -1,0 +1,4 @@
+specification,anchored_weight,unanchored_weight,anchored_std_error,unanchored_std_error,anchored_p_value,unanchored_p_value,anchored_ci_low,anchored_ci_high,unanchored_ci_low,unanchored_ci_high,rmse,constraint
+"Unrestricted OLS, no word count",0.026225314227761,0.665096861806776,0.328169840637431,0.211920570063475,0.936551310956003,0.00255367792353441,-0.616987573421604,0.669438201877126,0.249732544482365,1.08046117913119,0.3437399768138,none
+"Convex QP, no word count",0.671017741657673,0.328982258342327,0.137442250080051,0.137442250080051,,,0.403425416167511,0.930714699279111,0.0692853007208886,0.596574583832489,0.37930684322531,"weights in [0,1] and sum to one"
+Centered ridge selected by leave-one-out CV,0.523254261828819,0.476745738171181,,,,,,,,,0.410846851712064,Gaussian ridge prior centered at 0.5

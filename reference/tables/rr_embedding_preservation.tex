@@ -1,0 +1,28 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Embedding and token preservation in the 25-regeneration binary experiment}
+\label{tab:embedding-preservation}
+\begin{scriptsize}
+\begin{tabular}{lcc}
+\toprule
+Metric relative to original & Dovish rewrite & Hawkish rewrite \\
+\midrule
+Document cosine similarity & 0.9677 & 0.9681 \\
+Symmetric sentence similarity & 0.9343 & 0.9332 \\
+Subword Jensen--Shannon distance & 0.0454 & 0.0462 \\
+Subword-count ratio & 1.2428 & 1.2362 \\
+Sentence-count ratio & 1.0050 & 1.0053 \\
+\midrule
+Rewrite observations & 1,775 & 1,775 \\
+Meeting clusters & 71 & 71 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} Embeddings use the multilingual paraphrase-MiniLM-L12-v2 sentence-transformer and are averaged over deterministic sentence segments. Subword distributions use the same tokenizer. Similarities are high and sentence counts are stable, but both rewrite arms contain about 24 percent more subword tokens than the original minutes. This length shift is disclosed and motivates the content-orthogonal tone specifications.
+\end{tablenotes}
+\end{scriptsize}
+\end{threeparttable}
+\end{table}

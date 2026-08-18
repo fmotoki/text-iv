@@ -1,0 +1,23 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{HAC tests of mean squared-error differentials against Focus AR(1)}
+\label{tab:llm-gw}
+\begin{footnotesize}
+\begin{tabular}{lccc}
+\toprule
+Competing model & Mean loss differential & HAC SE & $t$ statistic \\
+\midrule
+LLM composite & -0.1047 & 0.1046 & -1.000 \\
+Equal weight & -0.0456 & 0.1164 & -0.391 \\
+Bates--Granger & -0.0085 & 0.0985 & -0.087 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} The differential is the squared error of Focus AR(1) minus the squared error of the competing model, so a positive value favors the competing model. Each row is an intercept-only regression of the loss differential with Newey--West HAC standard errors using four lags. * $p<0.10$, ** $p<0.05$, *** $p<0.01$.
+\end{tablenotes}
+\end{footnotesize}
+\end{threeparttable}
+\end{table}

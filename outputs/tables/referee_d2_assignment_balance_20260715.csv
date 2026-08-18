@@ -1,0 +1,6 @@
+covariate,hawk_mean,dove_mean,standardized_difference,explanation
+ipca15_change_pre,-0.00802816901408451,-0.00802816901408451,0,Each meeting-regeneration pair contains one hawk and one dove assignment.
+ibc_change_pre,0.210449385495723,0.210449385495723,0,Each meeting-regeneration pair contains one hawk and one dove assignment.
+brl_return_5d_pre,0.0166163661412329,0.0166163661412329,0,Each meeting-regeneration pair contains one hawk and one dove assignment.
+focus_drift_7d_pre,0.0326183098591549,0.0326183098591549,0,Each meeting-regeneration pair contains one hawk and one dove assignment.
+selic_surprise,0.0140845070422535,0.0140845070422535,0,Each meeting-regeneration pair contains one hawk and one dove assignment.

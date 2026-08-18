@@ -1,0 +1,3 @@
+stance,completed_tasks,tasks_retried,rejected_attempts,total_attempts,task_retry_rate,attempt_rejection_rate
+dove,8875,5,7,8882,0.000563380281690141,0.000788110785859041
+hawk,8875,3,5,8880,0.000338028169014085,0.000563063063063063

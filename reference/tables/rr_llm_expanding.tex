@@ -1,0 +1,26 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Expanding-window forecast accuracy for Focus expectations}
+\label{tab:llm-expanding}
+\begin{scriptsize}
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabular}{lcccc}
+\toprule
+ & LLM composite & Focus AR(1) & Equal weight & Bates--Granger \\
+\midrule
+RMSE (pp) & 0.5741 & 0.4743 & 0.5201 & 0.4832 \\
+MAE (pp) & 0.3955 & 0.3629 & 0.3856 & 0.3503 \\
+$R^2_{\mathrm{OOS}}$ vs. historical mean & 0.6077 & 0.7323 & 0.6781 & 0.7221 \\
+$R^2_{\mathrm{OOS}}$ vs. Focus AR(1) & -0.4654 & 0.0000 & -0.2025 & -0.0379 \\
+Forecasts & 47 & 47 & 47 & 47 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} The first forecast follows 24 observed meetings; the Focus AR(1) is initially estimated on 23 available lagged pairs. All parameters are re-estimated recursively using only prior meetings. Equal weight averages the two agent forecasts. Bates--Granger is a restricted convex combination with inverse historical-MSE weights estimated recursively. RMSE and MAE are in percentage points.
+\end{tablenotes}
+\end{scriptsize}
+\end{threeparttable}
+\end{table}

@@ -1,0 +1,26 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Bayesian model tournament for the Focus projection}
+\label{tab:tournament-focus}
+\begin{scriptsize}
+\setlength{\tabcolsep}{4.2pt}
+\begin{tabular}{lccc}
+\toprule
+Model & Log marginal likelihood & Posterior probability & $2\log BF$ vs. best \\
+\midrule
+No tone, AR(1) & 21.52 & 0.447 & 0.00 \\
+Tone and AR(1) & 21.44 & 0.413 & 0.16 \\
+Tone and AR(2) & 20.32 & 0.135 & 2.40 \\
+Tone, AR(1), activity & 17.13 & 0.006 & 8.78 \\
+Tone, no persistence & -11.95 & 0.000 & 66.93 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} Models use proper standard-normal priors on standardized predictors and a half-$t$ residual-scale prior. Posterior model probabilities are normalized within the displayed tournament under equal prior model probabilities. Larger $2\log BF$ values indicate evidence against the row model relative to the best model.
+\end{tablenotes}
+\end{scriptsize}
+\end{threeparttable}
+\end{table}

@@ -1,0 +1,19 @@
+"result","value"
+"Main Prompt-IV",0.0187233976525336
+"Main standard error",0.00281419238078897
+"Reduced form",0.0226657185584151
+"First stage",1.21055584990723
+"First-stage F",3347.64067699011
+"Held-out Prompt-IV",0.00951157687719227
+"High-dove revision bp",-1.03160290562316
+"Low-dove revision bp",-0.838254219653829
+"Neutral revision bp",0.184079683448314
+"Low-hawk revision bp",1.78954992683954
+"High-hawk revision bp",2.48736603398609
+"LOO R-squared",0.722688788581542
+"LOO RMSE",0.408629324440901
+"Expanding composite RMSE",0.574094257218305
+"Expanding Focus AR(1) RMSE",0.474253866457948
+"Expanding composite R-squared OOS",0.607690051411221
+"Composite loss-difference p-value",0.322421205902739
+"Bates-Granger loss-difference p-value",0.931361294848362

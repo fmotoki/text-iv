@@ -1,0 +1,244 @@
+{
+  "implementation": {
+    "language": "R",
+    "packages": ["RSQLite", "data.table", "sandwich", "lmtest"],
+    "bootstrap_draws": 1999,
+    "bootstrap_unit": "meeting"
+  },
+  "variance_ordering": [
+    {
+      "synthetic_aggregate": "anchored",
+      "benchmark": "Quasi-REE proxy: original minute",
+      "variance_point": 0.043985580684104623,
+      "variance_ci_low": 0.018775233641851092,
+      "variance_ci_high": 0.078326824305835013,
+      "observations": 71
+    },
+    {
+      "synthetic_aggregate": "anchored",
+      "benchmark": "Candidate tone process: assigned arms",
+      "variance_point": 0.045572593589807399,
+      "variance_ci_low": 0.019016923595281947,
+      "variance_ci_high": 0.084108502321704082,
+      "observations": 284
+    },
+    {
+      "synthetic_aggregate": "anchored",
+      "benchmark": "Neutral-rewrite proxy (imperfect fundamentals benchmark)",
+      "variance_point": 0.049995151710261573,
+      "variance_ci_low": 0.017104401207243446,
+      "variance_ci_high": 0.099176560402414515,
+      "observations": 71
+    },
+    {
+      "synthetic_aggregate": "unanchored",
+      "benchmark": "Quasi-REE proxy: original minute",
+      "variance_point": 0.10677117102615694,
+      "variance_ci_low": 0.064135260362173041,
+      "variance_ci_high": 0.15511447967806838,
+      "observations": 71
+    },
+    {
+      "synthetic_aggregate": "unanchored",
+      "benchmark": "Candidate tone process: assigned arms",
+      "variance_point": 0.10223173378788632,
+      "variance_ci_low": 0.064305775337182083,
+      "variance_ci_high": 0.14369205844821575,
+      "observations": 284
+    },
+    {
+      "synthetic_aggregate": "unanchored",
+      "benchmark": "Neutral-rewrite proxy (imperfect fundamentals benchmark)",
+      "variance_point": 0.089059758551307822,
+      "variance_ci_low": 0.05618926961770622,
+      "variance_ci_high": 0.12360273440643857,
+      "observations": 71
+    },
+    {
+      "synthetic_aggregate": "equal_weight",
+      "benchmark": "Quasi-REE proxy: original minute",
+      "variance_point": 0.065549324748490942,
+      "variance_ci_low": 0.036917447323943649,
+      "variance_ci_high": 0.10185027199195165,
+      "observations": 71
+    },
+    {
+      "synthetic_aggregate": "equal_weight",
+      "benchmark": "Candidate tone process: assigned arms",
+      "variance_point": 0.065015123426068785,
+      "variance_ci_low": 0.036472123212686024,
+      "variance_ci_high": 0.10171652691173542,
+      "observations": 284
+    },
+    {
+      "synthetic_aggregate": "equal_weight",
+      "benchmark": "Neutral-rewrite proxy (imperfect fundamentals benchmark)",
+      "variance_point": 0.061971566599597579,
+      "variance_ci_low": 0.032429099859154931,
+      "variance_ci_high": 0.10174302323943658,
+      "observations": 71
+    },
+    {
+      "synthetic_aggregate": "hierarchical_simplex",
+      "benchmark": "Quasi-REE proxy: original minute",
+      "variance_point": 0.056898736879579179,
+      "variance_ci_low": 0.029051928507245334,
+      "variance_ci_high": 0.093752431710777143,
+      "observations": 71
+    },
+    {
+      "synthetic_aggregate": "hierarchical_simplex",
+      "benchmark": "Candidate tone process: assigned arms",
+      "variance_point": 0.057210221787304144,
+      "variance_ci_low": 0.02924048200933323,
+      "variance_ci_high": 0.095368808802306831,
+      "observations": 284
+    },
+    {
+      "synthetic_aggregate": "hierarchical_simplex",
+      "benchmark": "Neutral-rewrite proxy (imperfect fundamentals benchmark)",
+      "variance_point": 0.056722898767573041,
+      "variance_ci_low": 0.026258285230822277,
+      "variance_ci_high": 0.10050986010385682,
+      "observations": 71
+    }
+  ],
+  "ordering_test": [
+    {
+      "synthetic_aggregate": "anchored",
+      "quasi_ree_variance": 0.043985580684104623,
+      "tone_variance": 0.045572593589807399,
+      "fundamentals_variance": 0.049995151710261573,
+      "bmz_order_point": true,
+      "reverse_order_point": false,
+      "bmz_order_bootstrap_share": 0.52326163081540766,
+      "reverse_order_bootstrap_share": 0.1265632816408204,
+      "tone_to_quasi_ree_variance_ratio": 1.0360802990666504,
+      "fundamentals_to_tone_variance_ratio": 1.0970442490120489,
+      "bootstrap_draws": 1999
+    },
+    {
+      "synthetic_aggregate": "unanchored",
+      "quasi_ree_variance": 0.10677117102615694,
+      "tone_variance": 0.10223173378788632,
+      "fundamentals_variance": 0.089059758551307822,
+      "bmz_order_point": false,
+      "reverse_order_point": true,
+      "bmz_order_bootstrap_share": 0.0040020010005002498,
+      "reverse_order_bootstrap_share": 0.7913956978489245,
+      "tone_to_quasi_ree_variance_ratio": 0.95748442960170832,
+      "fundamentals_to_tone_variance_ratio": 0.87115570920563534,
+      "bootstrap_draws": 1999
+    },
+    {
+      "synthetic_aggregate": "equal_weight",
+      "quasi_ree_variance": 0.065549324748490942,
+      "tone_variance": 0.065015123426068785,
+      "fundamentals_variance": 0.061971566599597579,
+      "bmz_order_point": false,
+      "reverse_order_point": true,
+      "bmz_order_bootstrap_share": 0.079539769884942477,
+      "reverse_order_bootstrap_share": 0.52476238119059526,
+      "tone_to_quasi_ree_variance_ratio": 0.9918503916787571,
+      "fundamentals_to_tone_variance_ratio": 0.9531869407287652,
+      "bootstrap_draws": 1999
+    },
+    {
+      "synthetic_aggregate": "hierarchical_simplex",
+      "quasi_ree_variance": 0.056898736879579179,
+      "tone_variance": 0.057210221787304144,
+      "fundamentals_variance": 0.056722898767573041,
+      "bmz_order_point": false,
+      "reverse_order_point": false,
+      "bmz_order_bootstrap_share": 0.27663831915957982,
+      "reverse_order_bootstrap_share": 0.25062531265632815,
+      "tone_to_quasi_ree_variance_ratio": 1.0054743729792137,
+      "fundamentals_to_tone_variance_ratio": 0.99148188899629042,
+      "bootstrap_draws": 1999
+    }
+  ],
+  "alpha_proxy": [
+    {
+      "forecaster_type": "anchored",
+      "alpha_proxy": 0.95835016898811887,
+      "alpha_proxy_se": 0.034742563429890634,
+      "observations": 2130
+    },
+    {
+      "forecaster_type": "unanchored",
+      "alpha_proxy": 0.95360491557425964,
+      "alpha_proxy_se": 0.044576000097616156,
+      "observations": 2130
+    }
+  ],
+  "realized_tone_gap_ar1": {
+    "estimate": 0.7292481312837702,
+    "newey_west_se": 0.091109005840737028,
+    "observations": 71
+  },
+  "macro_persistence": [
+    {
+      "macro_proxy": "PC1",
+      "ar1": -0.20616759474388133
+    },
+    {
+      "macro_proxy": "ipca15_change_pre",
+      "ar1": -0.14003302766808837
+    },
+    {
+      "macro_proxy": "ibc_change_pre",
+      "ar1": -0.069190704547372195
+    },
+    {
+      "macro_proxy": "brl_return_5d_pre",
+      "ar1": 0.013630921678903009
+    },
+    {
+      "macro_proxy": "focus_drift_7d_pre",
+      "ar1": -0.062820524576790188
+    },
+    {
+      "macro_proxy": "selic_surprise",
+      "ar1": 0.029933481152993307
+    }
+  ],
+  "existence_screen": [
+    {
+      "screen": "Exact paired prompt assignment",
+      "alpha_proxy": 0.95597754228118925,
+      "phi_proxy": 0,
+      "alpha_threshold": 1,
+      "inside_bmz_existence_region": false,
+      "interpretation": "Both labels occur in every meeting and there is no serial assignment state; phi=0 implies an alpha threshold of one, outside the determinate BMZ model."
+    },
+    {
+      "screen": "Reduced-form proxy using macro-news PC1",
+      "alpha_proxy": 0.95597754228118925,
+      "phi_proxy": 0.7292481312837702,
+      "rho_proxy": -0.20616759474388133,
+      "alpha_threshold": 0.83511121949179035,
+      "rho_threshold": 0.33949833213121566,
+      "inside_bmz_existence_region": false,
+      "interpretation": "Diagnostic proxy only: alpha is prior pass-through, phi is realized tone-gap persistence, and rho is persistence of the first macro-news principal component."
+    },
+    {
+      "screen": "Reduced-form proxy using most persistent measured macro-news series",
+      "alpha_proxy": 0.95597754228118925,
+      "phi_proxy": 0.7292481312837702,
+      "rho_proxy": 0.029933481152993307,
+      "alpha_threshold": 0.83511121949179035,
+      "rho_threshold": 0.33949833213121566,
+      "inside_bmz_existence_region": false,
+      "interpretation": "Conservative diagnostic replaces PC1 persistence with the largest AR(1) among the five measured pre-meeting macro-news series."
+    }
+  ],
+  "caveat": "The variance exercise is a laboratory analogue, not an estimate of a structural restricted-perceptions equilibrium. The exact assignment-design screen is the decisive design-based result.",
+  "outputs": {
+    "variance": "outputs/tables/referee_d10_sunspot_variance_ordering_20260715.csv",
+    "ordering": "outputs/tables/referee_d10_sunspot_order_bootstrap_20260715.csv",
+    "existence": "outputs/tables/referee_d10_sunspot_existence_screen_20260715.csv",
+    "alpha": "outputs/tables/referee_d10_sunspot_alpha_proxy_20260715.csv",
+    "persistence": "outputs/tables/referee_d10_sunspot_macro_persistence_20260715.csv"
+  },
+  "analysis_version": "20260715"
+}

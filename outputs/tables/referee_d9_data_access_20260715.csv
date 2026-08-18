@@ -1,0 +1,4 @@
+requested_source,status,detail
+Focus aggregate distribution,collected,"Mean, median, standard deviation, minimum, maximum, and respondent count."
+Focus Top-5,collected,"Short-, medium-, and long-horizon Top-5 statistics."
+Focus institution panel,unavailable,Official BCB endpoint deactivated because of microdata confidentiality risk.

@@ -1,0 +1,9 @@
+topic,highest_probability_terms,frex_terms,spearman_with_lexicon_tone,designated_tone_topic
+1,"ciclo, básico, flexibilização, brasileira, reunião, ajustes, reformas, favorável","extensão, estimativa, estimativas, flexibilização, reavaliações, moderada, revés, sob",-0.272451012964585,FALSE
+2,"básico, ajuste, pandemia, torno, acima, recuperação, elevação, segundo","partindo, altista, criando, novos, assimetria, somente, forward, acordo",0.186597631992455,FALSE
+3,"mercado, trabalho, dinâmica, desinflação, cautela, hiato, fiscal, crédito","unanimemente, atingimento, quatro, rendimentos, direcionado, deletérios, ailton, aquino",0.280779322307277,FALSE
+4,"brasileira, reformas, básico, estrutural, grau, ajustes, abaixo, continuidade","agenda, avaliam, consolidação, aceleração, macroeconômicas, livre, concretos, maneira",-0.118580923563474,FALSE
+5,"crescimento, ciclo, pressões, desaceleração, cenários, metas, global, fiscal","tributárias, irá, arcabouço, dar, avaliando, longos, inflacionárias, china",0.31337913707069,TRUE
+6,"brasileira, básico, ajustes, choques, continuidade, reformas, manutenção, grau","paralisação, choques, combatidos, apropriados, repasse, produzam, cargas, médio",-0.0243601656921266,FALSE
+7,"pandemia, básico, fiscal, estímulo, recuperação, economias, brasileira, assim","prudenciais, intenção, precedentes, pandemia, reduções, questões, limite, prescrição",0.0413773094415609,FALSE
+8,"desinflação, retomada, torno, ritmo, flexibilização, reunião, intensificação, pode","intensificação, interregno, demorada, antecipação, eua, antecipada, estabilização, janeiro",-0.0707371027591169,FALSE

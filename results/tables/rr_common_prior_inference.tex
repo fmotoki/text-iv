@@ -1,0 +1,24 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Alternative confidence intervals for the immediate Prompt-IV sensitivity}
+\label{tab:app-iv-inference}
+\begin{footnotesize}
+\begin{tabular}{lccc}
+\toprule
+Inference method & Point estimate & Standard error & 95\% interval \\
+\midrule
+Meeting-clustered 2SLS & 0.0187 & 0.0028 & [0.0132, 0.0242] \\
+Anderson-Rubin & -- & -- & [0.0159, 0.0215] \\
+Conditional likelihood ratio & -- & -- & [0.0159, 0.0215] \\
+Ordinary meeting-cluster bootstrap & 0.0187 & 0.0028 & [0.0134, 0.0243] \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} The first row is pair-fixed-effect 2SLS with standard errors clustered over 71 meetings. Anderson--Rubin and conditional likelihood- ratio intervals use \texttt{ivmodel} after residualizing meeting-by-regeneration fixed effects. The ordinary cluster bootstrap resamples meetings with replacement 999 times and treats repeated meeting copies as distinct bootstrap clusters. It is a finite-sample check and is not labeled as a wild-cluster bootstrap.
+\end{tablenotes}
+\end{footnotesize}
+\end{threeparttable}
+\end{table}

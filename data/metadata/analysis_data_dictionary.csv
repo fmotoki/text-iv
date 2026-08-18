@@ -1,0 +1,43 @@
+file,rows,variable,storage_class,source_label,description
+outputs/work/gpt55_calibration_data.dta,71,inflacao12m,numeric,"BCB Focus median twelve-month-ahead IPCA expectation, percent","Median Focus IPCA expectation twelve months ahead, percent."
+outputs/work/gpt55_calibration_data.dta,71,date_daily,Date,Copom meeting date,Copom meeting date.
+outputs/work/gpt55_calibration_data.dta,71,reuniao,numeric,Copom meeting number,"Sequential Copom meeting number, 203 through 273."
+outputs/work/gpt55_calibration_data.dta,71,forecast_anchored_gpt55,numeric,GPT-5.5 anchored-profile original-minute forecast,GPT-5.5 anchored-profile forecast after reading the original minute.
+outputs/work/gpt55_calibration_data.dta,71,forecast_unanchored_gpt55,numeric,GPT-5.5 unanchored-profile original-minute forecast,GPT-5.5 unanchored-profile forecast after reading the original minute.
+outputs/work/gpt55_calibration_data.dta,71,score_orig,numeric,Original-minute lexicon tone in percentage points,Original-minute hawkish-minus-dovish lexicon score in percentage points.
+outputs/work/gpt55_calibration_data.dta,71,wc_orig,numeric,Original-minute word count,Original-minute word count.
+outputs/work/gpt55_calibration_data.dta,71,ibcbr_agro,numeric,"Agriculture component of IBC-Br, index level",Agriculture component of IBC-Br used as a calibration fundamental.
+outputs/work/gpt55_calibration_data.dta,71,ibcbr_industry,numeric,"Industry component of IBC-Br, index level",Industry component of IBC-Br used as a calibration fundamental.
+outputs/work/gpt55_calibration_data.dta,71,ibcbr_service,numeric,"Services component of IBC-Br, index level",Services component of IBC-Br used as a calibration fundamental.
+outputs/work/gpt55_calibration_data.dta,71,l_inflacao12m,numeric,One-meeting lag of the Focus expectation,One-meeting lag of the twelve-month-ahead Focus IPCA expectation.
+data/analysis/fiscal_sample_flags_by_meeting_20260630.csv,71,reuniao,integer,"","Sequential Copom meeting number, 203 through 273."
+data/analysis/fiscal_sample_flags_by_meeting_20260630.csv,71,rtn_pub_window_5d,integer,"",Indicator for a Copom meeting within five days of an RTN release.
+data/analysis/fiscal_sample_flags_by_meeting_20260630.csv,71,cds_series_available,integer,"",Binary availability flag for the historical public CDS page; no CDS level is redistributed.
+data/analysis/realized_dose_dataset.csv,2130,meeting_number,integer,"",Sequential Copom meeting number.
+data/analysis/realized_dose_dataset.csv,2130,iteration,integer,"",Repeated full-report regeneration index; not a controlled seed draw.
+data/analysis/realized_dose_dataset.csv,2130,pair_fe,character,"",Meeting-by-regeneration fixed-effect identifier.
+data/analysis/realized_dose_dataset.csv,2130,text_role,character,"",Original or generated dose-response text arm.
+data/analysis/realized_dose_dataset.csv,2130,assigned_dose,numeric,"",Ordered treatment dose: -2 high dove through +2 high hawk; original is not assigned a dose.
+data/analysis/realized_dose_dataset.csv,2130,text_hash,character,"",SHA-256 content identifier for a text.
+data/analysis/realized_dose_dataset.csv,2130,lexicon_score,numeric,"",Hawk-minus-dove word share.
+data/analysis/realized_dose_dataset.csv,2130,lexicon_hawk_count,integer,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,lexicon_dove_count,integer,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,word_count,integer,"",Whitespace-token word count.
+data/analysis/realized_dose_dataset.csv,2130,semantic_score,numeric,"",Blinded semantic hawkishness score.
+data/analysis/realized_dose_dataset.csv,2130,semantic_label,character,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,semantic_confidence,numeric,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,semantic_task_id,character,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,pairwise_score,numeric,"",Blinded pairwise-ranking score.
+data/analysis/realized_dose_dataset.csv,2130,pairwise_comparisons,numeric,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,lexicon_score_neutral,numeric,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,lexicon_score_original,numeric,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,lexicon_score_relative_to_neutral,numeric,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,lexicon_score_relative_to_original,numeric,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,semantic_score_neutral,numeric,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,semantic_score_original,numeric,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,semantic_score_relative_to_neutral,numeric,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,semantic_score_relative_to_original,numeric,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,pairwise_score_neutral,numeric,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,pairwise_score_original,numeric,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,pairwise_score_relative_to_neutral,numeric,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.
+data/analysis/realized_dose_dataset.csv,2130,pairwise_score_relative_to_original,numeric,"",Machine-readable dose-response field; suffixes identify comparisons with the neutral or original text.

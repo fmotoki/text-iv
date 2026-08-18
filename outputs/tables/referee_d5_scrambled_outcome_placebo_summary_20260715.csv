@@ -1,0 +1,2 @@
+permutations,mean_first_stage_f,p95_first_stage_f,share_first_stage_f_above_10,mean_reduced_form,share_reduced_form_p_below_05,median_prompt_iv,median_prompt_iv_se,share_prompt_iv_p_below_05,prompt_iv_p025,prompt_iv_p975
+999,1.08475291586012,3.99120140842138,0.001001001001001,3.09852664754529e-05,0.0550550550550551,0.0179315371724147,0.527184308822801,0,-3.08065139378287,3.26052772722026

@@ -1,0 +1,40 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Persistent synthetic forecast gaps under arm-specific recursive priors}
+\label{tab:arm-specific-prior-dose-arms}
+\begin{footnotesize}
+\begin{tabular}{lccc}
+\toprule
+ & (1) & (2) & (3) \\
+ & Composite & Anchored & Unanchored \\
+\midrule
+High-intensity hawk & 0.0278*** & 0.0445** & 0.0393** \\
+ & (0.0097) & (0.0175) & (0.0148) \\
+Low-intensity hawk & 0.0417*** & 0.0242 & 0.0632*** \\
+ & (0.0062) & (0.0147) & (0.0105) \\
+Neutral rewrite & -0.0429*** & -0.0318** & -0.0644*** \\
+ & (0.0132) & (0.0151) & (0.0203) \\
+Low-intensity dove & -0.0445*** & -0.0563*** & -0.0643*** \\
+ & (0.0099) & (0.0196) & (0.0146) \\
+High-intensity dove & -0.0424*** & -0.0272 & -0.0640*** \\
+ & (0.0108) & (0.0180) & (0.0170) \\
+\midrule
+Original-text trajectory (reference arm) & Yes & Yes & Yes \\
+Meeting-by-regeneration fixed effects & Yes & Yes & Yes \\
+Two-way clustered standard errors & Yes & Yes & Yes \\
+Observations & 2,130 & 2,130 & 2,130 \\
+Meeting-by-regeneration groups & 355 & 355 & 355 \\
+Recursive trajectory clusters & 30 & 30 & 30 \\
+Meeting clusters & 71 & 71 & 71 \\
+Regeneration replicates & 5 & 5 & 5 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} Each coefficient is the within-meeting-by-regeneration difference between the synthetic forecast level under the indicated recursive textual path and the forecast level under the recursive original-text path. Every path starts from 3.80 percent at the first meeting; thereafter, each arm receives its own previous forecast as the next prior. The same frozen forecast-only prompt is used in all arms. These are cumulative path comparisons, not one-shot common-prior effects. Standard errors in parentheses use two-way clustering by Copom meeting and recursive trajectory (regeneration replicate by textual arm). Meeting-only clustered standard errors are archived in the machine-readable output. * $p<0.10$, ** $p<0.05$, *** $p<0.01$.
+\end{tablenotes}
+\end{footnotesize}
+\end{threeparttable}
+\end{table}

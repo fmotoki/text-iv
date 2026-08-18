@@ -1,0 +1,27 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Weak-IV and cluster-robust inference for the baseline Prompt-IV}
+\label{tab:inference-completion}
+\begin{footnotesize}
+\begin{tabular}{lccc}
+\toprule
+Method & Estimate & 95\% confidence set & $p$ value \\
+\midrule
+Meeting-clustered 2SLS & 0.0187 & [0.0132, 0.0242] & $<0.001$ \\
+Anderson--Rubin & -- & [0.0159, 0.0215] & $<0.001$ \\
+Conditional likelihood ratio & -- & [0.0159, 0.0215] & $<0.001$ \\
+Wild-cluster bootstrap-$t$ & 0.0187 & [0.0130, 0.0244] & $<1/9{,}999$ \\
+\midrule
+Wild-bootstrap replications & \multicolumn{3}{c}{9,999} \\
+Meeting clusters & \multicolumn{3}{c}{71} \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} All procedures use the same pair-fixed-effect IV specification. The wild-cluster bootstrap-$t$ is implemented in R with clusterSEs and 9,999 Rademacher draws at the meeting level. Zero simulated exceedances are reported at Monte Carlo resolution as $p<1/9{,}999$, not as a literal zero probability.
+\end{tablenotes}
+\end{footnotesize}
+\end{threeparttable}
+\end{table}

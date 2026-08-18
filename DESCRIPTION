@@ -1,0 +1,51 @@
+Package: PromptIVReplication
+Type: Project
+Title: Replication Files for Can Words Move Inflation Expectations?
+Version: 2.0.0
+Authors@R: c(
+    person("Fernando", "Barros Jr.", role = "aut"),
+    person("Fabio Y. S.", "Motoki", role = "aut"),
+    person("Valdemar", "Pinho Neto", role = "aut"),
+    person("Victor", "Rangel", email = "victorrsr@al.insper.edu.br", role = c("aut", "cre"))
+  )
+Description: Version 2.0.0 AEA-compliant replication package for the
+    counterfactual-text laboratory, Can Words Move Inflation Expectations?
+    Reproduces its econometric estimates, tables, figures, and verification
+    gates from frozen public and author-generated synthetic data.
+License: BSD_3_clause + file LICENSE
+Encoding: UTF-8
+Imports:
+    boot,
+    bridgesampling,
+    car,
+    clusterSEs,
+    curl,
+    data.table,
+    DBI,
+    digest,
+    e1071,
+    fixest,
+    ggplot2,
+    glmnet,
+    haven,
+    httr,
+    httr2,
+    ivmodel,
+    ivreg,
+    jsonlite,
+    lmtest,
+    loo,
+    MSwM,
+    patchwork,
+    quadprog,
+    quanteda,
+    ragg,
+    renv,
+    RSQLite,
+    rstan,
+    sandwich,
+    scales,
+    stm,
+    stopwords,
+    strucchange,
+    urca

@@ -1,0 +1,24 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Leave-one-meeting-out validation of the Focus calibration}
+\label{tab:llm-loo}
+\begin{footnotesize}
+\begin{tabular}{p{0.46\textwidth}c}
+\toprule
+Validation statistic & Estimate \\
+\midrule
+Cross-validated $R^2$ & 0.7227 \\
+RMSE (percentage points) & 0.4086 \\
+MAE (percentage points) & 0.2885 \\
+Held-out predictions & 71 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} The outcome is the median twelve-month-ahead IPCA expectation from the Focus Survey. The calibration equation is re-estimated on the other 70 meetings before predicting each omitted meeting. $R^2$ uses deviations from the full-sample Focus mean. RMSE and MAE are in percentage points.
+\end{tablenotes}
+\end{footnotesize}
+\end{threeparttable}
+\end{table}

@@ -1,0 +1,39 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Common-prior forecast effects by assigned textual arm}
+\label{tab:common-prior-dose-arms}
+\begin{footnotesize}
+\begin{tabular}{lccc}
+\toprule
+ & (1) & (2) & (3) \\
+ & Composite & Anchored & Unanchored \\
+\midrule
+High-intensity dove & -0.0103* & -0.0126* & -0.0150 \\
+ & (0.0061) & (0.0068) & (0.0095) \\
+Low-intensity dove & -0.0084 & -0.0085 & -0.0123 \\
+ & (0.0052) & (0.0059) & (0.0083) \\
+Neutral rewrite & 0.0018 & -0.0079 & 0.0037 \\
+ & (0.0057) & (0.0065) & (0.0090) \\
+Low-intensity hawk & 0.0179*** & 0.0094* & 0.0272*** \\
+ & (0.0051) & (0.0051) & (0.0081) \\
+High-intensity hawk & 0.0249*** & 0.0074 & 0.0385*** \\
+ & (0.0059) & (0.0056) & (0.0095) \\
+\midrule
+Original text (reference arm) & Yes & Yes & Yes \\
+Pair fixed effects & Yes & Yes & Yes \\
+Standard errors clustered by meeting & Yes & Yes & Yes \\
+Observations & 2,130 & 2,130 & 2,130 \\
+Pair fixed-effect groups & 355 & 355 & 355 \\
+Meeting clusters & 71 & 71 & 71 \\
+Regeneration replicates & 5 & 5 & 5 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} Each coefficient is the within-pair difference in forecast revision between the indicated text and the unmodified original minute. Column (1) applies the paper's fixed full-sample calibration coefficients to the anchored and unanchored revisions; columns (2) and (3) report those components. The prior $P_t^i$ is profile-specific and is held common only across textual arms and regenerations within the same meeting-profile cell $(t,i)$; regeneration index $s$ does not link different meetings. Baseline meeting controls and original-text length are unchanged across arms and cancel within pair. Positive coefficients indicate a more hawkish revision than under the original text. Standard errors in parentheses are clustered by Copom meeting. * $p<0.10$, ** $p<0.05$, *** $p<0.01$.
+\end{tablenotes}
+\end{footnotesize}
+\end{threeparttable}
+\end{table}

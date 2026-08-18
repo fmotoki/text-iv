@@ -1,0 +1,25 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Structural-topic similarity to the original Copom minutes}
+\label{tab:topic-preservation}
+\begin{scriptsize}
+\begin{tabular}{lccc}
+\toprule
+Generated role & Topic cosine & Jensen--Shannon distance & Meetings \\
+\midrule
+High dove & 0.99997 & 0.00005 & 71 \\
+Low dove & 0.99997 & 0.00006 & 71 \\
+Neutral & 0.99995 & 0.00017 & 71 \\
+Low hawk & 0.99997 & 0.00004 & 71 \\
+High hawk & 0.99996 & 0.00007 & 71 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} Topic proportions come from an eight-topic structural topic model estimated on 1,846 Portuguese documents after deduplicating the original minutes. Each generated arm is compared with the original minute from the same meeting. Similarity is extremely high in magnitude, but a joint MANOVA rejects exact invariance of the seven non-tone topic shares ($p<0.001$). The correct conclusion is near-preservation with small detectable shifts, not that tone is the only changed semantic dimension.
+\end{tablenotes}
+\end{scriptsize}
+\end{threeparttable}
+\end{table}

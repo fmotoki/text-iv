@@ -1,0 +1,3 @@
+estimand,estimate,std_error,t_statistic,p_value,observations,pair_fe_groups,meeting_clusters,draws
+Unanchored minus anchored reduced form,0.0157464788732394,0.00545267166582849,2.88784651603387,0.00515694944998116,3550,1775,71,25
+Unanchored minus anchored Prompt-IV,0.0130076434511016,0.00446140288334393,2.91559489049149,0.00476561879441274,3550,1775,71,25

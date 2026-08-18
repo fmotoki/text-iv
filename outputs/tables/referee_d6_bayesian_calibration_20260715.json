@@ -1,0 +1,103 @@
+{
+  "implementation": {
+    "language": "R",
+    "packages": ["rstan", "loo", "bridgesampling", "glmnet", "boot"],
+    "model": "Two-weight simplex with a learned symmetric Dirichlet concentration; no word-count control."
+  },
+  "hierarchical_dirichlet": {
+    "summary": [
+      {
+        "parameter": "Anchored weight",
+        "mean": 0.65230577101405884,
+        "sd": 0.11918133163557708,
+        "q025": 0.41790791445021508,
+        "median": 0.65192359905673114,
+        "q975": 0.89272221899882198,
+        "observations": 71,
+        "posterior_draws": 8000,
+        "max_rhat": 1.0003089932599201,
+        "min_effective_sample_size": 4488.8904772962069
+      },
+      {
+        "parameter": "Unanchored weight",
+        "mean": 0.34769422898594116,
+        "sd": 0.11918133163557708,
+        "q025": 0.10727778100117794,
+        "median": 0.34807640094326886,
+        "q975": 0.58209208554978487,
+        "observations": 71,
+        "posterior_draws": 8000,
+        "max_rhat": 1.0003089932599201,
+        "min_effective_sample_size": 4488.8904772962069
+      },
+      {
+        "parameter": "Dirichlet concentration",
+        "mean": 2.2532581257686615,
+        "sd": 1.4540557366018785,
+        "q025": 0.35841669801274134,
+        "median": 1.9541065390403329,
+        "q975": 5.9094194546207248,
+        "observations": 71,
+        "posterior_draws": 8000,
+        "max_rhat": 1.0003089932599201,
+        "min_effective_sample_size": 4488.8904772962069
+      },
+      {
+        "parameter": "Residual sigma",
+        "mean": 0.40091349765996553,
+        "sd": 0.036037356722790528,
+        "q025": 0.33789345277424937,
+        "median": 0.39834455986101969,
+        "q975": 0.47878102088928987,
+        "observations": 71,
+        "posterior_draws": 8000,
+        "max_rhat": 1.0003089932599201,
+        "min_effective_sample_size": 4488.8904772962069
+      }
+    ],
+    "probability_unanchored_above_0_9": 0,
+    "probability_anchored_above_0": 1,
+    "loo": [
+      {
+        "Estimate": -39.260835801916137,
+        "SE": 9.7257990524140681,
+        "_row": "elpd_loo"
+      },
+      {
+        "Estimate": 7.1097594581779298,
+        "SE": 2.5398153799344567,
+        "_row": "p_loo"
+      },
+      {
+        "Estimate": 78.521671603832274,
+        "SE": 19.451598104828136,
+        "_row": "looic"
+      }
+    ],
+    "log_marginal_likelihood": 21.940420404234064
+  },
+  "empirical_bayes": [
+    {
+      "specification": "Empirical-Bayes ridge centered on equal weights",
+      "anchored_weight": 0.52329555950099271,
+      "unanchored_weight": 0.47670444049900729,
+      "anchored_std_error": 0.019008593893490355,
+      "unanchored_std_error": 0.019008593893490355,
+      "anchored_ci_low": 0.48922761308768281,
+      "anchored_ci_high": 0.5622845169189673,
+      "unanchored_ci_low": 0.4377154830810327,
+      "unanchored_ci_high": 0.51077238691231719,
+      "selected_lambda": 0.54277318380568251,
+      "implied_gaussian_prior_sd": 0.061774927152590052,
+      "bootstrap_replications": 1999,
+      "observations": 71
+    }
+  ],
+  "outputs": {
+    "hierarchical_csv": "outputs/tables/referee_d6_hierarchical_dirichlet_20260715.csv",
+    "diagnostics_csv": "outputs/tables/referee_d6_hierarchical_dirichlet_diagnostics_20260715.csv",
+    "empirical_bayes_csv": "outputs/tables/referee_d6_empirical_bayes_20260715.csv",
+    "stan_fit_rds": "outputs/models/referee_d6_hierarchical_dirichlet_20260715.rds"
+  },
+  "analysis_version": "20260715"
+}

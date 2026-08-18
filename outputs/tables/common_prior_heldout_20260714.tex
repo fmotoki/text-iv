@@ -1,0 +1,32 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Temporal-calibration holdout for common-prior Prompt-IV, 2024--2025}
+\label{tab:heldout-iv}
+\begin{scriptsize}
+\setlength{\tabcolsep}{4.2pt}
+\begin{tabular}{lcccc}
+\toprule
+ & (1) & (2) & (3) & (4) \\
+ & Full sample & Pre-2024 & Held-out & Held-out \\
+\midrule
+Realized tone index & 0.0187*** & 0.0234*** & 0.0095** & 0.0094*** \\
+ & (0.0028) & (0.0042) & (0.0034) & (0.0029) \\
+\midrule
+Two-profile calibration & Full & Pre-2024 & Pre-2024 & Full \\
+Evaluation meetings & All & Pre-2024 & 2024--2025 & 2024--2025 \\
+Meetings & 71 & 57 & 14 & 14 \\
+Observations & 3,550 & 2,850 & 700 & 700 \\
+Meeting-by-regeneration groups & 1,775 & 1,425 & 350 & 350 \\
+First-stage coefficient & 1.2106 & 1.2173 & 1.1831 & 1.1831 \\
+First-stage $F$ & 3347.6 & 2333.3 & 1877.4 & 1877.4 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} The dependent variable is the calibrated composite forecast revision under the common-prior design. Column (3) is the temporal-calibration holdout: the two-profile coefficients are estimated only on pre-2024 meetings and then applied to the 14 meetings in 2024--2025. Column (4) uses the full-sample calibration on the same held-out meetings. Every model absorbs meeting-by-regeneration fixed effects and clusters standard errors by meeting. In every specification, $P_t^i$ is profile-specific and common only across arms and regenerations within $(t,i)$; regeneration index $s$ does not link meetings. This split is not a test against the model's unobserved training cutoff. * $p<0.10$, ** $p<0.05$, *** $p<0.01$.
+\end{tablenotes}
+\end{scriptsize}
+\end{threeparttable}
+\end{table}

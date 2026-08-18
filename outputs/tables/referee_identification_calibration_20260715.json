@@ -1,0 +1,403 @@
+{
+  "implementation": {
+    "econometrics_language": "R",
+    "packages": ["ivreg", "sandwich", "lmtest", "car", "quadprog", "boot", "glmnet", "clusterSEs", "MSwM", "strucchange", "urca"]
+  },
+  "d5": {
+    "main_iv": [
+      {
+        "specification": "Current common-prior composite",
+        "reduced_form": 0.022665718558416311,
+        "reduced_form_se": 0.0034740589419911269,
+        "reduced_form_p": 9.093775357729704e-09,
+        "first_stage": 1.2105558499072941,
+        "first_stage_se": 0.020922588453909676,
+        "first_stage_f": 3347.64067699015,
+        "prompt_iv": 0.018723397652534061,
+        "prompt_iv_se": 0.0028141923807890362,
+        "prompt_iv_p": 5.3227962904236808e-09,
+        "observations": 3550,
+        "meetings": 71,
+        "draws": 25
+      }
+    ],
+    "placebo": [
+      {
+        "permutations": 999,
+        "mean_first_stage_f": 1.0847529158601161,
+        "p95_first_stage_f": 3.99120140842138,
+        "share_first_stage_f_above_10": 0.001001001001001001,
+        "mean_reduced_form": 3.0985266475452878e-05,
+        "share_reduced_form_p_below_05": 0.055055055055055056,
+        "median_prompt_iv": 0.017931537172414712,
+        "median_prompt_iv_se": 0.52718430882280054,
+        "share_prompt_iv_p_below_05": 0,
+        "prompt_iv_p025": -3.0806513937828703,
+        "prompt_iv_p975": 3.2605277272202646
+      }
+    ],
+    "retry_by_stance": [
+      {
+        "stance": "dove",
+        "completed_tasks": 8875,
+        "tasks_retried": 5,
+        "rejected_attempts": 7,
+        "total_attempts": 8882,
+        "task_retry_rate": 0.00056338028169014088,
+        "attempt_rejection_rate": 0.00078811078585904078
+      },
+      {
+        "stance": "hawk",
+        "completed_tasks": 8875,
+        "tasks_retried": 3,
+        "rejected_attempts": 5,
+        "total_attempts": 8880,
+        "task_retry_rate": 0.0003380281690140845,
+        "attempt_rejection_rate": 0.00056306306306306306
+      }
+    ]
+  },
+  "d6": {
+    "calibration": [
+      {
+        "specification": "Unrestricted OLS, no word count",
+        "anchored_weight": 0.026225314227761025,
+        "unanchored_weight": 0.66509686180677596,
+        "anchored_std_error": 0.32816984063743132,
+        "unanchored_std_error": 0.21192057006347506,
+        "anchored_p_value": 0.93655131095600286,
+        "unanchored_p_value": 0.0025536779235344103,
+        "anchored_ci_low": -0.61698757342160437,
+        "anchored_ci_high": 0.66943820187712633,
+        "unanchored_ci_low": 0.24973254448236487,
+        "unanchored_ci_high": 1.0804611791311871,
+        "rmse": 0.3437399768138002,
+        "constraint": "none"
+      },
+      {
+        "specification": "Convex QP, no word count",
+        "anchored_weight": 0.67101774165767336,
+        "unanchored_weight": 0.32898225834232664,
+        "anchored_std_error": 0.13744225008005123,
+        "unanchored_std_error": 0.13744225008005123,
+        "anchored_ci_low": 0.40342541616751126,
+        "anchored_ci_high": 0.93071469927911121,
+        "unanchored_ci_low": 0.069285300720888621,
+        "unanchored_ci_high": 0.59657458383248863,
+        "rmse": 0.37930684322531,
+        "constraint": "weights in [0,1] and sum to one"
+      },
+      {
+        "specification": "Centered ridge selected by leave-one-out CV",
+        "anchored_weight": 0.52325426182881918,
+        "unanchored_weight": 0.47674573817118082,
+        "rmse": 0.41084685171206375,
+        "constraint": "Gaussian ridge prior centered at 0.5"
+      }
+    ],
+    "wald_unanchored_equals_one": [
+      {
+        "hypothesis": "unanchored weight = 1",
+        "statistic": 2.4974235755223253,
+        "numerator_df": 1,
+        "denominator_df": 65,
+        "p_value": 0.11888709179526497
+      }
+    ]
+  },
+  "d7": {
+    "regimes": [
+      {
+        "regime": "Pre-Campos Neto",
+        "start_date": "2016-11-30",
+        "end_date": "2019-02-06",
+        "meetings": 18,
+        "anchored_weight": 0.017960709108901431,
+        "anchored_weight_se_hc2": 1.2798284134846343,
+        "anchored_weight_p": 0.98905440494944763,
+        "unanchored_weight": 0.11373371771427368,
+        "unanchored_weight_se_hc2": 0.55392161969983067,
+        "unanchored_weight_p": 0.84106879587048156,
+        "prompt_iv": 0.0040998854127449243,
+        "prompt_iv_se": 0.0010488625278731261,
+        "prompt_iv_p": 0.0011297037099214017,
+        "first_stage_f": 1988.9704693835558,
+        "focus_tone": -0.082017494571535024,
+        "focus_tone_se_hac": 0.11675026126469469,
+        "focus_tone_p": 0.493880958535448,
+        "focus_rho": 0.4400714936803366,
+        "focus_rho_se_hac": 0.37850968321927503,
+        "focus_rho_p": 0.26441041527726084
+      },
+      {
+        "regime": "Campos Neto onward",
+        "start_date": "2019-03-20",
+        "end_date": "2025-09-17",
+        "meetings": 53,
+        "anchored_weight": -0.29575512273379961,
+        "anchored_weight_se_hc2": 0.27408002405451753,
+        "anchored_weight_p": 0.28617652076163846,
+        "unanchored_weight": 0.89295445877467428,
+        "unanchored_weight_se_hc2": 0.17084421023340476,
+        "unanchored_weight_p": 4.0922026152696972e-06,
+        "prompt_iv": 0.018395716525375558,
+        "prompt_iv_se": 0.0043535913492622758,
+        "prompt_iv_p": 9.6430011985496901e-05,
+        "first_stage_f": 2121.5313269269068,
+        "focus_tone": 0.16257161507062459,
+        "focus_tone_se_hac": 0.10942073791228957,
+        "focus_tone_p": 0.14362427896243146,
+        "focus_rho": 0.7599604355120585,
+        "focus_rho_se_hac": 0.11315637865593832,
+        "focus_rho_p": 1.6696369928785091e-08
+      },
+      {
+        "regime": "Pre-2021",
+        "start_date": "2016-11-30",
+        "end_date": "2020-12-09",
+        "meetings": 33,
+        "anchored_weight": 0.48156728638525936,
+        "anchored_weight_se_hc2": 0.75484996136762161,
+        "anchored_weight_p": 0.52907619471180678,
+        "unanchored_weight": 0.45126149153963696,
+        "unanchored_weight_se_hc2": 0.51714071382540161,
+        "unanchored_weight_p": 0.39086408670238504,
+        "prompt_iv": 0.019489552759886508,
+        "prompt_iv_se": 0.0032538764465790304,
+        "prompt_iv_p": 1.1184695680478583e-06,
+        "first_stage_f": 2596.9986538444423,
+        "focus_tone": 0.0079642548408928853,
+        "focus_tone_se_hac": 0.055029501524294415,
+        "focus_tone_p": 0.88592757839865421,
+        "focus_rho": 0.70641993253547586,
+        "focus_rho_se_hac": 0.098711395515996336,
+        "focus_rho_p": 7.0782611988028739e-08
+      },
+      {
+        "regime": "2021 onward",
+        "start_date": "2021-01-20",
+        "end_date": "2025-09-17",
+        "meetings": 38,
+        "anchored_weight": -0.41612842079138157,
+        "anchored_weight_se_hc2": 0.3661961657688958,
+        "anchored_weight_p": 0.26451707090477677,
+        "unanchored_weight": 0.94520704236068009,
+        "unanchored_weight_se_hc2": 0.26714769300674118,
+        "unanchored_weight_p": 0.001293544198801614,
+        "prompt_iv": 0.016191831147717828,
+        "prompt_iv_se": 0.0057296714126104445,
+        "prompt_iv_p": 0.0075567243628245125,
+        "first_stage_f": 1452.0520426896712,
+        "focus_tone": 0.10642060665004885,
+        "focus_tone_se_hac": 0.11669544907064525,
+        "focus_tone_p": 0.36803304074142285,
+        "focus_rho": 0.75750325845251076,
+        "focus_rho_se_hac": 0.13368728139817765,
+        "focus_rho_p": 2.1268039876959226e-06
+      },
+      {
+        "regime": "Below-median realized inflation",
+        "start_date": "2017-04-12",
+        "end_date": "2025-01-29",
+        "meetings": 38,
+        "anchored_weight": 0.052638328770071081,
+        "anchored_weight_se_hc2": 0.63742193692744409,
+        "anchored_weight_p": 0.9347163961920385,
+        "unanchored_weight": 0.68208662155854827,
+        "unanchored_weight_se_hc2": 0.46682658518166215,
+        "unanchored_weight_p": 0.15404710548401368,
+        "prompt_iv": 0.016261863164459194,
+        "prompt_iv_se": 0.003612500316538396,
+        "prompt_iv_p": 6.5005434876114386e-05,
+        "first_stage_f": 3078.8205309431305,
+        "focus_tone": 0.096570940062914917,
+        "focus_tone_se_hac": 0.089472629819868948,
+        "focus_tone_p": 0.28782058567933561,
+        "focus_rho": 0.69382616639847494,
+        "focus_rho_se_hac": 0.11732665044332646,
+        "focus_rho_p": 1.0033574793392202e-06
+      },
+      {
+        "regime": "Above-median realized inflation",
+        "start_date": "2016-11-30",
+        "end_date": "2025-09-17",
+        "meetings": 33,
+        "anchored_weight": 0.13305346779777943,
+        "anchored_weight_se_hc2": 0.42371260648910414,
+        "anchored_weight_p": 0.75601298064761258,
+        "unanchored_weight": 0.43169958354371751,
+        "unanchored_weight_se_hc2": 0.28983416543068674,
+        "unanchored_weight_p": 0.14839485626992721,
+        "prompt_iv": 0.016935373005037637,
+        "prompt_iv_se": 0.0032475134631043821,
+        "prompt_iv_p": 1.0635351101695039e-05,
+        "first_stage_f": 1139.1725394672565,
+        "focus_tone": 0.036399922244470119,
+        "focus_tone_se_hac": 0.060931869855930722,
+        "focus_tone_p": 0.55488514390915789,
+        "focus_rho": 0.7825895165636062,
+        "focus_rho_se_hac": 0.10974116039033462,
+        "focus_rho_p": 7.5638688536680949e-08
+      },
+      {
+        "regime": "Markov state 1",
+        "start_date": "2016-11-30",
+        "end_date": "2025-09-17",
+        "meetings": 40,
+        "anchored_weight": 0.28073610694436851,
+        "anchored_weight_se_hc2": 0.61910919065618197,
+        "anchored_weight_p": 0.65319140282067822,
+        "unanchored_weight": 0.48179949588094945,
+        "unanchored_weight_se_hc2": 0.50489807680375398,
+        "unanchored_weight_p": 0.34689484184580865,
+        "prompt_iv": 0.014927627447549004,
+        "prompt_iv_se": 0.0028166844014104343,
+        "prompt_iv_p": 4.8453330047268024e-06,
+        "first_stage_f": 4064.0179068315433,
+        "focus_tone": 0.013947142345402105,
+        "focus_tone_se_hac": 0.032665376618540139,
+        "focus_tone_p": 0.67194384943973939,
+        "focus_rho": 0.951880523573021,
+        "focus_rho_se_hac": 0.07560704632535882,
+        "focus_rho_p": 9.4490231488666728e-15
+      },
+      {
+        "regime": "Markov state 2",
+        "start_date": "2018-05-16",
+        "end_date": "2025-03-19",
+        "meetings": 31,
+        "anchored_weight": -0.91267423196075537,
+        "anchored_weight_se_hc2": 0.58449442169737709,
+        "anchored_weight_p": 0.13150228588788582,
+        "unanchored_weight": 1.1924823460571106,
+        "unanchored_weight_se_hc2": 0.34975672583543393,
+        "unanchored_weight_p": 0.0023033779201534934,
+        "prompt_iv": 0.023732513341872794,
+        "prompt_iv_se": 0.0086597138895474646,
+        "prompt_iv_p": 0.010231302795333699,
+        "first_stage_f": 1477.4447161608373,
+        "focus_tone": 0.57355536176293653,
+        "focus_tone_se_hac": 0.11939191009469273,
+        "focus_tone_p": 4.7398958749739338e-05,
+        "focus_rho": 0.33655136890060622,
+        "focus_rho_se_hac": 0.15551960106624504,
+        "focus_rho_p": 0.039142702981341253
+      }
+    ],
+    "bonomo_coverage": [
+      {
+        "requested_split": "Bonomo et al. (2024) unanchored 2011-2016 versus reanchored",
+        "sample_start": "2016-11-30",
+        "sample_end": "2025-09-17",
+        "identified_in_current_sample": false,
+        "reason": "The estimation sample begins in November 2016, after the reanchoring window identified in Bonomo et al.; no within-sample Bonomo regime contrast exists."
+      }
+    ],
+    "threshold": [
+      {
+        "term": "(Intercept)",
+        "estimate": 0.8841134684098596,
+        "std_error": 0.30313894651672457,
+        "statistic": 2.916528801623588,
+        "p_value": 0.0048536254269698704
+      },
+      {
+        "term": "l_inflacao12m",
+        "estimate": 0.73492835209653895,
+        "std_error": 0.074259241889774355,
+        "statistic": 9.8967930912548141,
+        "p_value": 1.3438695471016983e-14
+      },
+      {
+        "term": "score_orig",
+        "estimate": 0.10013622822842935,
+        "std_error": 0.08699832904434103,
+        "statistic": 1.1510132358679239,
+        "p_value": 0.25394337011833035
+      },
+      {
+        "term": "high_inflationTRUE",
+        "estimate": 0.31608352332909995,
+        "std_error": 0.17904025702529069,
+        "statistic": 1.7654326941926302,
+        "p_value": 0.082187776582700656
+      },
+      {
+        "term": "score_orig:high_inflationTRUE",
+        "estimate": -0.048121929242905662,
+        "std_error": 0.11879707773705149,
+        "statistic": -0.40507670861584644,
+        "p_value": 0.68675123707704389
+      }
+    ]
+  },
+  "d23": {
+    "wild_cluster": [
+      {
+        "method": "clusterSEs wild cluster bootstrap-t for ivreg",
+        "estimate": 0.018723397652534061,
+        "p_value": 0,
+        "ci_low": 0.013046256276025521,
+        "ci_high": 0.024400539029042601,
+        "bootstrap_replications": 9999,
+        "clusters": 71
+      }
+    ],
+    "persistence": [
+      {
+        "rho": 0.80217362391153835,
+        "rho_se_hac": 0.059412851921978413,
+        "rho_ci_low": 0.6857244341444606,
+        "rho_ci_high": 0.91862281367861609,
+        "adf_tau2": -2.0001477357335387,
+        "adf_5pct_critical": -2.8900000000000001,
+        "reject_unit_root_5pct": false
+      }
+    ]
+  },
+  "d24": {
+    "variance_decomposition": [
+      {
+        "role": "dove_text",
+        "observations": 1775,
+        "actual_variance": 0.83318998863718796,
+        "numerator_contribution": 0.76081119599501823,
+        "denominator_contribution": 0.072378792642169676,
+        "numerator_share": 0.91313050609194601,
+        "denominator_share": 0.086869493908053874,
+        "covariance": 162864.16764850658,
+        "correlation": 0.16547741236644473
+      },
+      {
+        "role": "hawk_text",
+        "observations": 1775,
+        "actual_variance": 1.2415826292380092,
+        "numerator_contribution": 1.0390636846297587,
+        "denominator_contribution": 0.20251894460825071,
+        "numerator_share": 0.83688645456280142,
+        "denominator_share": 0.16311354543719875,
+        "covariance": 202920.21747622147,
+        "correlation": 0.17425371724430788
+      }
+    ]
+  },
+  "outputs": {
+    "d5_forecaster_summary": "outputs/tables/referee_d5_cross_draw_forecasters_20260715.csv",
+    "d5_composite_summary": "outputs/tables/referee_d5_cross_draw_composite_20260715.csv",
+    "d5_retry": "outputs/tables/referee_d5_retry_by_stance_20260715.csv",
+    "d5_placebo_draws": "outputs/tables/referee_d5_scrambled_outcome_placebo_draws_20260715.csv",
+    "d5_placebo_summary": "outputs/tables/referee_d5_scrambled_outcome_placebo_summary_20260715.csv",
+    "d6_calibration": "outputs/tables/referee_d6_constrained_calibration_20260715.csv",
+    "d6_wald": "outputs/tables/referee_d6_wald_unanchored_equals_one_20260715.csv",
+    "d7_regimes": "outputs/tables/referee_d7_regime_estimates_20260715.csv",
+    "d7_rolling": "outputs/tables/referee_d7_rolling_24_meetings_20260715.csv",
+    "d7_threshold": "outputs/tables/referee_d7_threshold_market_20260715.csv",
+    "d7_breaks": "outputs/tables/referee_d7_structural_breaks_20260715.csv",
+    "d7_coverage": "outputs/tables/referee_d7_bonomo_coverage_20260715.csv",
+    "d23_wild": "outputs/tables/referee_d23_wild_cluster_iv_20260715.csv",
+    "d23_local_to_unity": "outputs/tables/referee_d23_local_to_unity_grid_20260715.csv",
+    "d23_persistence": "outputs/tables/referee_d23_persistence_20260715.csv",
+    "d24_variance": "outputs/tables/referee_d24_tone_variance_decomposition_20260715.csv"
+  },
+  "analysis_version": "20260715"
+}

@@ -1,0 +1,2 @@
+embedding_model,embedding_dimensions,pcs_used,cumulative_variance_explained,raw_t_perp_first_stage_correlation,content_t_perp_first_stage_correlation
+sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2,384,36,0.901214023330722,0.514533527859843,0.954189975213383

@@ -1,0 +1,2 @@
+method,estimate,p_value,ci_low,ci_high,bootstrap_replications,clusters
+clusterSEs wild cluster bootstrap-t for ivreg,0.0187233976525341,0,0.0130462562760255,0.0244005390290426,9999,71

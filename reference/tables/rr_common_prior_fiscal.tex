@@ -1,0 +1,31 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Common-prior Prompt-IV sensitivity across fiscal-news samples}
+\label{tab:fiscal-iv}
+\begin{footnotesize}
+\begin{tabular}{lccc}
+\toprule
+ & (1) & (2) & (3) \\
+ & Full sample & No RTN window & CDS-covered sample \\
+\midrule
+Realized tone index & 0.0187*** & 0.0179*** & 0.0177*** \\
+ & (0.0028) & (0.0028) & (0.0028) \\
+\midrule
+Meeting-by-regeneration fixed effects & Yes & Yes & Yes \\
+Meeting-clustered inference & Yes & Yes & Yes \\
+Meetings & 71 & 66 & 67 \\
+Observations & 3,550 & 3,300 & 3,350 \\
+Meeting-by-regeneration groups & 1,775 & 1,650 & 1,675 \\
+First-stage coefficient & 1.2106 & 1.2131 & 1.2193 \\
+First-stage $F$ & 3347.6 & 2970.8 & 3159.6 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} The dependent variable is the calibrated composite forecast revision under the common-prior design. Column (2) excludes meetings within five calendar days of an official Tesouro RTN release. Column (3) retains meetings for which the public five-year Brazil CDS series is available. Standard errors are clustered by Copom meeting. * $p<0.10$, ** $p<0.05$, *** $p<0.01$.
+\end{tablenotes}
+\end{footnotesize}
+\end{threeparttable}
+\end{table}

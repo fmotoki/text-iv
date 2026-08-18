@@ -1,0 +1,27 @@
+[llm]
+runner = "dry-run"
+model = "gpt-5.5"
+reasoning_effort = "high"
+temperature = 1.0
+allow_real_llm = false
+log_jsonl = "outputs/logs/llm_requests.jsonl"
+
+[generation]
+minutes_dir = "texto/atas"
+output_csv = "data/interim/counterfactual_minutes.csv"
+stances = ["hawk", "dove"]
+draws_per_meeting_stance = 1
+max_workers = 1
+numeric_preservation_required = true
+
+[tone]
+scale = 100
+
+[agents]
+initial_expectation = 3.80
+num_agents = 1
+output_csv = "data/interim/synthetic_forecasters.csv"
+
+[safety]
+never_call_real_llm_without_flag = true
+raw_data_read_only = true

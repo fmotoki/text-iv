@@ -1,0 +1,24 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Variance decomposition of the lexicon tone index}
+\label{tab:tone-variance-decomposition}
+\begin{footnotesize}
+\begin{tabular}{lcc}
+\toprule
+Component & Dovish rewrites & Hawkish rewrites \\
+\midrule
+Numerator contribution & 91.3\% & 83.7\% \\
+Length-denominator contribution & 8.7\% & 16.3\% \\
+Actual tone variance & 0.833 & 1.242 \\
+Observations & 1775 & 1775 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} The numerator is the hawkish-minus-dovish lexicon count and the denominator is document length. The exact covariance term is allocated by Shapley averaging across the two components, so the reported shares sum to one. Most variation comes from stance-word counts rather than document length.
+\end{tablenotes}
+\end{footnotesize}
+\end{threeparttable}
+\end{table}

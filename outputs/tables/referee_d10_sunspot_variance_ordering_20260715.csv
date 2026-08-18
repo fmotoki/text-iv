@@ -1,0 +1,13 @@
+synthetic_aggregate,benchmark,variance_point,variance_ci_low,variance_ci_high,observations
+anchored,Quasi-REE proxy: original minute,0.0439855806841046,0.0187752336418511,0.078326824305835,71
+anchored,Candidate tone process: assigned arms,0.0455725935898074,0.0190169235952819,0.0841085023217041,284
+anchored,Neutral-rewrite proxy (imperfect fundamentals benchmark),0.0499951517102616,0.0171044012072434,0.0991765604024145,71
+unanchored,Quasi-REE proxy: original minute,0.106771171026157,0.064135260362173,0.155114479678068,71
+unanchored,Candidate tone process: assigned arms,0.102231733787886,0.0643057753371821,0.143692058448216,284
+unanchored,Neutral-rewrite proxy (imperfect fundamentals benchmark),0.0890597585513078,0.0561892696177062,0.123602734406439,71
+equal_weight,Quasi-REE proxy: original minute,0.0655493247484909,0.0369174473239437,0.101850271991952,71
+equal_weight,Candidate tone process: assigned arms,0.0650151234260688,0.036472123212686,0.101716526911735,284
+equal_weight,Neutral-rewrite proxy (imperfect fundamentals benchmark),0.0619715665995976,0.0324290998591549,0.101743023239437,71
+hierarchical_simplex,Quasi-REE proxy: original minute,0.0568987368795792,0.0290519285072453,0.0937524317107771,71
+hierarchical_simplex,Candidate tone process: assigned arms,0.0572102217873041,0.0292404820093332,0.0953688088023068,284
+hierarchical_simplex,Neutral-rewrite proxy (imperfect fundamentals benchmark),0.056722898767573,0.0262582852308223,0.100509860103857,71

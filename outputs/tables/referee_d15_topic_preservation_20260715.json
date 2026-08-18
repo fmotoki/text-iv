@@ -1,0 +1,203 @@
+{
+  "implementation": {
+    "language": "R",
+    "packages": ["quanteda", "stopwords", "stm", "sandwich", "lmtest"],
+    "run_id": "v10_referee_step3_neutral_dose_5draws_20260627",
+    "documents": 1846,
+    "meetings": 71,
+    "topics": 8,
+    "vocabulary": 3946,
+    "original_deduplicated": true
+  },
+  "topic_labels": [
+    {
+      "topic": 1,
+      "highest_probability_terms": "ciclo, básico, flexibilização, brasileira, reunião, ajustes, reformas, favorável",
+      "frex_terms": "extensão, estimativa, estimativas, flexibilização, reavaliações, moderada, revés, sob",
+      "spearman_with_lexicon_tone": -0.27245101296458452,
+      "designated_tone_topic": false
+    },
+    {
+      "topic": 2,
+      "highest_probability_terms": "básico, ajuste, pandemia, torno, acima, recuperação, elevação, segundo",
+      "frex_terms": "partindo, altista, criando, novos, assimetria, somente, forward, acordo",
+      "spearman_with_lexicon_tone": 0.18659763199245458,
+      "designated_tone_topic": false
+    },
+    {
+      "topic": 3,
+      "highest_probability_terms": "mercado, trabalho, dinâmica, desinflação, cautela, hiato, fiscal, crédito",
+      "frex_terms": "unanimemente, atingimento, quatro, rendimentos, direcionado, deletérios, ailton, aquino",
+      "spearman_with_lexicon_tone": 0.28077932230727709,
+      "designated_tone_topic": false
+    },
+    {
+      "topic": 4,
+      "highest_probability_terms": "brasileira, reformas, básico, estrutural, grau, ajustes, abaixo, continuidade",
+      "frex_terms": "agenda, avaliam, consolidação, aceleração, macroeconômicas, livre, concretos, maneira",
+      "spearman_with_lexicon_tone": -0.11858092356347447,
+      "designated_tone_topic": false
+    },
+    {
+      "topic": 5,
+      "highest_probability_terms": "crescimento, ciclo, pressões, desaceleração, cenários, metas, global, fiscal",
+      "frex_terms": "tributárias, irá, arcabouço, dar, avaliando, longos, inflacionárias, china",
+      "spearman_with_lexicon_tone": 0.31337913707068976,
+      "designated_tone_topic": true
+    },
+    {
+      "topic": 6,
+      "highest_probability_terms": "brasileira, básico, ajustes, choques, continuidade, reformas, manutenção, grau",
+      "frex_terms": "paralisação, choques, combatidos, apropriados, repasse, produzam, cargas, médio",
+      "spearman_with_lexicon_tone": -0.024360165692126595,
+      "designated_tone_topic": false
+    },
+    {
+      "topic": 7,
+      "highest_probability_terms": "pandemia, básico, fiscal, estímulo, recuperação, economias, brasileira, assim",
+      "frex_terms": "prudenciais, intenção, precedentes, pandemia, reduções, questões, limite, prescrição",
+      "spearman_with_lexicon_tone": 0.0413773094415609,
+      "designated_tone_topic": false
+    },
+    {
+      "topic": 8,
+      "highest_probability_terms": "desinflação, retomada, torno, ritmo, flexibilização, reunião, intensificação, pode",
+      "frex_terms": "intensificação, interregno, demorada, antecipação, eua, antecipada, estabilização, janeiro",
+      "spearman_with_lexicon_tone": -0.070737102759116877,
+      "designated_tone_topic": false
+    }
+  ],
+  "designated_tone_topic": 5,
+  "topic_similarity": [
+    {
+      "source_role": "dove_high",
+      "mean_cosine_similarity": 0.99996613888338715,
+      "cosine_ci_low": 0.99967615190506187,
+      "cosine_ci_high": 0.99999999999190492,
+      "mean_jensen_shannon": 5.3682154957756959e-05,
+      "jensen_shannon_ci_low": 3.8475552174699541e-07,
+      "jensen_shannon_ci_high": 0.00040221731083484762,
+      "meetings": 71
+    },
+    {
+      "source_role": "dove_low",
+      "mean_cosine_similarity": 0.99996943906749713,
+      "cosine_ci_low": 0.99973271804485186,
+      "cosine_ci_high": 0.99999999999068157,
+      "mean_jensen_shannon": 6.2358934110688785e-05,
+      "jensen_shannon_ci_low": 4.1059932403000611e-07,
+      "jensen_shannon_ci_high": 0.00042826601635090279,
+      "meetings": 71
+    },
+    {
+      "source_role": "hawk_high",
+      "mean_cosine_similarity": 0.99995765861939123,
+      "cosine_ci_low": 0.99938912244286904,
+      "cosine_ci_high": 0.99999999999755418,
+      "mean_jensen_shannon": 6.5920353709245953e-05,
+      "jensen_shannon_ci_low": 5.6152199949477327e-08,
+      "jensen_shannon_ci_high": 0.00063677954524876939,
+      "meetings": 71
+    },
+    {
+      "source_role": "hawk_low",
+      "mean_cosine_similarity": 0.99997283930908376,
+      "cosine_ci_low": 0.99969462170117018,
+      "cosine_ci_high": 0.99999999999763955,
+      "mean_jensen_shannon": 3.7179961809269257e-05,
+      "jensen_shannon_ci_low": 8.4125038295987272e-08,
+      "jensen_shannon_ci_high": 0.00032498796619272321,
+      "meetings": 71
+    },
+    {
+      "source_role": "neutral",
+      "mean_cosine_similarity": 0.9999527616425824,
+      "cosine_ci_low": 0.99951862139066139,
+      "cosine_ci_high": 0.9999999999763397,
+      "mean_jensen_shannon": 0.00016713647574535378,
+      "jensen_shannon_ci_low": 1.1918573562831132e-06,
+      "jensen_shannon_ci_high": 0.0010155359458956488,
+      "meetings": 71
+    },
+    {
+      "source_role": "original",
+      "mean_cosine_similarity": 1,
+      "cosine_ci_low": 1,
+      "cosine_ci_high": 1,
+      "mean_jensen_shannon": 0,
+      "jensen_shannon_ci_low": 0,
+      "jensen_shannon_ci_high": 0,
+      "meetings": 71
+    }
+  ],
+  "non_tone_joint_test": [
+    {
+      "test": "Joint role effect on non-tone topic proportions",
+      "statistic": 2.298315571239224,
+      "numerator_df": 35,
+      "denominator_df": 1740,
+      "p_value": 2.6939970255758553e-05,
+      "tone_topic": 5,
+      "non_tone_topics": "1,2,3,4,6,7,8"
+    }
+  ],
+  "effect_energy": [
+    {
+      "topic": 1,
+      "treatment_effect_energy": 7.8465529559890779e-07,
+      "treatment_effect_share": 0.10268750511242956,
+      "designated_tone_topic": false
+    },
+    {
+      "topic": 2,
+      "treatment_effect_energy": 1.7257246246356337e-06,
+      "treatment_effect_share": 0.22584484831604557,
+      "designated_tone_topic": false
+    },
+    {
+      "topic": 3,
+      "treatment_effect_energy": 1.7455336533414043e-07,
+      "treatment_effect_share": 0.022843724748534383,
+      "designated_tone_topic": false
+    },
+    {
+      "topic": 4,
+      "treatment_effect_energy": 7.8672749779033926e-07,
+      "treatment_effect_share": 0.10295869333268391,
+      "designated_tone_topic": false
+    },
+    {
+      "topic": 5,
+      "treatment_effect_energy": 1.0095363033270491e-06,
+      "treatment_effect_share": 0.13211758703540433,
+      "designated_tone_topic": true
+    },
+    {
+      "topic": 6,
+      "treatment_effect_energy": 2.4162908114955188e-06,
+      "treatment_effect_share": 0.3162189517489673,
+      "designated_tone_topic": false
+    },
+    {
+      "topic": 7,
+      "treatment_effect_energy": 1.2634493012339933e-07,
+      "treatment_effect_share": 0.016534707317655151,
+      "designated_tone_topic": false
+    },
+    {
+      "topic": 8,
+      "treatment_effect_energy": 6.1736260963862018e-07,
+      "treatment_effect_share": 0.080793982388279839,
+      "designated_tone_topic": false
+    }
+  ],
+  "outputs": {
+    "labels": "outputs/tables/referee_d15_topic_labels_20260715.csv",
+    "effects": "outputs/tables/referee_d15_topic_effects_20260715.csv",
+    "similarity": "outputs/tables/referee_d15_topic_similarity_20260715.csv",
+    "joint_test": "outputs/tables/referee_d15_non_tone_joint_test_20260715.csv",
+    "effect_energy": "outputs/tables/referee_d15_topic_effect_energy_20260715.csv",
+    "model": "outputs/models/referee_d15_stm_topics_20260715.rds"
+  },
+  "analysis_version": "20260715"
+}

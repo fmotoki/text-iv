@@ -1,0 +1,4 @@
+data/raw/** -text
+data/analysis/** -text
+data/generated/** -text
+data/generated/*.sqlite filter=lfs diff=lfs merge=lfs -text

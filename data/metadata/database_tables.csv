@@ -1,0 +1,22 @@
+table,rows,description
+agent_results_latest,15762,Frozen latest successful synthetic-forecaster result for each selected task.
+agent_tasks,15762,"Task design, treatment arm, prior, prompt version, and source-text linkage for selected forecaster runs."
+blinded_pairwise_scores,1775,Blinded pairwise tone-ranking scores used in the dose validation.
+blinded_pairwise_tasks,1775,Anonymized pairwise tone-ranking tasks.
+blinded_semantic_scores,2130,Blinded semantic hawkishness scores for generated and original texts.
+blinded_semantic_tasks,2130,Anonymized semantic-scoring tasks and assigned dose labels.
+corpus_texts,2130,"Frozen five-draw six-arm counterfactual text corpus, including the full generated text."
+external_bcb_sgs,6763,Public Banco Central do Brasil SGS time series used in external validation.
+external_focus_statistics,45220,Public aggregate and Top-5 Focus statistics from BCB Olinda endpoints.
+external_source_manifest,14,Endpoint-level provenance and retrieval status for public external data.
+metadata,1,Replication database build metadata.
+realized_dose_scores,2130,"Lexicon, blinded-semantic, and blinded-pairwise dose measures by meeting, draw, and text arm."
+referee_embedding_manifest,1,Embedding model and document-segmentation settings.
+referee_embedding_pair_metrics,5325,"Document, sentence, and token-distribution preservation metrics."
+referee_human_audit_key,30,Blinded linkage key retained for audit traceability; no human respondent data.
+referee_human_audit_ratings,0,Human factual-audit ratings table; intentionally empty because ratings were not collected.
+referee_human_audit_tasks,30,Thirty blinded text pairs prepared for a future human factual audit.
+referee_text_embeddings,3550,Frozen sentence/document embeddings for the 25-regeneration hawkish and dovish rewrite corpus.
+rewrite_results_latest,17750,"Thin completion and retry inventory for the 17,750 rewrite tasks."
+runs,6,Design metadata and expected dimensions for the six frozen collection runs.
+tone_scores,7455,Lexicon tone scores and token counts for original and counterfactual texts.

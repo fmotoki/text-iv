@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "Please cite the article and this replication package."
+title: "Replication files for Can Words Move Inflation Expectations? A Counterfactual-Text Laboratory"
+type: dataset
+version: 2.0.0
+date-released: 2026-08-16
+authors:
+  - family-names: "Barros Jr."
+    given-names: "Fernando"
+  - family-names: "Motoki"
+    given-names: "Fabio Y. S."
+  - family-names: "Pinho Neto"
+    given-names: "Valdemar"
+  - family-names: "Rangel"
+    given-names: "Victor"
+    email: "victorrsr@al.insper.edu.br"
+keywords:
+  - inflation expectations
+  - central bank communication
+  - instrumental variables
+  - large language models
+  - synthetic forecasters

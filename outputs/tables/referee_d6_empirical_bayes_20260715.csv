@@ -1,0 +1,2 @@
+specification,anchored_weight,unanchored_weight,anchored_std_error,unanchored_std_error,anchored_ci_low,anchored_ci_high,unanchored_ci_low,unanchored_ci_high,selected_lambda,implied_gaussian_prior_sd,bootstrap_replications,observations
+Empirical-Bayes ridge centered on equal weights,0.523295559500993,0.476704440499007,0.0190085938934904,0.0190085938934904,0.489227613087683,0.562284516918967,0.437715483081033,0.510772386912317,0.542773183805683,0.0617749271525901,1999,71

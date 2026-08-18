@@ -1,0 +1,25 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Moment validation of the synthetic calibration}
+\label{tab:moment-battery}
+\begin{footnotesize}
+\begin{tabular}{lcc}
+\toprule
+Moment & Estimate & HAC SE \\
+\midrule
+Mean normalized Focus dispersion & 0.098 &  \\
+Focus forecast-error AR(1) & 0.924 & 0.063 \\
+Focus update excess kurtosis & 1.505 &  \\
+Convex-composite residual AR(1) & 0.454 & 0.094 \\
+LOO cross-validated R-squared & 0.723 &  \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} Forecast-error and residual persistence use AR(1) regressions with HAC standard errors. Excess kurtosis and dispersion are descriptive moments. Leave-one-out $R^2$ re-estimates the calibration after omitting each meeting. The table is a moment-matching diagnostic rather than a test that the synthetic panel reproduces the full Focus distribution.
+\end{tablenotes}
+\end{footnotesize}
+\end{threeparttable}
+\end{table}

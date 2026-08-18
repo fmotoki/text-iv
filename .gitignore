@@ -1,0 +1,11 @@
+renv/library/
+renv/library_broken_*/
+renv/staging/
+outputs/work/
+outputs/models/
+logs/steps/
+*.Rproj.user/
+.Rhistory
+.RData
+__pycache__/
+*.pyc

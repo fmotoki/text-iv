@@ -1,0 +1,3 @@
+source_role,mean_tone,between_draw_sd_tone,mean_forecast_revision,between_draw_sd_forecast_revision,mean_within_cell_sd_tone,mean_within_cell_sd_forecast_revision,forecaster_type
+dove,1.04345051710936,0.157725647887481,-0.0034517500289356,0.00864574713106688,0.259564518403466,0.0531455067340041,composite
+hawk,2.25400636701658,0.422182598322202,0.0192139685294795,0.00638993166189913,0.486188899699671,0.0547065257633801,composite

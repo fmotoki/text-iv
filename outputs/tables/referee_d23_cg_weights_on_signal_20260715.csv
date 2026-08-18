@@ -1,0 +1,5 @@
+forecaster,observations,cg_beta,cg_beta_se_hac,cg_beta_p_hac,weight_on_signal_g,weight_on_signal_se_delta,realized_target
+Focus aggregate median,64,0.699558042191417,0.731194071937737,0.342417486306537,0.588388260462465,0.253139932481021,Official IPCA accumulated over 12 months near t+365
+LLM anchored,64,1.73592717796386,2.43685997732533,0.478912744089817,0.365506804440688,0.325552854752683,Official IPCA accumulated over 12 months near t+365
+LLM unanchored,64,1.43473281488335,2.15736928190711,0.508492442599449,0.410722685416268,0.363933364467306,Official IPCA accumulated over 12 months near t+365
+LLM convex composite,64,1.88597093576971,2.58044924490602,0.4676121462572,0.346503836059351,0.309821402230413,Official IPCA accumulated over 12 months near t+365

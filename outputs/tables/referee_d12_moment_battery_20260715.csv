@@ -1,0 +1,6 @@
+statistic,estimate,std_error,observations
+Mean normalized Focus dispersion,0.0977915360001341,,71
+Focus forecast-error AR(1),0.9241618988158,0.0632137007495061,64
+Focus update excess kurtosis,1.50543942045219,,70
+Convex-composite residual AR(1),0.453885947510894,0.0942610873592616,70
+LOO cross-validated R-squared,0.722688788581542,,71

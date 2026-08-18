@@ -1,0 +1,131 @@
+{
+  "status": "complete",
+  "implementation": "R stats::lm/predict for leave-one-meeting-out and expanding-window forecasts; sandwich::NeweyWest and lmtest::coeftest for unconditional HAC tests of mean squared-error differentials.",
+  "packages": {
+    "haven": "2.5.5",
+    "sandwich": "3.1.1",
+    "lmtest": "0.9.40",
+    "data_table": "1.18.2.1",
+    "jsonlite": "2.0.0"
+  },
+  "dataset": "outputs/work/gpt55_calibration_data.dta",
+  "settings": {
+    "mixture_columns": ["forecast_anchored_gpt55", "forecast_unanchored_gpt55", "wc_orig", "ibcbr_agro", "ibcbr_service", "ibcbr_industry"],
+    "initial_training_meetings": 24,
+    "initial_ar1_lagged_pairs": 23,
+    "hac_lags": 4
+  },
+  "loo": [
+    {
+      "n": 71,
+      "rmse": 0.40862932444090055,
+      "mae": 0.2885086635239919,
+      "r2_cv": 0.72268878858154229
+    }
+  ],
+  "expanding_window": {
+    "forecasts": 47,
+    "first_forecast_date": "2019-12-11",
+    "last_forecast_date": "2025-09-17",
+    "metrics": [
+      {
+        "model": "composite",
+        "n": 47,
+        "rmse": 0.5740942572183052,
+        "mae": 0.39554944045094081,
+        "sse": 15.490458160038767,
+        "r2_oos_vs_historical_mean": 0.60769005141122057,
+        "r2_oos_vs_focus_ar1": -0.46536105335686995
+      },
+      {
+        "model": "focus_ar1",
+        "n": 47,
+        "rmse": 0.47425386645794809,
+        "mae": 0.36285376334837777,
+        "sse": 10.571086302964723,
+        "r2_oos_vs_historical_mean": 0.73227762011958064,
+        "r2_oos_vs_focus_ar1": 0
+      },
+      {
+        "model": "anchored_agent",
+        "n": 47,
+        "rmse": 0.45111608639490486,
+        "mae": 0.31325106382978718,
+        "sse": 9.5647689999999983,
+        "r2_oos_vs_historical_mean": 0.75776352152490756,
+        "r2_oos_vs_focus_ar1": 0.095195259420263856
+      },
+      {
+        "model": "unanchored_agent",
+        "n": 47,
+        "rmse": 0.72771164209634109,
+        "mae": 0.58083829787234043,
+        "sse": 24.889519,
+        "r2_oos_vs_historical_mean": 0.36965028287678403,
+        "r2_oos_vs_focus_ar1": -1.3544901901916728
+      },
+      {
+        "model": "equal_weight",
+        "n": 47,
+        "rmse": 0.5200678965493607,
+        "mae": 0.38558723404255324,
+        "sse": 12.712118999999998,
+        "r2_oos_vs_historical_mean": 0.67805401881464011,
+        "r2_oos_vs_focus_ar1": -0.2025366774685029
+      },
+      {
+        "model": "bates_granger",
+        "n": 47,
+        "rmse": 0.48316797869028255,
+        "mae": 0.35033272404251237,
+        "sse": 10.972210894687707,
+        "r2_oos_vs_historical_mean": 0.72211877482716069,
+        "r2_oos_vs_focus_ar1": -0.03794544668606914
+      }
+    ]
+  },
+  "mean_loss_differentials_against_focus_ar1": [
+    {
+      "model": "composite",
+      "benchmark": "focus_ar1",
+      "n": 47,
+      "mean_loss_difference": -0.1046674863207243,
+      "se_hac": 0.10464106876310356,
+      "t_hac": -1.0002524587901578,
+      "p_hac": 0.32242120590273848,
+      "positive_mean_means_model_improves_on_benchmark": true
+    },
+    {
+      "model": "equal_weight",
+      "benchmark": "focus_ar1",
+      "n": 47,
+      "mean_loss_difference": -0.0455538871709633,
+      "se_hac": 0.1163822753819711,
+      "t_hac": -0.3914160212236244,
+      "p_hac": 0.69729706014077952,
+      "positive_mean_means_model_improves_on_benchmark": true
+    },
+    {
+      "model": "bates_granger",
+      "benchmark": "focus_ar1",
+      "n": 47,
+      "mean_loss_difference": -0.008534565781340089,
+      "se_hac": 0.098545751819830704,
+      "t_hac": -0.086605111064997214,
+      "p_hac": 0.93136129484836228,
+      "positive_mean_means_model_improves_on_benchmark": true
+    }
+  ],
+  "outputs": {
+    "loo_predictions": "outputs/tables/referee_d8_loo_predictions_20260715.csv",
+    "loo_summary": "outputs/tables/referee_d8_loo_summary_20260715.csv",
+    "expanding_predictions": "outputs/tables/referee_d8_expanding_predictions_20260715.csv",
+    "forecast_metrics": "outputs/tables/referee_d8_forecast_metrics_20260715.csv",
+    "mean_loss_tests": "outputs/tables/referee_d8_mean_loss_tests_20260715.csv",
+    "report": "outputs/tables/referee_d8_oos_validation_20260715.json",
+    "loo_table": "results/tables/rr_llm_loo.tex",
+    "expanding_table": "results/tables/rr_llm_expanding.tex",
+    "mean_loss_table": "results/tables/rr_llm_gw.tex"
+  },
+  "analysis_version": "20260715"
+}

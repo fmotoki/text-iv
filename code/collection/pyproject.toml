@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prompt-iv"
+version = "0.1.0"
+description = "Organized Prompt-IV research pipeline for central bank communication and inflation expectations."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "pandas>=2.0",
+  "numpy>=1.24",
+  "matplotlib>=3.7",
+  "seaborn>=0.12",
+]
+
+[project.optional-dependencies]
+embeddings = [
+  "fastembed>=0.7",
+  "tokenizers>=0.22",
+]
+remote = [
+  "openai>=1.0",
+  "tqdm>=4.0",
+]
+dev = [
+  "pytest>=7.0",
+]
+
+[project.scripts]
+prompt-iv = "prompt_iv.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+  "real_llm: tests that make a real Codex CLI/model call and are skipped unless PROMPT_IV_RUN_REAL_LLM_TESTS=1",
+]

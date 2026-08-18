@@ -1,0 +1,4 @@
+screen,alpha_proxy,phi_proxy,rho_proxy,alpha_threshold,rho_threshold,inside_bmz_existence_region,interpretation
+Exact paired prompt assignment,0.955977542281189,0,,1,,FALSE,"Both labels occur in every meeting and there is no serial assignment state; phi=0 implies an alpha threshold of one, outside the determinate BMZ model."
+Reduced-form proxy using macro-news PC1,0.955977542281189,0.72924813128377,-0.206167594743881,0.83511121949179,0.339498332131216,FALSE,"Diagnostic proxy only: alpha is prior pass-through, phi is realized tone-gap persistence, and rho is persistence of the first macro-news principal component."
+Reduced-form proxy using most persistent measured macro-news series,0.955977542281189,0.72924813128377,0.0299334811529933,0.83511121949179,0.339498332131216,FALSE,Conservative diagnostic replaces PC1 persistence with the largest AR(1) among the five measured pre-meeting macro-news series.

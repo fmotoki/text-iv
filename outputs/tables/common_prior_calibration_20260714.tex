@@ -1,0 +1,23 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Immediate Prompt-IV and observational Focus benchmark}
+\label{tab:summary_calibration}
+\begin{footnotesize}
+\begin{tabular}{lccc}
+\toprule
+ & Estimate & Std.\ error & 95\% confidence interval \\
+\midrule
+Immediate Prompt-IV, $\widehat{\beta}^{IV}$ & 0.0187 & 0.0028 & [0.0132, 0.0242] \\
+Focus projection, short run, $\widehat{\beta}^{\mathrm{Focus}}$ & 0.0979 & 0.0510 & [-0.0021, 0.1979] \\
+Focus persistence, $\widehat{\rho}^{\mathrm{Focus}}$ & 0.8022 & 0.0594 & [0.6857, 0.9186] \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} The first row is the immediate common-prior laboratory sensitivity from Table~\ref{tab:common-prior-main}. The Focus rows come from the observational autoregressive projection and use Newey--West HAC inference with four lags. The two equations answer different questions: the Focus coefficient and persistence are not transformed or divided by Prompt-IV to create a transport ratio.
+\end{tablenotes}
+\end{footnotesize}
+\end{threeparttable}
+\end{table}

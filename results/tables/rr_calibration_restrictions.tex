@@ -1,0 +1,32 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Calibration weights under admissibility restrictions}
+\label{tab:calibration-restrictions}
+\begin{scriptsize}
+\setlength{\tabcolsep}{3.8pt}
+\begin{tabular}{lcccc}
+\toprule
+ & (1) & (2) & (3) & (4) \\
+ & Unrestricted & Convex & Hierarchical & Empirical Bayes \\
+\midrule
+Anchored weight & 0.0262 & 0.6710 & 0.6523 & 0.5233 \\
+ & (0.3282) & (0.1374) & (0.1192) & (0.0190) \\
+\addlinespace
+Unanchored weight & 0.6651*** & 0.3290 & 0.3477 & 0.4767 \\
+ & (0.2119) & (0.1374) & (0.1192) & (0.0190) \\
+\midrule
+Weights sum to one & No & Yes & Yes & Yes \\
+Nonnegative weights imposed & No & Yes & Yes & No \\
+Word-count control & No & No & No & No \\
+Observations & 71 & 71 & 71 & 71 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} The outcome is the median twelve-month-ahead Focus IPCA expectation. Column (1) is OLS without the original-text word count; parentheses contain HC2 heteroskedasticity-robust standard errors, and stars apply only to this column. Column (2) solves the nonnegative unit-sum quadratic program; parentheses contain meeting-bootstrap standard deviations from 1,999 replications. Column (3) reports posterior means with posterior standard deviations in parentheses from a learned symmetric Dirichlet prior. Column (4) reports the empirical-Bayes ridge centered on equal weights with meeting-bootstrap standard deviations in parentheses; it imposes unit sum but not nonnegativity in every bootstrap replication. Conventional significance stars are not reported for Columns (2)--(4) because boundary constraints, posterior uncertainty, and shrinkage make their reference distributions nonstandard. For Column (1), * $p < 0.10$, ** $p < 0.05$, *** $p < 0.01$. The table concerns calibration weights, not population shares.
+\end{tablenotes}
+\end{scriptsize}
+\end{threeparttable}
+\end{table}

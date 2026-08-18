@@ -1,0 +1,23 @@
+Data licensing notice
+
+The author-generated data in this package are licensed under the Creative
+Commons Attribution 4.0 International License (CC BY 4.0):
+https://creativecommons.org/licenses/by/4.0/
+
+Author-generated data include the counterfactual-text corpus, synthetic-
+forecaster tasks and responses, locally computed scores and embeddings, and
+the processed analysis files created by the authors, to the extent that the
+authors hold the relevant rights. Attribution should cite the paper and this
+replication package.
+
+Third-party Banco Central do Brasil and Tesouro Nacional database material is
+distributed under the Open Database License 1.0 (ODbL), with source attribution
+and share-alike terms preserved. This package does not relicense those inputs
+under CC BY 4.0. Source-level attribution, URLs, access dates, and redistribution
+status are recorded in data/metadata/data_sources.csv.
+
+Historical World Government Bonds CDS levels and the Ipeadata/J.P. Morgan EMBI
+series are not included because no sufficiently clear permission to redistribute
+their values was identified. The package includes only an author-generated binary
+CDS-series-availability flag needed to define a reported subsample; it contains no
+CDS levels. The active master script does not read EMBI values.

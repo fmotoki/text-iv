@@ -1,0 +1,29 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Calibration against Focus Top-5 benchmarks}
+\label{tab:top5-calibration}
+\begin{scriptsize}
+\begin{tabular}{lccc}
+\toprule
+ & (1) & (2) & (3) \\
+ & Short & Medium & Long \\
+\midrule
+Anchored forecast & -0.5995 & -0.2029 & -0.0650 \\
+ & (0.3714) & (0.4052) & (0.3723) \\
+Unanchored forecast & 1.2120*** & 0.9696*** & 0.8448*** \\
+ & (0.2576) & (0.2856) & (0.2510) \\
+\midrule
+Observations & 71 & 71 & 71 \\
+$R^2$ & 0.818 & 0.807 & 0.778 \\
+Activity controls & Yes & Yes & Yes \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} The dependent variables are the official BCB Focus Top-5 IPCA benchmarks at short, medium, and long horizons. Each column regresses one benchmark on the two original-minute synthetic forecasts and the IBC-Br activity controls used in the baseline calibration. Heteroskedasticity-robust standard errors are in parentheses. Institution-level respondent panels are confidential and are not claimed here. * $p<0.10$, ** $p<0.05$, *** $p<0.01$.
+\end{tablenotes}
+\end{scriptsize}
+\end{threeparttable}
+\end{table}

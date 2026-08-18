@@ -1,0 +1,2 @@
+requested_split,sample_start,sample_end,identified_in_current_sample,reason
+Bonomo et al. (2024) unanchored 2011-2016 versus reanchored,2016-11-30,2025-09-17,FALSE,"The estimation sample begins in November 2016, after the reanchoring window identified in Bonomo et al.; no within-sample Bonomo regime contrast exists."

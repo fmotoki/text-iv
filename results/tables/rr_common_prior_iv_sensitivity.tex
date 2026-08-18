@@ -1,0 +1,41 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Prompt-IV sensitivity across common-prior treatment intensities}
+\label{tab:common-prior-iv-sensitivity}
+\begin{scriptsize}
+\setlength{\tabcolsep}{4.2pt}
+\begin{tabular}{lcccc}
+\toprule
+ & (1) & (2) & (3) & (4) \\
+ & Baseline & Low intensity & High intensity & Ordered dose \\
+\midrule
+\multicolumn{5}{l}{\textit{Panel A. Second stage}} \\
+Realized tone index & 0.0187*** & 0.0401*** & 0.0263*** & 0.0290*** \\
+ & (0.0028) & (0.0074) & (0.0065) & (0.0056) \\
+\addlinespace
+\multicolumn{5}{l}{\textit{Panel B. Reduced form}} \\
+Assigned prompt or dose & 0.0227*** & 0.0263*** & 0.0352*** & 0.0097*** \\
+ & (0.0035) & (0.0049) & (0.0087) & (0.0019) \\
+\addlinespace
+\multicolumn{5}{l}{\textit{Panel C. First stage}} \\
+Assigned prompt or dose & 1.2106*** & 0.6559*** & 1.3392*** & 0.3334*** \\
+ & (0.0209) & (0.0202) & (0.0283) & (0.0071) \\
+First-stage $F$ statistic & 3347.6 & 1049.3 & 2242.2 & 2193.8 \\
+\midrule
+Pair fixed effects & Yes & Yes & Yes & Yes \\
+Standard errors clustered by meeting & Yes & Yes & Yes & Yes \\
+Observations & 3,550 & 710 & 710 & 1,775 \\
+Pair fixed-effect groups & 1,775 & 355 & 355 & 355 \\
+Regeneration replicates & 25 & 5 & 5 & 5 \\
+Meeting clusters & 71 & 71 & 71 & 71 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} The dependent variable is the forecast revision in percentage points. Column (1) compares the standard hawkish and dovish prompts over 25 regenerations. Columns (2) and (3) compare the low- and high-intensity endpoints of the five-regeneration dose design. Column (4) uses assigned doses $-2,-1,0,1,2$ across high dove, low dove, neutral, low hawk, and high hawk; the unmodified original is excluded from that linear dose specification. Binary first stages are hawk-minus-dove tone differences, whereas column (4) is the tone change per one assigned-dose step. Standard errors are clustered by Copom meeting. * $p<0.10$, ** $p<0.05$, *** $p<0.01$.
+\end{tablenotes}
+\end{scriptsize}
+\end{threeparttable}
+\end{table}

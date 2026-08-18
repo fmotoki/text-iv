@@ -1,0 +1,294 @@
+table,table_rows,variable,sqlite_type,not_null,primary_key,description
+agent_results_latest,15762,run_id,TEXT,FALSE,FALSE,Stable collection-run identifier.
+agent_results_latest,15762,task_id,TEXT,FALSE,FALSE,Stable task identifier within a run.
+agent_results_latest,15762,event_line_number,INT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,status,TEXT,FALSE,FALSE,"Task, endpoint, or result status."
+agent_results_latest,15762,created_at,TEXT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,meeting_number,INT,FALSE,FALSE,Sequential Copom meeting number.
+agent_results_latest,15762,corpus_iteration,INT,FALSE,FALSE,Independent source-text regeneration draw.
+agent_results_latest,15762,scenario,TEXT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,forecaster_type,TEXT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,agent_id,INT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,agent_seed,INT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,previous_expectation,REAL,FALSE,FALSE,"Pre-treatment prior supplied to the synthetic forecaster, in percentage points."
+agent_results_latest,15762,new_expectation,REAL,FALSE,FALSE,"Synthetic twelve-month-ahead inflation forecast level, in percentage points."
+agent_results_latest,15762,perceived_tone,REAL,FALSE,FALSE,Tone perceived by the synthetic forecaster.
+agent_results_latest,15762,design,TEXT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,prompt_version,TEXT,FALSE,FALSE,Versioned prompt-family identifier.
+agent_results_latest,15762,pair_id,TEXT,FALSE,FALSE,Matched comparison or fixed-effect identifier.
+agent_results_latest,15762,source_role,TEXT,FALSE,FALSE,Textual treatment arm or source-text role.
+agent_results_latest,15762,source_text_hash,TEXT,FALSE,FALSE,SHA-256 identifier for the supplied source text.
+agent_results_latest,15762,forecast_revision,REAL,FALSE,FALSE,"New expectation minus the supplied prior, in percentage points."
+agent_results_latest,15762,model,TEXT,FALSE,FALSE,Model identifier recorded at collection.
+agent_results_latest,15762,reasoning_effort,TEXT,FALSE,FALSE,Provider reasoning-effort setting requested at collection.
+agent_results_latest,15762,temperature,REAL,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,temperature_applied,INT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,seed_applied,INT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,response_schema_applied,INT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,system_prompt_hash,TEXT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,user_prompt_hash,TEXT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,response_schema_hash,TEXT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,source_text_char_count,INT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,supplied_text_char_count,INT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,text_truncated,INT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,sampling_control,TEXT,FALSE,FALSE,Field retained from production table agent_results_latest.
+agent_results_latest,15762,raw_json,TEXT,FALSE,FALSE,Original structured task or response payload retained for audit.
+agent_tasks,15762,run_id,TEXT,FALSE,FALSE,Stable collection-run identifier.
+agent_tasks,15762,task_id,TEXT,FALSE,FALSE,Stable task identifier within a run.
+agent_tasks,15762,meeting_number,INT,FALSE,FALSE,Sequential Copom meeting number.
+agent_tasks,15762,corpus_iteration,INT,FALSE,FALSE,Independent source-text regeneration draw.
+agent_tasks,15762,scenario,TEXT,FALSE,FALSE,Field retained from production table agent_tasks.
+agent_tasks,15762,forecaster_type,TEXT,FALSE,FALSE,Field retained from production table agent_tasks.
+agent_tasks,15762,agent_id,INT,FALSE,FALSE,Field retained from production table agent_tasks.
+agent_tasks,15762,agent_seed,INT,FALSE,FALSE,Field retained from production table agent_tasks.
+agent_tasks,15762,sequence_index,INT,FALSE,FALSE,Field retained from production table agent_tasks.
+agent_tasks,15762,state_group,TEXT,FALSE,FALSE,Field retained from production table agent_tasks.
+agent_tasks,15762,source_corpus,TEXT,FALSE,FALSE,Field retained from production table agent_tasks.
+agent_tasks,15762,source_path,TEXT,FALSE,FALSE,Field retained from production table agent_tasks.
+agent_tasks,15762,initial_expectation,REAL,FALSE,FALSE,Initial forecast state used to start a recursive path.
+agent_tasks,15762,inflation_target,REAL,FALSE,FALSE,Field retained from production table agent_tasks.
+agent_tasks,15762,previous_expectation_required,INT,FALSE,FALSE,Field retained from production table agent_tasks.
+agent_tasks,15762,prompt_family_hash,TEXT,FALSE,FALSE,Field retained from production table agent_tasks.
+agent_tasks,15762,raw_json,TEXT,FALSE,FALSE,Original structured task or response payload retained for audit.
+agent_tasks,15762,design,TEXT,FALSE,FALSE,Field retained from production table agent_tasks.
+agent_tasks,15762,prompt_version,TEXT,FALSE,FALSE,Versioned prompt-family identifier.
+agent_tasks,15762,prior_source,TEXT,FALSE,FALSE,Field retained from production table agent_tasks.
+agent_tasks,15762,fixed_prior,REAL,FALSE,FALSE,Pre-treatment prior held common across paired textual arms.
+agent_tasks,15762,pair_id,TEXT,FALSE,FALSE,Matched comparison or fixed-effect identifier.
+agent_tasks,15762,source_run_id,TEXT,FALSE,FALSE,Field retained from production table agent_tasks.
+agent_tasks,15762,source_role,TEXT,FALSE,FALSE,Textual treatment arm or source-text role.
+agent_tasks,15762,source_text_hash,TEXT,FALSE,FALSE,SHA-256 identifier for the supplied source text.
+agent_tasks,15762,requested_model,TEXT,FALSE,FALSE,Field retained from production table agent_tasks.
+agent_tasks,15762,requested_reasoning_effort,TEXT,FALSE,FALSE,Field retained from production table agent_tasks.
+agent_tasks,15762,requested_temperature,REAL,FALSE,FALSE,Field retained from production table agent_tasks.
+blinded_pairwise_scores,1775,run_id,TEXT,FALSE,FALSE,Stable collection-run identifier.
+blinded_pairwise_scores,1775,task_id,TEXT,FALSE,FALSE,Stable task identifier within a run.
+blinded_pairwise_scores,1775,status,TEXT,FALSE,FALSE,"Task, endpoint, or result status."
+blinded_pairwise_scores,1775,meeting_number,INT,FALSE,FALSE,Sequential Copom meeting number.
+blinded_pairwise_scores,1775,iteration,INT,FALSE,FALSE,Repeated full-report regeneration index; not a controlled seed draw.
+blinded_pairwise_scores,1775,pair_type,TEXT,FALSE,FALSE,Field retained from production table blinded_pairwise_scores.
+blinded_pairwise_scores,1775,role_a,TEXT,FALSE,FALSE,Field retained from production table blinded_pairwise_scores.
+blinded_pairwise_scores,1775,role_b,TEXT,FALSE,FALSE,Field retained from production table blinded_pairwise_scores.
+blinded_pairwise_scores,1775,more_hawkish,TEXT,FALSE,FALSE,Field retained from production table blinded_pairwise_scores.
+blinded_pairwise_scores,1775,more_hawkish_role,TEXT,FALSE,FALSE,Field retained from production table blinded_pairwise_scores.
+blinded_pairwise_scores,1775,confidence,REAL,FALSE,FALSE,Field retained from production table blinded_pairwise_scores.
+blinded_pairwise_scores,1775,model,TEXT,FALSE,FALSE,Model identifier recorded at collection.
+blinded_pairwise_scores,1775,reasoning_effort,TEXT,FALSE,FALSE,Provider reasoning-effort setting requested at collection.
+blinded_pairwise_scores,1775,prompt_version,TEXT,FALSE,FALSE,Versioned prompt-family identifier.
+blinded_pairwise_scores,1775,request_input_hash,TEXT,FALSE,FALSE,Field retained from production table blinded_pairwise_scores.
+blinded_pairwise_scores,1775,raw_response_hash,TEXT,FALSE,FALSE,SHA-256 identifier for the raw model response.
+blinded_pairwise_scores,1775,created_at,TEXT,FALSE,FALSE,Field retained from production table blinded_pairwise_scores.
+blinded_pairwise_scores,1775,migrated_at,TEXT,FALSE,FALSE,UTC timestamp at which a source result was inserted into SQLite.
+blinded_pairwise_tasks,1775,run_id,TEXT,FALSE,FALSE,Stable collection-run identifier.
+blinded_pairwise_tasks,1775,task_id,TEXT,FALSE,FALSE,Stable task identifier within a run.
+blinded_pairwise_tasks,1775,anonymous_pair_id,TEXT,FALSE,FALSE,Field retained from production table blinded_pairwise_tasks.
+blinded_pairwise_tasks,1775,meeting_number,INT,FALSE,FALSE,Sequential Copom meeting number.
+blinded_pairwise_tasks,1775,iteration,INT,FALSE,FALSE,Repeated full-report regeneration index; not a controlled seed draw.
+blinded_pairwise_tasks,1775,pair_type,TEXT,FALSE,FALSE,Field retained from production table blinded_pairwise_tasks.
+blinded_pairwise_tasks,1775,role_a,TEXT,FALSE,FALSE,Field retained from production table blinded_pairwise_tasks.
+blinded_pairwise_tasks,1775,role_b,TEXT,FALSE,FALSE,Field retained from production table blinded_pairwise_tasks.
+blinded_pairwise_tasks,1775,text_a_hash,TEXT,FALSE,FALSE,Field retained from production table blinded_pairwise_tasks.
+blinded_pairwise_tasks,1775,text_b_hash,TEXT,FALSE,FALSE,Field retained from production table blinded_pairwise_tasks.
+blinded_pairwise_tasks,1775,prompt_version,TEXT,FALSE,FALSE,Versioned prompt-family identifier.
+blinded_pairwise_tasks,1775,migrated_at,TEXT,FALSE,FALSE,UTC timestamp at which a source result was inserted into SQLite.
+blinded_semantic_scores,2130,run_id,TEXT,FALSE,FALSE,Stable collection-run identifier.
+blinded_semantic_scores,2130,task_id,TEXT,FALSE,FALSE,Stable task identifier within a run.
+blinded_semantic_scores,2130,status,TEXT,FALSE,FALSE,"Task, endpoint, or result status."
+blinded_semantic_scores,2130,meeting_number,INT,FALSE,FALSE,Sequential Copom meeting number.
+blinded_semantic_scores,2130,iteration,INT,FALSE,FALSE,Repeated full-report regeneration index; not a controlled seed draw.
+blinded_semantic_scores,2130,text_role,TEXT,FALSE,FALSE,Original or generated dose-response text arm.
+blinded_semantic_scores,2130,score,REAL,FALSE,FALSE,Hawk-minus-dove lexicon share on the stored scale.
+blinded_semantic_scores,2130,label,TEXT,FALSE,FALSE,Field retained from production table blinded_semantic_scores.
+blinded_semantic_scores,2130,confidence,REAL,FALSE,FALSE,Field retained from production table blinded_semantic_scores.
+blinded_semantic_scores,2130,model,TEXT,FALSE,FALSE,Model identifier recorded at collection.
+blinded_semantic_scores,2130,reasoning_effort,TEXT,FALSE,FALSE,Provider reasoning-effort setting requested at collection.
+blinded_semantic_scores,2130,prompt_version,TEXT,FALSE,FALSE,Versioned prompt-family identifier.
+blinded_semantic_scores,2130,request_input_hash,TEXT,FALSE,FALSE,Field retained from production table blinded_semantic_scores.
+blinded_semantic_scores,2130,raw_response_hash,TEXT,FALSE,FALSE,SHA-256 identifier for the raw model response.
+blinded_semantic_scores,2130,created_at,TEXT,FALSE,FALSE,Field retained from production table blinded_semantic_scores.
+blinded_semantic_scores,2130,migrated_at,TEXT,FALSE,FALSE,UTC timestamp at which a source result was inserted into SQLite.
+blinded_semantic_tasks,2130,run_id,TEXT,FALSE,FALSE,Stable collection-run identifier.
+blinded_semantic_tasks,2130,task_id,TEXT,FALSE,FALSE,Stable task identifier within a run.
+blinded_semantic_tasks,2130,anonymous_id,TEXT,FALSE,FALSE,Field retained from production table blinded_semantic_tasks.
+blinded_semantic_tasks,2130,meeting_number,INT,FALSE,FALSE,Sequential Copom meeting number.
+blinded_semantic_tasks,2130,iteration,INT,FALSE,FALSE,Repeated full-report regeneration index; not a controlled seed draw.
+blinded_semantic_tasks,2130,text_role,TEXT,FALSE,FALSE,Original or generated dose-response text arm.
+blinded_semantic_tasks,2130,assigned_dose,REAL,FALSE,FALSE,Ordered treatment dose: -2 high dove through +2 high hawk; original is not assigned a dose.
+blinded_semantic_tasks,2130,text_hash,TEXT,FALSE,FALSE,SHA-256 content identifier for a text.
+blinded_semantic_tasks,2130,prompt_version,TEXT,FALSE,FALSE,Versioned prompt-family identifier.
+blinded_semantic_tasks,2130,migrated_at,TEXT,FALSE,FALSE,UTC timestamp at which a source result was inserted into SQLite.
+corpus_texts,2130,run_id,TEXT,FALSE,FALSE,Stable collection-run identifier.
+corpus_texts,2130,meeting_number,INT,FALSE,FALSE,Sequential Copom meeting number.
+corpus_texts,2130,iteration,INT,FALSE,FALSE,Repeated full-report regeneration index; not a controlled seed draw.
+corpus_texts,2130,role,TEXT,FALSE,FALSE,Field retained from production table corpus_texts.
+corpus_texts,2130,source_path,TEXT,FALSE,FALSE,Field retained from production table corpus_texts.
+corpus_texts,2130,complete,INT,FALSE,FALSE,Field retained from production table corpus_texts.
+corpus_texts,2130,text,TEXT,FALSE,FALSE,Field retained from production table corpus_texts.
+corpus_texts,2130,text_hash,TEXT,FALSE,FALSE,SHA-256 content identifier for a text.
+corpus_texts,2130,char_count,INT,FALSE,FALSE,Field retained from production table corpus_texts.
+corpus_texts,2130,word_count,INT,FALSE,FALSE,Whitespace-token word count.
+external_bcb_sgs,6763,series_code,INT,FALSE,FALSE,Field retained from production table external_bcb_sgs.
+external_bcb_sgs,6763,series_name,TEXT,FALSE,FALSE,Field retained from production table external_bcb_sgs.
+external_bcb_sgs,6763,date,TEXT,FALSE,FALSE,Observation date.
+external_bcb_sgs,6763,value,REAL,FALSE,FALSE,Series value as published by the source.
+external_bcb_sgs,6763,source_url,TEXT,FALSE,FALSE,Public source endpoint used for collection.
+external_bcb_sgs,6763,fetched_at,TEXT,FALSE,FALSE,UTC retrieval timestamp.
+external_focus_statistics,45220,source_entity,TEXT,FALSE,FALSE,Field retained from production table external_focus_statistics.
+external_focus_statistics,45220,indicator,TEXT,FALSE,FALSE,Field retained from production table external_focus_statistics.
+external_focus_statistics,45220,date,TEXT,FALSE,FALSE,Observation date.
+external_focus_statistics,45220,reference_period,TEXT,FALSE,FALSE,Field retained from production table external_focus_statistics.
+external_focus_statistics,45220,meeting,TEXT,FALSE,FALSE,Field retained from production table external_focus_statistics.
+external_focus_statistics,45220,calculation_type,TEXT,FALSE,FALSE,Field retained from production table external_focus_statistics.
+external_focus_statistics,45220,smoothed,TEXT,FALSE,FALSE,Field retained from production table external_focus_statistics.
+external_focus_statistics,45220,mean,REAL,FALSE,FALSE,Published or estimated arithmetic mean.
+external_focus_statistics,45220,median,REAL,FALSE,FALSE,Published median.
+external_focus_statistics,45220,sd,REAL,FALSE,FALSE,Published or estimated standard deviation.
+external_focus_statistics,45220,min,REAL,FALSE,FALSE,Field retained from production table external_focus_statistics.
+external_focus_statistics,45220,max,REAL,FALSE,FALSE,Field retained from production table external_focus_statistics.
+external_focus_statistics,45220,respondents,INT,FALSE,FALSE,Field retained from production table external_focus_statistics.
+external_focus_statistics,45220,calculation_base,INT,FALSE,FALSE,Field retained from production table external_focus_statistics.
+external_focus_statistics,45220,source_url,TEXT,FALSE,FALSE,Public source endpoint used for collection.
+external_focus_statistics,45220,fetched_at,TEXT,FALSE,FALSE,UTC retrieval timestamp.
+external_source_manifest,14,source_id,TEXT,FALSE,FALSE,Field retained from production table external_source_manifest.
+external_source_manifest,14,source_type,TEXT,FALSE,FALSE,Field retained from production table external_source_manifest.
+external_source_manifest,14,status,TEXT,FALSE,FALSE,"Task, endpoint, or result status."
+external_source_manifest,14,note,TEXT,FALSE,FALSE,Field retained from production table external_source_manifest.
+external_source_manifest,14,source_url,TEXT,FALSE,FALSE,Public source endpoint used for collection.
+external_source_manifest,14,fetched_at,TEXT,FALSE,FALSE,UTC retrieval timestamp.
+metadata,1,key,TEXT,FALSE,FALSE,Field retained from production table metadata.
+metadata,1,value,TEXT,FALSE,FALSE,Series value as published by the source.
+realized_dose_scores,2130,run_id,TEXT,FALSE,FALSE,Stable collection-run identifier.
+realized_dose_scores,2130,meeting_number,INT,FALSE,FALSE,Sequential Copom meeting number.
+realized_dose_scores,2130,iteration,INT,FALSE,FALSE,Repeated full-report regeneration index; not a controlled seed draw.
+realized_dose_scores,2130,pair_fe,TEXT,FALSE,FALSE,Meeting-by-regeneration fixed-effect identifier.
+realized_dose_scores,2130,text_role,TEXT,FALSE,FALSE,Original or generated dose-response text arm.
+realized_dose_scores,2130,assigned_dose,REAL,FALSE,FALSE,Ordered treatment dose: -2 high dove through +2 high hawk; original is not assigned a dose.
+realized_dose_scores,2130,text_hash,TEXT,FALSE,FALSE,SHA-256 content identifier for a text.
+realized_dose_scores,2130,lexicon_score,REAL,FALSE,FALSE,Hawk-minus-dove word share.
+realized_dose_scores,2130,lexicon_hawk_count,INT,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,lexicon_dove_count,INT,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,word_count,INT,FALSE,FALSE,Whitespace-token word count.
+realized_dose_scores,2130,semantic_score,REAL,FALSE,FALSE,Blinded semantic hawkishness score.
+realized_dose_scores,2130,semantic_label,TEXT,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,semantic_confidence,REAL,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,semantic_task_id,TEXT,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,pairwise_score,REAL,FALSE,FALSE,Blinded pairwise-ranking score.
+realized_dose_scores,2130,pairwise_comparisons,REAL,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,lexicon_score_neutral,REAL,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,lexicon_score_original,REAL,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,lexicon_score_relative_to_neutral,REAL,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,lexicon_score_relative_to_original,REAL,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,semantic_score_neutral,REAL,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,semantic_score_original,REAL,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,semantic_score_relative_to_neutral,REAL,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,semantic_score_relative_to_original,REAL,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,pairwise_score_neutral,REAL,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,pairwise_score_original,REAL,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,pairwise_score_relative_to_neutral,REAL,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,pairwise_score_relative_to_original,REAL,FALSE,FALSE,Field retained from production table realized_dose_scores.
+realized_dose_scores,2130,migrated_at,TEXT,FALSE,FALSE,UTC timestamp at which a source result was inserted into SQLite.
+referee_embedding_manifest,1,model_id,TEXT,FALSE,FALSE,Field retained from production table referee_embedding_manifest.
+referee_embedding_manifest,1,fastembed_version,TEXT,FALSE,FALSE,Field retained from production table referee_embedding_manifest.
+referee_embedding_manifest,1,tokenizer_id,TEXT,FALSE,FALSE,Field retained from production table referee_embedding_manifest.
+referee_embedding_manifest,1,pooling,TEXT,FALSE,FALSE,Field retained from production table referee_embedding_manifest.
+referee_embedding_manifest,1,sentence_sampling,TEXT,FALSE,FALSE,Field retained from production table referee_embedding_manifest.
+referee_embedding_manifest,1,max_sentences_per_document,INT,FALSE,FALSE,Field retained from production table referee_embedding_manifest.
+referee_embedding_manifest,1,max_words_per_segment,INT,FALSE,FALSE,Field retained from production table referee_embedding_manifest.
+referee_embedding_manifest,1,threads,INT,FALSE,FALSE,Field retained from production table referee_embedding_manifest.
+referee_embedding_manifest,1,generated_at,TEXT,FALSE,FALSE,Field retained from production table referee_embedding_manifest.
+referee_embedding_pair_metrics,5325,run_id,TEXT,FALSE,FALSE,Stable collection-run identifier.
+referee_embedding_pair_metrics,5325,meeting_number,INT,FALSE,FALSE,Sequential Copom meeting number.
+referee_embedding_pair_metrics,5325,iteration,INT,FALSE,FALSE,Repeated full-report regeneration index; not a controlled seed draw.
+referee_embedding_pair_metrics,5325,source_role,TEXT,FALSE,FALSE,Textual treatment arm or source-text role.
+referee_embedding_pair_metrics,5325,text_hash,TEXT,FALSE,FALSE,SHA-256 content identifier for a text.
+referee_embedding_pair_metrics,5325,original_text_hash,TEXT,FALSE,FALSE,Field retained from production table referee_embedding_pair_metrics.
+referee_embedding_pair_metrics,5325,model_id,TEXT,FALSE,FALSE,Field retained from production table referee_embedding_pair_metrics.
+referee_embedding_pair_metrics,5325,document_cosine_similarity,REAL,FALSE,FALSE,Cosine similarity between a rewrite and its original minute.
+referee_embedding_pair_metrics,5325,rewrite_to_original_sentence_similarity,REAL,FALSE,FALSE,Field retained from production table referee_embedding_pair_metrics.
+referee_embedding_pair_metrics,5325,original_to_rewrite_sentence_similarity,REAL,FALSE,FALSE,Field retained from production table referee_embedding_pair_metrics.
+referee_embedding_pair_metrics,5325,sentence_similarity_p05,REAL,FALSE,FALSE,Field retained from production table referee_embedding_pair_metrics.
+referee_embedding_pair_metrics,5325,sentence_share_below_080,REAL,FALSE,FALSE,Field retained from production table referee_embedding_pair_metrics.
+referee_embedding_pair_metrics,5325,subword_jensen_shannon,REAL,FALSE,FALSE,Field retained from production table referee_embedding_pair_metrics.
+referee_embedding_pair_metrics,5325,subword_count_ratio,REAL,FALSE,FALSE,Field retained from production table referee_embedding_pair_metrics.
+referee_embedding_pair_metrics,5325,sentence_count_ratio,REAL,FALSE,FALSE,Field retained from production table referee_embedding_pair_metrics.
+referee_embedding_pair_metrics,5325,generated_at,TEXT,FALSE,FALSE,Field retained from production table referee_embedding_pair_metrics.
+referee_human_audit_key,30,audit_id,TEXT,FALSE,FALSE,Field retained from production table referee_human_audit_key.
+referee_human_audit_key,30,run_id,TEXT,FALSE,FALSE,Stable collection-run identifier.
+referee_human_audit_key,30,meeting_number,INT,FALSE,FALSE,Sequential Copom meeting number.
+referee_human_audit_key,30,iteration,INT,FALSE,FALSE,Repeated full-report regeneration index; not a controlled seed draw.
+referee_human_audit_key,30,rewrite_role,TEXT,FALSE,FALSE,Field retained from production table referee_human_audit_key.
+referee_human_audit_key,30,original_is_a,INT,FALSE,FALSE,Field retained from production table referee_human_audit_key.
+referee_human_audit_key,30,original_text_hash,TEXT,FALSE,FALSE,Field retained from production table referee_human_audit_key.
+referee_human_audit_key,30,rewrite_text_hash,TEXT,FALSE,FALSE,Field retained from production table referee_human_audit_key.
+referee_human_audit_key,30,created_at,TEXT,FALSE,FALSE,Field retained from production table referee_human_audit_key.
+referee_human_audit_ratings,0,audit_id,TEXT,FALSE,FALSE,Field retained from production table referee_human_audit_ratings.
+referee_human_audit_ratings,0,reviewer_id,TEXT,FALSE,FALSE,Field retained from production table referee_human_audit_ratings.
+referee_human_audit_ratings,0,factual_drift_severity,INT,FALSE,FALSE,Field retained from production table referee_human_audit_ratings.
+referee_human_audit_ratings,0,numeric_change,INT,FALSE,FALSE,Field retained from production table referee_human_audit_ratings.
+referee_human_audit_ratings,0,named_entity_change,INT,FALSE,FALSE,Field retained from production table referee_human_audit_ratings.
+referee_human_audit_ratings,0,causal_claim_change,INT,FALSE,FALSE,Field retained from production table referee_human_audit_ratings.
+referee_human_audit_ratings,0,temporal_change,INT,FALSE,FALSE,Field retained from production table referee_human_audit_ratings.
+referee_human_audit_ratings,0,unsupported_addition,INT,FALSE,FALSE,Field retained from production table referee_human_audit_ratings.
+referee_human_audit_ratings,0,material_omission,INT,FALSE,FALSE,Field retained from production table referee_human_audit_ratings.
+referee_human_audit_ratings,0,evidence,TEXT,FALSE,FALSE,Field retained from production table referee_human_audit_ratings.
+referee_human_audit_ratings,0,reviewer_confidence,REAL,FALSE,FALSE,Field retained from production table referee_human_audit_ratings.
+referee_human_audit_ratings,0,reviewed_at,TEXT,FALSE,FALSE,Field retained from production table referee_human_audit_ratings.
+referee_human_audit_tasks,30,audit_id,TEXT,FALSE,FALSE,Field retained from production table referee_human_audit_tasks.
+referee_human_audit_tasks,30,pair_label,TEXT,FALSE,FALSE,Field retained from production table referee_human_audit_tasks.
+referee_human_audit_tasks,30,text_a_hash,TEXT,FALSE,FALSE,Field retained from production table referee_human_audit_tasks.
+referee_human_audit_tasks,30,text_b_hash,TEXT,FALSE,FALSE,Field retained from production table referee_human_audit_tasks.
+referee_human_audit_tasks,30,selection_stratum,TEXT,FALSE,FALSE,Field retained from production table referee_human_audit_tasks.
+referee_human_audit_tasks,30,document_cosine_similarity,REAL,FALSE,FALSE,Cosine similarity between a rewrite and its original minute.
+referee_human_audit_tasks,30,sentence_similarity_p05,REAL,FALSE,FALSE,Field retained from production table referee_human_audit_tasks.
+referee_human_audit_tasks,30,sentence_share_below_080,REAL,FALSE,FALSE,Field retained from production table referee_human_audit_tasks.
+referee_human_audit_tasks,30,subword_jensen_shannon,REAL,FALSE,FALSE,Field retained from production table referee_human_audit_tasks.
+referee_human_audit_tasks,30,subword_count_ratio,REAL,FALSE,FALSE,Field retained from production table referee_human_audit_tasks.
+referee_human_audit_tasks,30,question_schema,TEXT,FALSE,FALSE,Field retained from production table referee_human_audit_tasks.
+referee_human_audit_tasks,30,status,TEXT,FALSE,FALSE,"Task, endpoint, or result status."
+referee_human_audit_tasks,30,created_at,TEXT,FALSE,FALSE,Field retained from production table referee_human_audit_tasks.
+referee_text_embeddings,3550,run_id,TEXT,FALSE,FALSE,Stable collection-run identifier.
+referee_text_embeddings,3550,meeting_number,INT,FALSE,FALSE,Sequential Copom meeting number.
+referee_text_embeddings,3550,iteration,INT,FALSE,FALSE,Repeated full-report regeneration index; not a controlled seed draw.
+referee_text_embeddings,3550,source_role,TEXT,FALSE,FALSE,Textual treatment arm or source-text role.
+referee_text_embeddings,3550,text_hash,TEXT,FALSE,FALSE,SHA-256 content identifier for a text.
+referee_text_embeddings,3550,model_id,TEXT,FALSE,FALSE,Field retained from production table referee_text_embeddings.
+referee_text_embeddings,3550,dimensions,INT,FALSE,FALSE,Field retained from production table referee_text_embeddings.
+referee_text_embeddings,3550,sentence_total_count,INT,FALSE,FALSE,Field retained from production table referee_text_embeddings.
+referee_text_embeddings,3550,sentence_sample_count,INT,FALSE,FALSE,Field retained from production table referee_text_embeddings.
+referee_text_embeddings,3550,subword_count,INT,FALSE,FALSE,Field retained from production table referee_text_embeddings.
+referee_text_embeddings,3550,embedding_blob,"",FALSE,FALSE,Serialized numeric embedding vector stored as a SQLite binary object.
+referee_text_embeddings,3550,generated_at,TEXT,FALSE,FALSE,Field retained from production table referee_text_embeddings.
+rewrite_results_latest,17750,run_id,TEXT,FALSE,FALSE,Stable collection-run identifier.
+rewrite_results_latest,17750,task_id,TEXT,FALSE,FALSE,Stable task identifier within a run.
+rewrite_results_latest,17750,status,TEXT,FALSE,FALSE,"Task, endpoint, or result status."
+rewrite_results_latest,17750,stance,TEXT,FALSE,FALSE,Field retained from production table rewrite_results_latest.
+rewrite_results_latest,17750,retry_attempts_used,INT,FALSE,FALSE,Field retained from production table rewrite_results_latest.
+runs,6,run_id,TEXT,FALSE,FALSE,Stable collection-run identifier.
+runs,6,run_dir,TEXT,FALSE,FALSE,Field retained from production table runs.
+runs,6,first_meeting,INT,FALSE,FALSE,Field retained from production table runs.
+runs,6,last_meeting,INT,FALSE,FALSE,Field retained from production table runs.
+runs,6,prompt_versions_json,TEXT,FALSE,FALSE,Field retained from production table runs.
+runs,6,stances_json,TEXT,FALSE,FALSE,Field retained from production table runs.
+runs,6,rewrite_tasks_total,INT,FALSE,FALSE,Field retained from production table runs.
+runs,6,rewrite_result_lines,INT,FALSE,FALSE,Field retained from production table runs.
+runs,6,rewrite_completed_latest,INT,FALSE,FALSE,Field retained from production table runs.
+runs,6,rewrite_bad_json_lines,INT,FALSE,FALSE,Field retained from production table runs.
+runs,6,agent_tasks_total,INT,FALSE,FALSE,Field retained from production table runs.
+runs,6,agent_result_lines,INT,FALSE,FALSE,Field retained from production table runs.
+runs,6,agent_completed_latest,INT,FALSE,FALSE,Field retained from production table runs.
+runs,6,agent_bad_json_lines,INT,FALSE,FALSE,Field retained from production table runs.
+runs,6,corpus_rows,INT,FALSE,FALSE,Field retained from production table runs.
+runs,6,tone_rows,INT,FALSE,FALSE,Field retained from production table runs.
+runs,6,metadata_json,TEXT,FALSE,FALSE,Field retained from production table runs.
+runs,6,ingested_at,TEXT,FALSE,FALSE,Field retained from production table runs.
+tone_scores,7455,run_id,TEXT,FALSE,FALSE,Stable collection-run identifier.
+tone_scores,7455,meeting_number,INT,FALSE,FALSE,Sequential Copom meeting number.
+tone_scores,7455,iteration,INT,FALSE,FALSE,Repeated full-report regeneration index; not a controlled seed draw.
+tone_scores,7455,role,TEXT,FALSE,FALSE,Field retained from production table tone_scores.
+tone_scores,7455,source_path,TEXT,FALSE,FALSE,Field retained from production table tone_scores.
+tone_scores,7455,complete,INT,FALSE,FALSE,Field retained from production table tone_scores.
+tone_scores,7455,score,REAL,FALSE,FALSE,Hawk-minus-dove lexicon share on the stored scale.
+tone_scores,7455,hawk_count,INT,FALSE,FALSE,Count of hawkish lexicon matches.
+tone_scores,7455,dove_count,INT,FALSE,FALSE,Count of dovish lexicon matches.
+tone_scores,7455,word_count,INT,FALSE,FALSE,Whitespace-token word count.
+tone_scores,7455,raw_json,TEXT,FALSE,FALSE,Original structured task or response payload retained for audit.

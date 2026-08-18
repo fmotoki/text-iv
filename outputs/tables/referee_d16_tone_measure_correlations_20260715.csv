@@ -1,0 +1,7 @@
+sample,measure_left,measure_right,spearman,cluster_bootstrap_ci_low,cluster_bootstrap_ci_high,observations,meeting_clusters,bootstrap_draws
+All six roles,lexicon_tone_pp,semantic_score,0.717689681484709,0.625113825644261,0.79508901002821,2130,71,1999
+All six roles,lexicon_tone_pp,pairwise_score,0.19142503762758,0.164610885291391,0.220270381670025,2130,71,1999
+All six roles,semantic_score,pairwise_score,0.160260058110436,0.139536690328066,0.180845358841595,2130,71,1999
+Five generated roles,lexicon_tone_pp,semantic_score,0.717242612018282,0.624926491648626,0.792278192152208,1775,71,1999
+Five generated roles,lexicon_tone_pp,pairwise_score,0.139956038028865,0.0951766591371312,0.193739808731525,1775,71,1999
+Five generated roles,semantic_score,pairwise_score,0.028907535483813,0.00180133009263093,0.0636602351458065,1775,71,1999

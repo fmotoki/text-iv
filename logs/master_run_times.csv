@@ -1,0 +1,16 @@
+"step","name","status","seconds"
+1,"verify_inputs","complete",2.65767002105713
+2,"build_gpt55_calibration_input","complete",2.45173788070679
+3,"common_prior","complete",125.388645887375
+4,"oos_validation","complete",2.70249509811401
+5,"arm_specific_prior","complete",4.27323794364929
+6,"identification_calibration","complete",69.0346620082855
+7,"bayesian_calibration","complete",202.163811922073
+8,"external_validation","complete",7.21953201293945
+9,"sunspot","complete",20.3555450439453
+10,"posterior_tournament","complete",216.078248023987
+11,"topic_preservation","complete",40.6621708869934
+12,"embedding_tone","complete",5.9797899723053
+13,"integration_tables","complete",5.73864817619324
+14,"baseline_figures","complete",3.95182704925537
+15,"verify_results","complete",2.64322018623352

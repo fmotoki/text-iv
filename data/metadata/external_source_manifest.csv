@@ -1,0 +1,15 @@
+source_id,source_type,status,note,source_url,fetched_at
+BCB_SGS_7478,BCB_SGS,collected,IPCA-15 monthly change,https://api.bcb.gov.br/dados/serie/bcdata.sgs.7478/dados,2026-07-15 10:29:32 UTC
+BCB_SGS_24363,BCB_SGS,collected,IBC-Br,https://api.bcb.gov.br/dados/serie/bcdata.sgs.24363/dados,2026-07-15 10:29:32 UTC
+BCB_SGS_24364,BCB_SGS,collected,IBC-Br seasonally adjusted,https://api.bcb.gov.br/dados/serie/bcdata.sgs.24364/dados,2026-07-15 10:29:32 UTC
+BCB_SGS_10813,BCB_SGS,collected,BRL per USD buying rate,https://api.bcb.gov.br/dados/serie/bcdata.sgs.10813/dados,2026-07-15 10:29:32 UTC
+BCB_SGS_13522,BCB_SGS,collected,IPCA accumulated over 12 months,https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados,2026-07-15 10:29:32 UTC
+BCB_SGS_433,BCB_SGS,collected,IPCA monthly change,https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados,2026-07-15 10:29:32 UTC
+BCB_SGS_432,BCB_SGS,collected,Selic target set by Copom,https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados,2026-07-15 10:29:32 UTC
+ExpectativasMercadoInflacao12Meses,BCB_OLINDA,collected,Official Focus aggregate or Top-5 statistics,https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/ExpectativasMercadoInflacao12Meses,2026-07-15 10:29:32 UTC
+ExpectativasMercadoTop5Inflacao12Meses,BCB_OLINDA,collected,Official Focus aggregate or Top-5 statistics,https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/ExpectativasMercadoTop5Inflacao12Meses,2026-07-15 10:29:32 UTC
+ExpectativasMercadoSelic,BCB_OLINDA,collected,Official Focus aggregate or Top-5 statistics,https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/ExpectativasMercadoSelic,2026-07-15 10:29:32 UTC
+ExpectativasMercadoTop5Selic,BCB_OLINDA,collected,Official Focus aggregate or Top-5 statistics,https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/ExpectativasMercadoTop5Selic,2026-07-15 10:29:32 UTC
+ExpectativasMercadoAnuais,BCB_OLINDA,collected,Official Focus aggregate or Top-5 statistics,https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/ExpectativasMercadoAnuais,2026-07-15 10:29:32 UTC
+ExpectativasMercadoTop5Anuais,BCB_OLINDA,collected,Official Focus aggregate or Top-5 statistics,https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/ExpectativasMercadoTop5Anuais,2026-07-15 10:29:32 UTC
+ExpectativasMercadoInstituicoes,BCB_OLINDA_DEACTIVATED,unavailable,Official institution-level endpoint deactivated by BCB because of microdata confidentiality risk; aggregate and Top-5 endpoints retained.,https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/ExpectativasMercadoInstituicoes,2026-07-15 10:29:32 UTC

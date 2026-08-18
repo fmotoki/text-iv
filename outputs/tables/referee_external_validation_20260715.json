@@ -1,0 +1,495 @@
+{
+  "implementation": {
+    "language": "R",
+    "packages": ["sandwich", "lmtest", "car", "glmnet", "e1071"],
+    "external_source": "Official BCB SGS and Focus OData tables stored in SQLite"
+  },
+  "d2": {
+    "assignment_balance": [
+      {
+        "covariate": "ipca15_change_pre",
+        "hawk_mean": -0.008028169014084513,
+        "dove_mean": -0.008028169014084513,
+        "standardized_difference": 0,
+        "explanation": "Each meeting-regeneration pair contains one hawk and one dove assignment."
+      },
+      {
+        "covariate": "ibc_change_pre",
+        "hawk_mean": 0.21044938549572295,
+        "dove_mean": 0.21044938549572295,
+        "standardized_difference": 0,
+        "explanation": "Each meeting-regeneration pair contains one hawk and one dove assignment."
+      },
+      {
+        "covariate": "brl_return_5d_pre",
+        "hawk_mean": 0.01661636614123287,
+        "dove_mean": 0.01661636614123287,
+        "standardized_difference": 0,
+        "explanation": "Each meeting-regeneration pair contains one hawk and one dove assignment."
+      },
+      {
+        "covariate": "focus_drift_7d_pre",
+        "hawk_mean": 0.032618309859154905,
+        "dove_mean": 0.032618309859154905,
+        "standardized_difference": 0,
+        "explanation": "Each meeting-regeneration pair contains one hawk and one dove assignment."
+      },
+      {
+        "covariate": "selic_surprise",
+        "hawk_mean": 0.014084507042253521,
+        "dove_mean": 0.014084507042253521,
+        "standardized_difference": 0,
+        "explanation": "Each meeting-regeneration pair contains one hawk and one dove assignment."
+      }
+    ],
+    "tone_gap_coefficients": [
+      {
+        "term": "(Intercept)",
+        "estimate": 1.2105558499072264,
+        "std_error": 0.020505716086134735,
+        "statistic": 59.035043927374133,
+        "p_value": 3.4231439824257532e-58,
+        "observations": 71
+      },
+      {
+        "term": "z_ipca15_change_pre",
+        "estimate": -0.010473359739692328,
+        "std_error": 0.025192630819413198,
+        "statistic": -0.41573108480681814,
+        "p_value": 0.67897611849872619,
+        "observations": 71
+      },
+      {
+        "term": "z_ibc_change_pre",
+        "estimate": -0.036087344144635353,
+        "std_error": 0.017551467821566986,
+        "statistic": -2.0560869615868684,
+        "p_value": 0.043794027033428252,
+        "observations": 71
+      },
+      {
+        "term": "z_brl_return_5d_pre",
+        "estimate": 0.01373684005050657,
+        "std_error": 0.02351762153352668,
+        "statistic": 0.58410838999697967,
+        "p_value": 0.56116913674284463,
+        "observations": 71
+      },
+      {
+        "term": "z_focus_drift_7d_pre",
+        "estimate": 0.052208194968209436,
+        "std_error": 0.03003705096959965,
+        "statistic": 1.7381265231746317,
+        "p_value": 0.086923928298534195,
+        "observations": 71
+      },
+      {
+        "term": "z_selic_surprise",
+        "estimate": 0.011763899515373389,
+        "std_error": 0.022303066740063455,
+        "statistic": 0.52745658937753415,
+        "p_value": 0.59967240002317734,
+        "observations": 71
+      }
+    ],
+    "joint_test": [
+      {
+        "test": "Joint orthogonality of realized hawk-dove tone gap",
+        "statistic": 1.1020930961178748,
+        "numerator_df": 5,
+        "denominator_df": 65,
+        "p_value": 0.3679756032200967,
+        "observations": 71
+      }
+    ]
+  },
+  "d9": {
+    "distribution": [
+      {
+        "meetings": 71,
+        "mean_focus_respondents": 109.70422535211267,
+        "mean_focus_sd": 0.41722535211267608,
+        "mean_normalized_focus_dispersion": 0.097791536000134113,
+        "mean_synthetic_sd": 0.21044592986563279,
+        "mean_synthetic_to_focus_sd_ratio": 0.45911122200929227,
+        "mean_independent_aggregation_benchmark": 0.13744057237857923,
+        "correlation_date_level_dispersion": 0.74298070742820999
+      }
+    ],
+    "top5": [
+      {
+        "benchmark": "Top-5 short horizon",
+        "term": "forecast_anchored_gpt55",
+        "estimate": -0.59950386881861051,
+        "std_error": 0.37142158611423204,
+        "statistic": -1.6140792329561344,
+        "p_value": 0.11135484221259682,
+        "observations": 71,
+        "r_squared": 0.81773522286804556
+      },
+      {
+        "benchmark": "Top-5 short horizon",
+        "term": "forecast_unanchored_gpt55",
+        "estimate": 1.212007599982545,
+        "std_error": 0.25764184462432926,
+        "statistic": 4.7042342898522103,
+        "p_value": 1.3750663300232374e-05,
+        "observations": 71,
+        "r_squared": 0.81773522286804556
+      },
+      {
+        "benchmark": "Top-5 medium horizon",
+        "term": "forecast_anchored_gpt55",
+        "estimate": -0.20290594948362214,
+        "std_error": 0.40520254163386571,
+        "statistic": -0.50075191696839005,
+        "p_value": 0.61823719044606595,
+        "observations": 71,
+        "r_squared": 0.80726968181512204
+      },
+      {
+        "benchmark": "Top-5 medium horizon",
+        "term": "forecast_unanchored_gpt55",
+        "estimate": 0.96964678880657984,
+        "std_error": 0.28555860748463491,
+        "statistic": 3.3956139419077176,
+        "p_value": 0.0011718854102687739,
+        "observations": 71,
+        "r_squared": 0.80726968181512204
+      },
+      {
+        "benchmark": "Top-5 long horizon",
+        "term": "forecast_anchored_gpt55",
+        "estimate": -0.064981372754580241,
+        "std_error": 0.37230446974764875,
+        "statistic": -0.1745382557416654,
+        "p_value": 0.86198497505541627,
+        "observations": 71,
+        "r_squared": 0.77758208137350238
+      },
+      {
+        "benchmark": "Top-5 long horizon",
+        "term": "forecast_unanchored_gpt55",
+        "estimate": 0.84477561371770571,
+        "std_error": 0.2509948653296033,
+        "statistic": 3.3657087471026825,
+        "p_value": 0.0012853315185142795,
+        "observations": 71,
+        "r_squared": 0.77758208137350238
+      }
+    ],
+    "access": [
+      {
+        "requested_source": "Focus aggregate distribution",
+        "status": "collected",
+        "detail": "Mean, median, standard deviation, minimum, maximum, and respondent count."
+      },
+      {
+        "requested_source": "Focus Top-5",
+        "status": "collected",
+        "detail": "Short-, medium-, and long-horizon Top-5 statistics."
+      },
+      {
+        "requested_source": "Focus institution panel",
+        "status": "unavailable",
+        "detail": "Official BCB endpoint deactivated because of microdata confidentiality risk."
+      }
+    ]
+  },
+  "d12": [
+    {
+      "statistic": "Mean normalized Focus dispersion",
+      "estimate": 0.097791536000134113,
+      "observations": 71
+    },
+    {
+      "statistic": "Focus forecast-error AR(1)",
+      "estimate": 0.92416189881580046,
+      "std_error": 0.06321370074950608,
+      "observations": 64
+    },
+    {
+      "statistic": "Focus update excess kurtosis",
+      "estimate": 1.5054394204521853,
+      "observations": 70
+    },
+    {
+      "statistic": "Convex-composite residual AR(1)",
+      "estimate": 0.45388594751089362,
+      "std_error": 0.094261087359261614,
+      "observations": 70
+    },
+    {
+      "statistic": "LOO cross-validated R-squared",
+      "estimate": 0.72268878858154195,
+      "observations": 71
+    }
+  ],
+  "d13": [
+    {
+      "predictor": "(Intercept)",
+      "coefficient": 1.9700433417476315,
+      "selected_lambda": 4.375946931532098e-05,
+      "loo_rmse": 0.38735491214345064,
+      "loo_r_squared": 0.75081235588784645,
+      "observations": 71
+    },
+    {
+      "predictor": "anchored_gain_025",
+      "coefficient": 0,
+      "selected_lambda": 4.375946931532098e-05,
+      "loo_rmse": 0.38735491214345064,
+      "loo_r_squared": 0.75081235588784645,
+      "observations": 71
+    },
+    {
+      "predictor": "anchored_gain_050",
+      "coefficient": 0,
+      "selected_lambda": 4.375946931532098e-05,
+      "loo_rmse": 0.38735491214345064,
+      "loo_r_squared": 0.75081235588784645,
+      "observations": 71
+    },
+    {
+      "predictor": "anchored_gain_075",
+      "coefficient": 0,
+      "selected_lambda": 4.375946931532098e-05,
+      "loo_rmse": 0.38735491214345064,
+      "loo_r_squared": 0.75081235588784645,
+      "observations": 71
+    },
+    {
+      "predictor": "anchored_gain_100",
+      "coefficient": 0,
+      "selected_lambda": 4.375946931532098e-05,
+      "loo_rmse": 0.38735491214345064,
+      "loo_r_squared": 0.75081235588784645,
+      "observations": 71
+    },
+    {
+      "predictor": "anchored_gain_125",
+      "coefficient": 0.11104492256173139,
+      "selected_lambda": 4.375946931532098e-05,
+      "loo_rmse": 0.38735491214345064,
+      "loo_r_squared": 0.75081235588784645,
+      "observations": 71
+    },
+    {
+      "predictor": "unanchored_gain_025",
+      "coefficient": 0,
+      "selected_lambda": 4.375946931532098e-05,
+      "loo_rmse": 0.38735491214345064,
+      "loo_r_squared": 0.75081235588784645,
+      "observations": 71
+    },
+    {
+      "predictor": "unanchored_gain_050",
+      "coefficient": 0,
+      "selected_lambda": 4.375946931532098e-05,
+      "loo_rmse": 0.38735491214345064,
+      "loo_r_squared": 0.75081235588784645,
+      "observations": 71
+    },
+    {
+      "predictor": "unanchored_gain_075",
+      "coefficient": 0,
+      "selected_lambda": 4.375946931532098e-05,
+      "loo_rmse": 0.38735491214345064,
+      "loo_r_squared": 0.75081235588784645,
+      "observations": 71
+    },
+    {
+      "predictor": "unanchored_gain_100",
+      "coefficient": 0,
+      "selected_lambda": 4.375946931532098e-05,
+      "loo_rmse": 0.38735491214345064,
+      "loo_r_squared": 0.75081235588784645,
+      "observations": 71
+    },
+    {
+      "predictor": "unanchored_gain_125",
+      "coefficient": 0.59994644526163499,
+      "selected_lambda": 4.375946931532098e-05,
+      "loo_rmse": 0.38735491214345064,
+      "loo_r_squared": 0.75081235588784645,
+      "observations": 71
+    },
+    {
+      "predictor": "ibcbr_agro",
+      "coefficient": 0.01941519370646053,
+      "selected_lambda": 4.375946931532098e-05,
+      "loo_rmse": 0.38735491214345064,
+      "loo_r_squared": 0.75081235588784645,
+      "observations": 71
+    },
+    {
+      "predictor": "ibcbr_industry",
+      "coefficient": 0.039144564811477704,
+      "selected_lambda": 4.375946931532098e-05,
+      "loo_rmse": 0.38735491214345064,
+      "loo_r_squared": 0.75081235588784645,
+      "observations": 71
+    },
+    {
+      "predictor": "ibcbr_service",
+      "coefficient": -0.069372209551063602,
+      "selected_lambda": 4.375946931532098e-05,
+      "loo_rmse": 0.38735491214345064,
+      "loo_r_squared": 0.75081235588784645,
+      "observations": 71
+    }
+  ],
+  "d22": {
+    "macro_correlates": [
+      {
+        "term": "(Intercept)",
+        "estimate": 0.80637780440471718,
+        "std_error": 0.25110000627799578,
+        "statistic": 3.2113810603093604,
+        "p_value": 0.0020951529064120989,
+        "observations": 71,
+        "r_squared": 0.35669287565666086
+      },
+      {
+        "term": "z_selic_target_pre",
+        "estimate": 0.010892575973906179,
+        "std_error": 0.20356547243626463,
+        "statistic": 0.053508956325177361,
+        "p_value": 0.95749843858375605,
+        "observations": 71,
+        "r_squared": 0.35669287565666086
+      },
+      {
+        "term": "z_ibc_change_pre",
+        "estimate": 0.016954078300819637,
+        "std_error": 0.081209543857149041,
+        "statistic": 0.20876952997842921,
+        "p_value": 0.83531253878473133,
+        "observations": 71,
+        "r_squared": 0.35669287565666086
+      },
+      {
+        "term": "z_brl_volatility_20d_pre",
+        "estimate": 0.013029226447348857,
+        "std_error": 0.09878438065414788,
+        "statistic": 0.13189561306220296,
+        "p_value": 0.89549395596695358,
+        "observations": 71,
+        "r_squared": 0.35669287565666086
+      },
+      {
+        "term": "z_ipca15_change_pre",
+        "estimate": -0.061156345266295403,
+        "std_error": 0.13677492859991208,
+        "statistic": -0.44713125345645194,
+        "p_value": 0.65633845891769305,
+        "observations": 71,
+        "r_squared": 0.35669287565666086
+      },
+      {
+        "term": "z_focus_drift_7d_pre",
+        "estimate": 0.10038089162096961,
+        "std_error": 0.11781489851182285,
+        "statistic": 0.85202205229499295,
+        "p_value": 0.39748105060455652,
+        "observations": 71,
+        "r_squared": 0.35669287565666086
+      },
+      {
+        "term": "post_campos_neto",
+        "estimate": 0.33245584050640575,
+        "std_error": 0.34319781193760168,
+        "statistic": 0.96870034989282228,
+        "p_value": 0.33645853401091741,
+        "observations": 71,
+        "r_squared": 0.35669287565666086
+      },
+      {
+        "term": "post_2021",
+        "estimate": 1.2125081676834721,
+        "std_error": 0.36661098621168653,
+        "statistic": 3.3073426964443238,
+        "p_value": 0.001570425277962803,
+        "observations": 71,
+        "r_squared": 0.35669287565666086
+      },
+      {
+        "term": "lula_fiscal_regime",
+        "estimate": -0.56838526653466381,
+        "std_error": 0.36713572452990412,
+        "statistic": -1.548161152833732,
+        "p_value": 0.12667322189137564,
+        "observations": 71,
+        "r_squared": 0.35669287565666086
+      }
+    ],
+    "bonomo_coverage": [
+      {
+        "requested_indicator": "Bonomo et al. anchored-versus-unanchored regime",
+        "estimable": false,
+        "sample_start": "2016-11-30",
+        "sample_end": "2025-09-17",
+        "reason": "The sample begins after the 2011-2016 unanchoring/reanchoring episode."
+      }
+    ]
+  },
+  "d23": {
+    "cg_weights_on_signal": [
+      {
+        "forecaster": "Focus aggregate median",
+        "observations": 64,
+        "cg_beta": 0.69955804219141671,
+        "cg_beta_se_hac": 0.73119407193773744,
+        "cg_beta_p_hac": 0.34241748630653734,
+        "weight_on_signal_g": 0.58838826046246473,
+        "weight_on_signal_se_delta": 0.25313993248102112,
+        "realized_target": "Official IPCA accumulated over 12 months near t+365"
+      },
+      {
+        "forecaster": "LLM anchored",
+        "observations": 64,
+        "cg_beta": 1.7359271779638623,
+        "cg_beta_se_hac": 2.4368599773253301,
+        "cg_beta_p_hac": 0.47891274408981677,
+        "weight_on_signal_g": 0.36550680444068767,
+        "weight_on_signal_se_delta": 0.32555285475268325,
+        "realized_target": "Official IPCA accumulated over 12 months near t+365"
+      },
+      {
+        "forecaster": "LLM unanchored",
+        "observations": 64,
+        "cg_beta": 1.4347328148833502,
+        "cg_beta_se_hac": 2.1573692819071062,
+        "cg_beta_p_hac": 0.50849244259944881,
+        "weight_on_signal_g": 0.41072268541626838,
+        "weight_on_signal_se_delta": 0.3639333644673064,
+        "realized_target": "Official IPCA accumulated over 12 months near t+365"
+      },
+      {
+        "forecaster": "LLM convex composite",
+        "observations": 64,
+        "cg_beta": 1.8859709357697139,
+        "cg_beta_se_hac": 2.5804492449060192,
+        "cg_beta_p_hac": 0.46761214625719982,
+        "weight_on_signal_g": 0.34650383605935076,
+        "weight_on_signal_se_delta": 0.30982140223041332,
+        "realized_target": "Official IPCA accumulated over 12 months near t+365"
+      }
+    ]
+  },
+  "outputs": {
+    "d2_assignment": "outputs/tables/referee_d2_assignment_balance_20260715.csv",
+    "d2_tone": "outputs/tables/referee_d2_tone_gap_orthogonality_20260715.csv",
+    "d2_joint": "outputs/tables/referee_d2_joint_orthogonality_20260715.csv",
+    "d9_meeting": "outputs/tables/referee_d9_distribution_by_meeting_20260715.csv",
+    "d9_summary": "outputs/tables/referee_d9_distribution_summary_20260715.csv",
+    "d9_top5": "outputs/tables/referee_d9_top5_calibration_20260715.csv",
+    "d9_access": "outputs/tables/referee_d9_data_access_20260715.csv",
+    "d12": "outputs/tables/referee_d12_moment_battery_20260715.csv",
+    "d13": "outputs/tables/referee_d13_predictor_ecology_20260715.csv",
+    "d22": "outputs/tables/referee_d22_macro_correlates_20260715.csv",
+    "d22_bonomo": "outputs/tables/referee_d22_bonomo_coverage_20260715.csv",
+    "d23_cg": "outputs/tables/referee_d23_cg_weights_on_signal_20260715.csv"
+  },
+  "analysis_version": "20260715"
+}
