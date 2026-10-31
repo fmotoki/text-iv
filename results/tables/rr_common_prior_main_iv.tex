@@ -2,38 +2,38 @@
 \color{revisionred}
 \centering
 \begin{threeparttable}
-\caption{Immediate Prompt-IV effects under a common prior}
+\caption{Immediate IV estimates of the response to tone}
 \label{tab:common-prior-main}
 \begin{footnotesize}
-\begin{tabular}{lccc}
+\begin{tabular}{lddd}
 \toprule
- & (1) & (2) & (3) \\
- & Composite & Anchored & Unanchored \\
+ & \mc{(1)} & \mc{(2)} & \mc{(3)} \\
+ & \mc{Composite} & \mc{Anchored} & \mc{Unanchored} \\
 \midrule
 \multicolumn{4}{l}{\textit{Panel A. Reduced form}} \\
-Hawkish prompt & 0.0227*** & 0.0181*** & 0.0339*** \\
+Hawkish prompt & 0.0227\sym{***} & 0.0181\sym{***} & 0.0339\sym{***} \\
  & (0.0035) & (0.0028) & (0.0054) \\
 \addlinespace
 \multicolumn{4}{l}{\textit{Panel B. Second stage}} \\
-Realized tone index & 0.0187*** & 0.0150*** & 0.0280*** \\
+Realized tone index & 0.0187\sym{***} & 0.0150\sym{***} & 0.0280\sym{***} \\
  & (0.0028) & (0.0023) & (0.0044) \\
 \addlinespace
 \multicolumn{4}{l}{\textit{Panel C. First stage}} \\
-Hawkish prompt & 1.2106*** & 1.2106*** & 1.2106*** \\
+Hawkish prompt & 1.2106\sym{***} & 1.2106\sym{***} & 1.2106\sym{***} \\
  & (0.0209) & (0.0209) & (0.0209) \\
 First-stage $F$ statistic & 3347.6 & 3347.6 & 3347.6 \\
 \midrule
-Meeting-by-regeneration fixed effects & Yes & Yes & Yes \\
-Standard errors clustered by meeting & Yes & Yes & Yes \\
-Observations & 3,550 & 3,550 & 3,550 \\
-Fixed-effect groups & 1,775 & 1,775 & 1,775 \\
-Meeting clusters & 71 & 71 & 71 \\
-Regeneration replicates & 25 & 25 & 25 \\
+Meeting-by-regeneration fixed effects & \mc{Yes} & \mc{Yes} & \mc{Yes} \\
+Standard errors clustered by meeting & \mc{Yes} & \mc{Yes} & \mc{Yes} \\
+Observations & \mc{3,550} & \mc{3,550} & \mc{3,550} \\
+Fixed-effect groups & \mc{1,775} & \mc{1,775} & \mc{1,775} \\
+Meeting clusters & \mc{71} & \mc{71} & \mc{71} \\
+Regeneration replicates & \mc{25} & \mc{25} & \mc{25} \\
 \bottomrule
 \end{tabular}
 \begin{tablenotes}[flushleft]
 \scriptsize
-\item \textit{Notes:} The dependent variable is the revision in the synthetic forecaster's twelve-month-ahead inflation expectation, in percentage points. Column (1) applies the fixed full-sample calibration coefficients to the anchored and unanchored revisions, matching the professional-forecaster composite used in the paper; columns (2) and (3) report its agent components. Meeting controls and original-text length are held fixed across counterfactual arms and therefore cancel within meeting-by-regeneration pairs. The prior $P_t^i$ is profile-specific and is held common only across textual arms and regenerations within the same meeting-profile cell $(t,i)$; regeneration index $s$ does not link different meetings. The tone index is hawkish minus dovish lexicon counts per 100 words, and binary prompt assignment instruments realized tone. Standard errors are clustered by Copom meeting. * $p<0.10$, ** $p<0.05$, *** $p<0.01$.
+\item \textit{Notes:} The dependent variable is the revision in the synthetic twelve-month-ahead inflation forecast, in percentage points. Column (1) applies the coefficients estimated from all 71 meetings to the two profile revisions. Columns (2) and (3) report the profile components. Meeting controls and original minute length cancel within each meeting and regeneration pair. At meeting $t$, the anchored profile starts from $P_t^A$ and the unanchored profile starts from $P_t^U$. Within each profile, we keep its starting forecast fixed across both assignments and all regenerations. Binary prompt assignment instruments lexicon tone, measured as hawkish minus dovish counts per 100 words. We cluster standard errors by meeting. * $p<0.10$, ** $p<0.05$, *** $p<0.01$.
 \end{tablenotes}
 \end{footnotesize}
 \end{threeparttable}

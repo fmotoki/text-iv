@@ -1,0 +1,169 @@
+{
+  "reconstruction_notice": "The original base launcher was unavailable. This prospective command plan is reconstructed from package 2.0.0 evidence.",
+  "historical_identity_claimed": false,
+  "remote_calls_enabled": false,
+  "frozen_run_id": "v10_referee_d5_25draws_20260620",
+  "requested_run_id": "v10_referee_d5_25draws_20260620",
+  "frozen_database": "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\generated\\prompt_iv_replication_source.sqlite",
+  "frozen_database_is_output": false,
+  "run_directory": "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620",
+  "parameters": {
+    "iterations": 25,
+    "parts": 5,
+    "rewrite_chunk_size": 40,
+    "rewrite_workers": 2,
+    "agent_chunk_size": 40,
+    "agent_workers": 2,
+    "model": "gpt-5.5",
+    "reasoning_effort": "high",
+    "prompt_version": "calibrated_symmetric_rebalance_v10",
+    "rewrite_temperature_requested": 1.0,
+    "agent_temperature_requested": 1.0,
+    "timeout_seconds": 300,
+    "max_rewrite_chunks": 1,
+    "max_agent_chunks": 1,
+    "rewrite_task_limit": 40,
+    "agent_task_limit": 40,
+    "stop_after_generation": false
+  },
+  "reconstruction_choices": [
+    "Chunk size times maximum chunks is mapped to the packaged CLI task limit. With a zero maximum, the CLI consumes all pending tasks.",
+    "The file-based resumable JSONL pipeline is used because it matches the retained replication-run layout.",
+    "The package's R analysis remains separate from prospective remote recollection. This launcher ends after assembling agent outputs and a run-specific SQLite snapshot."
+  ],
+  "stages": [
+    {
+      "name": "prepare rewrites",
+      "command": [
+        "prepare-replication"
+      ],
+      "output": "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\rewrite_manifest.jsonl"
+    },
+    {
+      "name": "execute rewrites with numeric retries",
+      "command": [
+        "execute-counterfactuals",
+        "--manifest",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\rewrite_manifest.jsonl",
+        "--output",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\rewrite_results.jsonl",
+        "--runner",
+        "codex",
+        "--allow-real-llm",
+        "--model",
+        "gpt-5.5",
+        "--reasoning-effort",
+        "high",
+        "--temperature",
+        "1",
+        "--timeout-seconds",
+        "300",
+        "--max-retries",
+        "2",
+        "--max-workers",
+        "2",
+        "--limit",
+        "40"
+      ],
+      "output": "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\rewrite_results.jsonl"
+    },
+    {
+      "name": "assemble rewrites",
+      "command": [
+        "assemble-counterfactuals",
+        "--results",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\rewrite_results.jsonl",
+        "--output",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\counterfactual_corpus.csv"
+      ],
+      "output": "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\counterfactual_corpus.csv"
+    },
+    {
+      "name": "audit rewrite quality",
+      "command": [
+        "evaluate-counterfactuals",
+        "--results",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\rewrite_results.jsonl",
+        "--output",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\counterfactual_quality_report.json",
+        "--details-output",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\counterfactual_quality_details.csv"
+      ],
+      "output": "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\counterfactual_quality_report.json"
+    },
+    {
+      "name": "score rewrite tone",
+      "command": [
+        "score-counterfactuals",
+        "--input",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\counterfactual_corpus.csv",
+        "--output",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\counterfactual_tone_scores.csv"
+      ],
+      "output": "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\counterfactual_tone_scores.csv"
+    },
+    {
+      "name": "prepare synthetic forecasters",
+      "command": [
+        "prepare-counterfactual-agents",
+        "--corpus",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\counterfactual_corpus.csv",
+        "--output",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\agent_manifest.jsonl",
+        "--text-dir",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\agent_texts"
+      ],
+      "output": "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\agent_manifest.jsonl"
+    },
+    {
+      "name": "execute synthetic forecasters",
+      "command": [
+        "execute-agents",
+        "--manifest",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\agent_manifest.jsonl",
+        "--output",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\agent_results.jsonl",
+        "--runner",
+        "codex",
+        "--allow-real-llm",
+        "--model",
+        "gpt-5.5",
+        "--reasoning-effort",
+        "high",
+        "--temperature",
+        "1",
+        "--timeout-seconds",
+        "300",
+        "--max-workers",
+        "2",
+        "--limit",
+        "40"
+      ],
+      "output": "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\agent_results.jsonl"
+    },
+    {
+      "name": "assemble synthetic forecasters",
+      "command": [
+        "assemble-counterfactual-agents",
+        "--results",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\agent_results.jsonl",
+        "--long-output",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\agent_results_long.csv",
+        "--wide-output",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\agent_results_wide.csv"
+      ],
+      "output": "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\agent_results_wide.csv"
+    },
+    {
+      "name": "materialize run-specific database",
+      "command": [
+        "sync-database",
+        "--output",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\prompt_iv.sqlite",
+        "--run-dir",
+        "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620"
+      ],
+      "output": "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_20260620\\prompt_iv.sqlite"
+    }
+  ]
+}

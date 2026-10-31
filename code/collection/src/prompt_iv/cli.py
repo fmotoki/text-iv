@@ -437,7 +437,8 @@ def cmd_execute_counterfactuals(args: argparse.Namespace) -> int:
         max_workers=args.max_workers,
     )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
-    return 0 if summary["failed"] == 0 and summary.get("parse_failed", 0) == 0 else 1
+    bad = sum(summary.get(status, 0) for status in ("failed", "numeric_failed", "parse_failed", "usage_limited"))
+    return 0 if bad == 0 else 1
 
 
 def cmd_execute_counterfactuals_db(args: argparse.Namespace) -> int:
@@ -457,7 +458,8 @@ def cmd_execute_counterfactuals_db(args: argparse.Namespace) -> int:
         max_workers=args.max_workers,
     )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
-    return 0 if summary["failed"] == 0 else 1
+    bad = sum(summary.get(status, 0) for status in ("failed", "numeric_failed", "parse_failed", "usage_limited"))
+    return 0 if bad == 0 else 1
 
 
 def cmd_assemble_counterfactuals(args: argparse.Namespace) -> int:
@@ -577,7 +579,8 @@ def cmd_execute_agents(args: argparse.Namespace) -> int:
         max_workers=args.max_workers,
     )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
-    return 0 if summary["failed"] == 0 else 1
+    bad = sum(summary.get(status, 0) for status in ("failed", "parse_failed", "usage_limited"))
+    return 0 if bad == 0 else 1
 
 
 def cmd_score_minutes(args: argparse.Namespace) -> int:

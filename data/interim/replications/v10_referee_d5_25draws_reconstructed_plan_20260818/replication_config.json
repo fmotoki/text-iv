@@ -1,0 +1,19 @@
+{
+  "counterfactual_corpus": "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_reconstructed_plan_20260818\\counterfactual_corpus.csv",
+  "iterations": 25,
+  "max_meetings": null,
+  "minutes_dir": "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\raw\\copom_minutes",
+  "model": "gpt-5.5",
+  "parts": 5,
+  "prompt_version": "calibrated_symmetric_rebalance_v10",
+  "reasoning_effort": "high",
+  "rewrite_manifest": "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_reconstructed_plan_20260818\\rewrite_manifest.jsonl",
+  "rewrite_results": "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_reconstructed_plan_20260818\\rewrite_results.jsonl",
+  "run_dir": "C:\\Users\\csg690\\Dropbox\\Projetos\\Victor Valdemar - Text IV\\replication\\data\\interim\\replications\\v10_referee_d5_25draws_reconstructed_plan_20260818",
+  "run_id": "v10_referee_d5_25draws_reconstructed_plan_20260818",
+  "stances": [
+    "hawk",
+    "dove"
+  ],
+  "temperature": 1.0
+}

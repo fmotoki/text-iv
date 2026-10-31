@@ -11,7 +11,6 @@ T_DOSE_ARMS,table,results/tables/rr_common_prior_dose_arm_effects.tex,reference/
 T_IV_SENSITIVITY,table,results/tables/rr_common_prior_iv_sensitivity.tex,reference/tables/rr_common_prior_iv_sensitivity.tex,code/02_analysis/analyze_common_prior_full.R,Prompt-IV sensitivity
 T_ALT_TONE,table,results/tables/rr_alternative_tone_iv.tex,reference/tables/rr_alternative_tone_iv.tex,code/02_analysis/analyze_common_prior_full.R,Alternative tone measures
 T_DOSE_TONE,table,results/tables/rr_dose_tone_iv.tex,reference/tables/rr_dose_tone_iv.tex,code/02_analysis/analyze_common_prior_full.R,Dose-tone IV
-T_ARM_SECTION,table,results/tables/rr_arm_specific_prior_dose_section.tex,reference/tables/rr_arm_specific_prior_dose_section.tex,code/02_analysis/analyze_arm_specific_prior_dose.R,Arm-specific path section
 T_ARM_EFFECTS,table,results/tables/rr_arm_specific_prior_dose_arm_effects.tex,reference/tables/rr_arm_specific_prior_dose_arm_effects.tex,code/02_analysis/analyze_arm_specific_prior_dose.R,Arm-specific path effects
 T_HELDOUT,table,results/tables/rr_common_prior_heldout.tex,reference/tables/rr_common_prior_heldout.tex,code/02_analysis/analyze_common_prior_full.R,Strict held-out result
 T_REGIME,table,results/tables/rr_regime_promptiv.tex,reference/tables/rr_regime_promptiv.tex,code/03_reporting/build_referee_integration_tables.R,Regime estimates

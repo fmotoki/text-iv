@@ -42,7 +42,7 @@ After an interrupted run, resume completed stages with:
 Rscript code/00_master.R --resume=true
 ```
 
-A successful run leaves `status = pass` in all 87 rows of
+A successful run leaves `status = pass` in all 86 rows of
 `results/verification_report.csv`. Step logs and elapsed times are written
 under `logs/`.
 
@@ -55,7 +55,7 @@ guaranteed to be byte-identical after provider updates.
 
 The package has two reproducibility layers:
 
-1. **Exact analysis reproduction.** `code/00_master.R` produces all 29 active
+1. **Exact analysis reproduction.** `code/00_master.R` produces all 28 active
    LaTeX tables and 10 active PDF figures in
    `data/metadata/exhibit_manifest.csv`, plus their machine-readable inputs.
 2. **Collection transparency.** `code/collection/` contains the versioned
@@ -128,9 +128,10 @@ substantially faster. Exact accepted timings are recorded in
 `logs/master_run_times.csv` and summarized in
 `documentation/CLEAN_ROOM_VALIDATION.md`.
 
-**Validation status (2026-08-16): PASS.** The accepted clean-room run passed all
-76 frozen-input checks, completed all 15 master stages, passed all 87 artifact
-and numerical gates, reproduced all 29 tables, and verified all 10 figures.
+**Last clean-room validation (2026-08-16): PASS.** The accepted run passed all
+76 frozen-input checks and completed all 15 master stages. The current manifest
+contains 28 tables, 10 figures, and 86 artifact and numerical gates. Run the
+clean-room validation again before deposit.
 
 ## Directory map
 
@@ -245,7 +246,7 @@ The final gate verifies the headline Prompt-IV estimate and standard error,
 reduced form and first stage, regeneration-specific signs, ordered dose means,
 strict held-out estimate, calibration and forecast diagnostics, placebos,
 wild-cluster inference, regime/sunspot/embedding results, exact normalized text
-for all 29 tables, and existence/nonzero size for all 10 figures. It also writes
+for all 28 tables, and existence/nonzero size for all 10 figures. It also writes
 `results/intext_results.csv` and `results/intext_numbers.tex` as the prose-value
 source of truth.
 

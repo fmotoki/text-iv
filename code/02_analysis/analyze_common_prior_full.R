@@ -52,6 +52,7 @@ args <- parse_args(list(
   external_controls = file.path(
     "data", "analysis", "fiscal_sample_flags_by_meeting_20260630.csv"
   ),
+  dose_slope_only = "false",
   bootstrap_reps = "999",
   bootstrap_seed = "20260714",
   stamp = "20260714"
@@ -220,8 +221,7 @@ score_check <- merge(
     text_hash,
     assigned_dose,
     lexicon_score,
-    semantic_score,
-    pairwise_score
+    semantic_score
   )],
   by = c("meeting_number", "iteration", "source_role"),
   all = TRUE,
@@ -245,15 +245,14 @@ dose <- merge(
     corpus_iteration = iteration,
     source_role,
     assigned_dose,
-    semantic_score,
-    pairwise_score
+    semantic_score
   )],
   by = c("meeting_number", "corpus_iteration", "source_role"),
   all.x = TRUE,
   sort = FALSE
 )
 if (anyNA(dose[source_role != "original", assigned_dose]) ||
-    anyNA(dose$semantic_score) || anyNA(dose$pairwise_score)) {
+    anyNA(dose$semantic_score)) {
   stop("Dose panel is missing assigned-dose or blinded-tone scores")
 }
 
@@ -353,7 +352,7 @@ dose_composite <- build_composite_panel(
   dose,
   c(
     "meeting_number", "corpus_iteration", "source_role", "assigned_dose",
-    "tone_pp", "semantic_score", "pairwise_score"
+    "tone_pp", "semantic_score"
   )
 )
 if (nrow(main_composite) != 3550L || uniqueN(main_composite$pair_id) != 1775L) {
@@ -682,6 +681,43 @@ arm_models <- lapply(names(dose_samples), function(label) {
 names(arm_models) <- names(dose_samples)
 arm_effects <- rbindlist(lapply(arm_models, function(x) x$result), fill = TRUE)
 
+estimate_dose_slope <- function(data, sample_label) {
+  model_data <- copy(data[source_role != "original"])
+  model_data[, assigned_dose := as.numeric(assigned_dose)]
+  model <- feols(
+    forecast_revision ~ assigned_dose | pair_id,
+    data = model_data,
+    vcov = ~meeting_number,
+    notes = FALSE
+  )
+  row <- coefficient_row(model, "assigned_dose")
+  row[, sample := sample_label]
+  row[, observations := nobs(model)]
+  row[, pair_fe_groups := uniqueN(model_data$pair_id)]
+  row[, meeting_clusters := uniqueN(model_data$meeting_number)]
+  row[, draws := uniqueN(model_data$corpus_iteration)]
+  setcolorder(row, c(
+    "sample", "estimate", "std_error", "t_statistic", "p_value",
+    "observations", "pair_fe_groups", "meeting_clusters", "draws"
+  ))
+  row
+}
+
+dose_slopes <- rbindlist(lapply(
+  c("Composite", "Anchored", "Unanchored"),
+  function(label) estimate_dose_slope(dose_samples[[label]], label)
+))
+
+if (tolower(args$dose_slope_only) %in% c("true", "1", "yes")) {
+  slope_path <- file.path(
+    table_dir,
+    paste0("common_prior_dose_slopes_", args$stamp, ".csv")
+  )
+  fwrite(dose_slopes, slope_path, na = "")
+  cat("Dose slopes written to", slope_path, "\n")
+  quit(save = "no", status = 0)
+}
+
 outcome_cells <- rbindlist(lapply(names(dose_samples), function(sample_label) {
   sample_data <- dose_samples[[sample_label]]
   rbindlist(lapply(c(
@@ -824,7 +860,7 @@ iv_sensitivity[, specification := names(iv_sensitivity_systems)]
 setcolorder(iv_sensitivity, c("specification", setdiff(names(iv_sensitivity), "specification")))
 
 alternative_measure_systems <- lapply(
-  c("tone_pp", "semantic_score", "pairwise_score"),
+  c("tone_pp", "semantic_score"),
   function(measure) {
     estimate_iv_system(
       generated_composite,
@@ -834,7 +870,7 @@ alternative_measure_systems <- lapply(
     )
   }
 )
-names(alternative_measure_systems) <- c("Lexicon", "Semantic blind", "Pairwise blind")
+names(alternative_measure_systems) <- c("Lexicon", "Direct rating")
 iv_alternative_measures <- rbindlist(lapply(
   names(alternative_measure_systems),
   function(label) alternative_measure_systems[[label]]$result[, measure_label := label]
@@ -887,15 +923,14 @@ text_cells <- unique(dose[, .(
   source_role,
   assigned_dose,
   tone_pp,
-  semantic_score,
-  pairwise_score
+  semantic_score
 )])
 if (nrow(text_cells) != 2130L) {
   stop("Expected 2,130 unique dose-response text cells")
 }
 
 tone_cells <- rbindlist(lapply(
-  c("tone_pp", "semantic_score", "pairwise_score"),
+  c("tone_pp", "semantic_score"),
   function(measure) {
     rbindlist(lapply(c(
       "dove_high", "dove_low", "original", "neutral", "hawk_low", "hawk_high"
@@ -1092,6 +1127,10 @@ output_files <- list(
     arm_effects,
     paste0("common_prior_dose_arm_effects_", args$stamp, ".csv")
   ),
+  dose_slopes_csv = write_csv(
+    dose_slopes,
+    paste0("common_prior_dose_slopes_", args$stamp, ".csv")
+  ),
   outcome_cells_csv = write_csv(
     outcome_cells,
     paste0("common_prior_dose_outcome_cells_", args$stamp, ".csv")
@@ -1156,9 +1195,9 @@ output_files <- list(
 
 significance_stars <- function(p) {
   if (!is.finite(p)) return("")
-  if (p < 0.01) return("***")
-  if (p < 0.05) return("**")
-  if (p < 0.10) return("*")
+  if (p < 0.01) return("\\sym{***}")
+  if (p < 0.05) return("\\sym{**}")
+  if (p < 0.10) return("\\sym{*}")
   ""
 }
 
@@ -1169,6 +1208,8 @@ format_estimate <- function(estimate, p, digits = 4L) {
 format_se <- function(se, digits = 4L) {
   paste0("(", formatC(se, format = "f", digits = digits), ")")
 }
+
+mc <- function(x) paste0("\\mc{", x, "}")
 
 get_row <- function(data, key_column, key_value) {
   row <- data[get(key_column) == key_value]
@@ -1181,18 +1222,26 @@ get_row <- function(data, key_column, key_value) {
 write_main_table <- function(path) {
   columns <- c("Composite", "Anchored", "Unanchored")
   rows <- lapply(columns, function(label) get_row(main_results, "sample", label))
+  first_stage_fields <- c("first_stage", "first_stage_p", "first_stage_se", "first_stage_f")
+  for (field in first_stage_fields) {
+    values <- vapply(rows, function(x) x[[field]][1], numeric(1))
+    if (max(abs(values - values[1])) > 1e-12) {
+      stop(sprintf("First-stage field %s differs across outcome columns", field))
+    }
+  }
+  first_stage <- rows[[1]]
   lines <- c(
     "\\begin{table}[htbp]",
     "\\color{revisionred}",
     "\\centering",
     "\\begin{threeparttable}",
-    "\\caption{Immediate Prompt-IV effects under a common prior}",
+    "\\caption{Immediate IV estimates of the response to tone}",
     "\\label{tab:common-prior-main}",
     "\\begin{footnotesize}",
-    "\\begin{tabular}{lccc}",
+    "\\begin{tabular}{lddd}",
     "\\toprule",
-    " & (1) & (2) & (3) \\\\",
-    " & Composite & Anchored & Unanchored \\\\",
+    " & \\mc{(1)} & \\mc{(2)} & \\mc{(3)} \\\\",
+    " & \\mc{Composite} & \\mc{Anchored} & \\mc{Unanchored} \\\\",
     "\\midrule",
     "\\multicolumn{4}{l}{\\textit{Panel A. Reduced form}} \\\\",
     paste0(
@@ -1215,40 +1264,38 @@ write_main_table <- function(path) {
     "\\multicolumn{4}{l}{\\textit{Panel C. First stage}} \\\\",
     paste0(
       "Hawkish prompt & ",
-      paste(vapply(rows, function(x) format_estimate(x$first_stage, x$first_stage_p), ""),
+      paste(rep(format_estimate(first_stage$first_stage, first_stage$first_stage_p), 3L),
             collapse = " & "), " \\\\"
     ),
-    paste0(" & ", paste(vapply(rows, function(x) format_se(x$first_stage_se), ""),
+    paste0(" & ", paste(rep(format_se(first_stage$first_stage_se), 3L),
                           collapse = " & "), " \\\\"),
     paste0("First-stage $F$ statistic & ",
-           paste(vapply(rows, function(x) formatC(x$first_stage_f, format = "f", digits = 1), ""),
+           paste(rep(formatC(first_stage$first_stage_f, format = "f", digits = 1), 3L),
                  collapse = " & "), " \\\\"),
     "\\midrule",
-    "Meeting-by-regeneration fixed effects & Yes & Yes & Yes \\\\",
-    "Standard errors clustered by meeting & Yes & Yes & Yes \\\\",
-    paste0("Observations & ", paste(vapply(rows, function(x) format(x$observations, big.mark = ","), ""),
+    "Meeting-by-regeneration fixed effects & \\mc{Yes} & \\mc{Yes} & \\mc{Yes} \\\\",
+    "Standard errors clustered by meeting & \\mc{Yes} & \\mc{Yes} & \\mc{Yes} \\\\",
+    paste0("Observations & ", paste(vapply(rows, function(x) paste0("\\mc{", format(x$observations, big.mark = ","), "}"), ""),
                                      collapse = " & "), " \\\\"),
-    paste0("Fixed-effect groups & ", paste(vapply(rows, function(x) format(x$pair_fe_groups, big.mark = ","), ""),
+    paste0("Fixed-effect groups & ", paste(vapply(rows, function(x) paste0("\\mc{", format(x$pair_fe_groups, big.mark = ","), "}"), ""),
                                            collapse = " & "), " \\\\"),
-    "Meeting clusters & 71 & 71 & 71 \\\\",
-    "Regeneration replicates & 25 & 25 & 25 \\\\",
+    "Meeting clusters & \\mc{71} & \\mc{71} & \\mc{71} \\\\",
+    "Regeneration replicates & \\mc{25} & \\mc{25} & \\mc{25} \\\\",
     "\\bottomrule",
     "\\end{tabular}",
     "\\begin{tablenotes}[flushleft]",
     "\\scriptsize",
     paste(
-      "\\item \\textit{Notes:} The dependent variable is the revision in the",
-      "synthetic forecaster's twelve-month-ahead inflation expectation, in percentage",
-      "points. Column (1) applies the fixed full-sample calibration coefficients to the",
-      "anchored and unanchored revisions, matching the professional-forecaster composite",
-      "used in the paper; columns (2) and (3) report its agent components. Meeting",
-      "controls and original-text length are held fixed across counterfactual arms and",
-      "therefore cancel within meeting-by-regeneration pairs. The prior $P_t^i$ is",
-      "profile-specific and is held common only across textual arms and regenerations",
-      "within the same meeting-profile cell $(t,i)$; regeneration index $s$ does not",
-      "link different meetings. The tone index is",
-      "hawkish minus dovish lexicon counts per 100 words, and binary prompt assignment",
-      "instruments realized tone. Standard errors are clustered by Copom meeting.",
+      "\\item \\textit{Notes:} The dependent variable is the revision in the synthetic",
+      "twelve-month-ahead inflation forecast, in percentage points. Column (1) applies",
+      "the coefficients estimated from all 71 meetings to the two profile revisions.",
+      "Columns (2) and (3) report the profile components. Meeting controls and original",
+      "minute length cancel within each meeting and regeneration pair. At meeting $t$,",
+      "the anchored profile starts from $P_t^A$ and the unanchored profile starts from",
+      "$P_t^U$. Within each profile, we keep its starting forecast fixed across both",
+      "assignments and all regenerations. Binary prompt assignment instruments lexicon",
+      "tone, measured as hawkish minus dovish counts per 100 words. We cluster standard",
+      "errors by meeting.",
       "* $p<0.10$, ** $p<0.05$, *** $p<0.01$."
     ),
     "\\end{tablenotes}",
@@ -1276,10 +1323,10 @@ write_arm_table <- function(path) {
     "\\caption{Common-prior forecast effects by assigned textual arm}",
     "\\label{tab:common-prior-dose-arms}",
     "\\begin{footnotesize}",
-    "\\begin{tabular}{lccc}",
+    "\\begin{tabular}{lddd}",
     "\\toprule",
-    " & (1) & (2) & (3) \\\\",
-    " & Composite & Anchored & Unanchored \\\\",
+    " & \\mc{(1)} & \\mc{(2)} & \\mc{(3)} \\\\",
+    " & \\mc{Composite} & \\mc{Anchored} & \\mc{Unanchored} \\\\",
     "\\midrule"
   )
   for (arm in names(arm_labels)) {
@@ -1306,17 +1353,17 @@ write_arm_table <- function(path) {
   lines <- c(
     lines,
     "\\midrule",
-    "Original text (reference arm) & Yes & Yes & Yes \\\\",
-    "Pair fixed effects & Yes & Yes & Yes \\\\",
-    "Standard errors clustered by meeting & Yes & Yes & Yes \\\\",
+    "Original text (reference arm) & \\mc{Yes} & \\mc{Yes} & \\mc{Yes} \\\\",
+    "Pair fixed effects & \\mc{Yes} & \\mc{Yes} & \\mc{Yes} \\\\",
+    "Standard errors clustered by meeting & \\mc{Yes} & \\mc{Yes} & \\mc{Yes} \\\\",
     paste0("Observations & ",
-           paste(vapply(sample_rows, function(x) format(x$observations, big.mark = ","), ""),
+           paste(vapply(sample_rows, function(x) mc(format(x$observations, big.mark = ",")), ""),
                  collapse = " & "), " \\\\"),
     paste0("Pair fixed-effect groups & ",
-           paste(vapply(sample_rows, function(x) format(x$pair_fe_groups, big.mark = ","), ""),
+           paste(vapply(sample_rows, function(x) mc(format(x$pair_fe_groups, big.mark = ",")), ""),
                  collapse = " & "), " \\\\"),
-    "Meeting clusters & 71 & 71 & 71 \\\\",
-    "Regeneration replicates & 5 & 5 & 5 \\\\",
+    "Meeting clusters & \\mc{71} & \\mc{71} & \\mc{71} \\\\",
+    "Regeneration replicates & \\mc{5} & \\mc{5} & \\mc{5} \\\\",
     "\\bottomrule",
     "\\end{tabular}",
     "\\begin{tablenotes}[flushleft]",
@@ -1359,10 +1406,10 @@ write_iv_sensitivity_table <- function(path) {
     "\\label{tab:common-prior-iv-sensitivity}",
     "\\begin{scriptsize}",
     "\\setlength{\\tabcolsep}{4.2pt}",
-    "\\begin{tabular}{lcccc}",
+    "\\begin{tabular}{ldddd}",
     "\\toprule",
-    " & (1) & (2) & (3) & (4) \\\\",
-    " & Baseline & Low intensity & High intensity & Ordered dose \\\\",
+    " & \\mc{(1)} & \\mc{(2)} & \\mc{(3)} & \\mc{(4)} \\\\",
+    " & \\mc{Baseline} & \\mc{Low intensity} & \\mc{High intensity} & \\mc{Dose response} \\\\",
     "\\midrule",
     "\\multicolumn{5}{l}{\\textit{Panel A. Second stage}} \\\\",
     paste0(
@@ -1394,18 +1441,18 @@ write_iv_sensitivity_table <- function(path) {
            paste(vapply(rows, function(x) formatC(x$first_stage_f, format = "f", digits = 1), ""),
                  collapse = " & "), " \\\\"),
     "\\midrule",
-    "Pair fixed effects & Yes & Yes & Yes & Yes \\\\",
-    "Standard errors clustered by meeting & Yes & Yes & Yes & Yes \\\\",
+    "Pair fixed effects & \\mc{Yes} & \\mc{Yes} & \\mc{Yes} & \\mc{Yes} \\\\",
+    "Standard errors clustered by meeting & \\mc{Yes} & \\mc{Yes} & \\mc{Yes} & \\mc{Yes} \\\\",
     paste0("Observations & ",
-           paste(vapply(rows, function(x) format(x$observations, big.mark = ","), ""),
+           paste(vapply(rows, function(x) mc(format(x$observations, big.mark = ",")), ""),
                  collapse = " & "), " \\\\"),
     paste0("Pair fixed-effect groups & ",
-           paste(vapply(rows, function(x) format(x$pair_fe_groups, big.mark = ","), ""),
+           paste(vapply(rows, function(x) mc(format(x$pair_fe_groups, big.mark = ",")), ""),
                  collapse = " & "), " \\\\"),
     paste0("Regeneration replicates & ",
-           paste(vapply(rows, function(x) as.character(x$draws), ""), collapse = " & "),
+           paste(vapply(rows, function(x) mc(as.character(x$draws)), ""), collapse = " & "),
            " \\\\"),
-    "Meeting clusters & 71 & 71 & 71 & 71 \\\\",
+    "Meeting clusters & \\mc{71} & \\mc{71} & \\mc{71} & \\mc{71} \\\\",
     "\\bottomrule",
     "\\end{tabular}",
     "\\begin{tablenotes}[flushleft]",
@@ -1466,10 +1513,10 @@ write_heldout_table <- function(path) {
     "\\label{tab:heldout-iv}",
     "\\begin{scriptsize}",
     "\\setlength{\\tabcolsep}{4.2pt}",
-    "\\begin{tabular}{lcccc}",
+    "\\begin{tabular}{ldddd}",
     "\\toprule",
-    " & (1) & (2) & (3) & (4) \\\\",
-    " & Full sample & Pre-2024 & Held-out & Held-out \\\\",
+    " & \\mc{(1)} & \\mc{(2)} & \\mc{(3)} & \\mc{(4)} \\\\",
+    " & \\mc{Full sample} & \\mc{Pre-2024} & \\mc{Held-out} & \\mc{Held-out} \\\\",
     "\\midrule",
     paste0(
       "Realized tone index & ",
@@ -1484,21 +1531,21 @@ write_heldout_table <- function(path) {
       " \\\\"
     ),
     "\\midrule",
-    "Two-profile calibration & Full & Pre-2024 & Pre-2024 & Full \\\\",
-    "Evaluation meetings & All & Pre-2024 & 2024--2025 & 2024--2025 \\\\",
+    "Two-profile calibration & \\mc{Full} & \\mc{Pre-2024} & \\mc{Pre-2024} & \\mc{Full} \\\\",
+    "Evaluation meetings & \\mc{All} & \\mc{Pre-2024} & \\mc{2024--2025} & \\mc{2024--2025} \\\\",
     paste0(
       "Meetings & ",
-      paste(vapply(rows, function(x) as.character(x$meeting_clusters), ""), collapse = " & "),
+      paste(vapply(rows, function(x) mc(as.character(x$meeting_clusters)), ""), collapse = " & "),
       " \\\\"
     ),
     paste0(
       "Observations & ",
-      paste(vapply(rows, function(x) format(x$observations, big.mark = ","), ""), collapse = " & "),
+      paste(vapply(rows, function(x) mc(format(x$observations, big.mark = ",")), ""), collapse = " & "),
       " \\\\"
     ),
     paste0(
     "Meeting-by-regeneration groups & ",
-      paste(vapply(rows, function(x) format(x$pair_fe_groups, big.mark = ","), ""), collapse = " & "),
+      paste(vapply(rows, function(x) mc(format(x$pair_fe_groups, big.mark = ",")), ""), collapse = " & "),
       " \\\\"
     ),
     paste0(
@@ -1550,10 +1597,10 @@ write_fiscal_table <- function(path) {
     "\\caption{Common-prior Prompt-IV sensitivity across fiscal-news samples}",
     "\\label{tab:fiscal-iv}",
     "\\begin{footnotesize}",
-    "\\begin{tabular}{lccc}",
+    "\\begin{tabular}{lddd}",
     "\\toprule",
-    " & (1) & (2) & (3) \\\\",
-    " & Full sample & No RTN window & CDS-covered sample \\\\",
+    " & \\mc{(1)} & \\mc{(2)} & \\mc{(3)} \\\\",
+    " & \\mc{Full sample} & \\mc{No RTN window} & \\mc{CDS-covered sample} \\\\",
     "\\midrule",
     paste0(
       "Realized tone index & ",
@@ -1568,21 +1615,21 @@ write_fiscal_table <- function(path) {
       " \\\\"
     ),
     "\\midrule",
-    "Meeting-by-regeneration fixed effects & Yes & Yes & Yes \\\\",
-    "Meeting-clustered inference & Yes & Yes & Yes \\\\",
+    "Meeting-by-regeneration fixed effects & \\mc{Yes} & \\mc{Yes} & \\mc{Yes} \\\\",
+    "Meeting-clustered inference & \\mc{Yes} & \\mc{Yes} & \\mc{Yes} \\\\",
     paste0(
       "Meetings & ",
-      paste(vapply(rows, function(x) as.character(x$meeting_clusters), ""), collapse = " & "),
+      paste(vapply(rows, function(x) mc(as.character(x$meeting_clusters)), ""), collapse = " & "),
       " \\\\"
     ),
     paste0(
       "Observations & ",
-      paste(vapply(rows, function(x) format(x$observations, big.mark = ","), ""), collapse = " & "),
+      paste(vapply(rows, function(x) mc(format(x$observations, big.mark = ",")), ""), collapse = " & "),
       " \\\\"
     ),
     paste0(
       "Meeting-by-regeneration groups & ",
-      paste(vapply(rows, function(x) format(x$pair_fe_groups, big.mark = ","), ""), collapse = " & "),
+      paste(vapply(rows, function(x) mc(format(x$pair_fe_groups, big.mark = ",")), ""), collapse = " & "),
       " \\\\"
     ),
     paste0(
@@ -2007,8 +2054,8 @@ output_files$dose_effect_figure <- save_plot(
   height = 4.0
 )
 
-# Publication figure focused on the requested high-hawk to high-dove gradient.
-gradient_order <- c("hawk_high", "hawk_low", "neutral", "dove_low", "dove_high")
+# Publication figure ordered by assigned dose.
+gradient_order <- c("dove_high", "dove_low", "neutral", "hawk_low", "hawk_high")
 gradient_labels <- c(
   hawk_high = "High\nhawk",
   hawk_low = "Low\nhawk",
@@ -2281,6 +2328,7 @@ analysis_report <- list(
   alternative_inference = inference_results,
   ivmodel_confidence_intervals = ivmodel_ci,
   dose_arm_effects = arm_effects,
+  dose_slopes = dose_slopes,
   dose_pairwise_contrasts = dose_contrasts,
   dose_forecaster_heterogeneity = dose_heterogeneity,
   dose_iv_sensitivity = iv_sensitivity,

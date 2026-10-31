@@ -1,0 +1,30 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Calibration fit, recursive forecasts, and dispersion}
+\label{tab:focus-calibration-summary}
+\begin{footnotesize}
+\begin{tabular}{lcc}
+\toprule
+Assessment & Synthetic estimate & Focus comparison \\
+\midrule
+Full sample $R^2$ & 0.805 &  \\
+Leave one meeting out $R^2$ & 0.723 &  \\
+Leave one meeting out RMSE (pp) & 0.409 &  \\
+\addlinespace
+Expanding window RMSE, composite (pp) & 0.574 & 0.474 \\
+Expanding window RMSE, anchored profile (pp) & 0.451 & 0.474 \\
+\addlinespace
+Mean cross-sectional SD (pp) & 0.210 & 0.417 \\
+Synthetic-to-Focus SD ratio & 0.459 & 1.000 \\
+Correlation of meeting dispersions & 0.743 &  \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} The Focus comparison for expanding-window RMSE is a recursively estimated Focus AR(1). The expanding window contains 47 forecasts after an initial 24 meetings. Leave-one-meeting-out statistics use all 71 meetings. Focus dispersion is the standard deviation across survey respondents. Synthetic dispersion is the standard deviation across the two profiles.
+\end{tablenotes}
+\end{footnotesize}
+\end{threeparttable}
+\end{table}

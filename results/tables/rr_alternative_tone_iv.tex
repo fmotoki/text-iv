@@ -8,11 +8,11 @@
 \setlength{\tabcolsep}{3.8pt}
 \begin{tabular}{lcccc}
 \toprule
- & (1) & (2) & (3) & (4) \\
- & Lexicon & LOO embedding & Raw $T_{\perp}$ & Content $T_{\perp}$ \\
+ & \mc{(1)} & \mc{(2)} & \mc{(3)} & \mc{(4)} \\
+ & \mc{Lexicon} & \mc{LOO embedding} & \mc{Raw $T_{\perp}$} & \mc{Content $T_{\perp}$} \\
 \midrule
 \multicolumn{5}{l}{\textit{Panel A. Unrestricted descriptive calibration}} \\
-Second-stage coefficient & 0.0187*** & 0.5318*** & 0.0583*** & 0.0187*** \\
+Second-stage coefficient & 0.0187\sym{***} & 0.5318\sym{***} & 0.0583\sym{***} & 0.0187\sym{***} \\
  & (0.0028) & (0.0813) & (0.0117) & (0.0028) \\
 Effect per measure SD & 0.0222 & 0.0301 & 0.0220 & 0.0119 \\
 \addlinespace
@@ -20,8 +20,8 @@ First-stage coefficient & 1.2106 & 0.0426 & 0.3886 & 1.2106 \\
  & (0.0209) & (0.0027) & (0.0441) & (0.0189) \\
 First-stage $F$ & 3347.6 & 248.8 & 77.6 & 4101.2 \\ 
 \addlinespace
-\multicolumn{5}{l}{\textit{Panel B. Hierarchical simplex calibration}} \\
-Second-stage coefficient & 0.0195*** & 0.5534*** & 0.0607*** & 0.0195*** \\
+\multicolumn{5}{l}{\textit{Panel B. Bayesian share calibration}} \\
+Second-stage coefficient & 0.0195\sym{***} & 0.5534\sym{***} & 0.0607\sym{***} & 0.0195\sym{***} \\
  & (0.0024) & (0.0724) & (0.0105) & (0.0024) \\
 Effect per measure SD & 0.0231 & 0.0313 & 0.0229 & 0.0124 \\
 \addlinespace
@@ -29,15 +29,15 @@ First-stage coefficient & 1.2106 & 0.0426 & 0.3886 & 1.2106 \\
  & (0.0209) & (0.0027) & (0.0441) & (0.0189) \\
 First-stage $F$ & 3347.6 & 248.8 & 77.6 & 4101.2 \\ 
 \midrule
-Pair fixed effects & Yes & Yes & Yes & Yes \\
-SE clustered by meeting & Yes & Yes & Yes & Yes \\
-Observations & 3,550 & 3,550 & 3,550 & 3,550 \\
-Meeting clusters & 71 & 71 & 71 & 71 \\
+Pair fixed effects & \mc{Yes} & \mc{Yes} & \mc{Yes} & \mc{Yes} \\
+SE clustered by meeting & \mc{Yes} & \mc{Yes} & \mc{Yes} & \mc{Yes} \\
+Observations & \mc{3,550} & \mc{3,550} & \mc{3,550} & \mc{3,550} \\
+Meeting clusters & \mc{71} & \mc{71} & \mc{71} & \mc{71} \\
 \bottomrule
 \end{tabular}
 \begin{tablenotes}[flushleft]
 \scriptsize
-\item \textit{Notes:} Each column instruments the named realized-tone measure with the assigned hawkish instruction in the same 25-regeneration paired panel. The LOO embedding direction is trained leaving each meeting out. Raw $T_{\perp}$ residualizes lexicon tone on 36 embedding principal components; content $T_{\perp}$ removes only the instrument-predictable content component. Coefficients differ in scale, so the effect per one within-sample standard deviation is reported for comparison. Standard errors are clustered by Copom meeting. * $p<0.10$, ** $p<0.05$, *** $p<0.01$.
+\item \textit{Notes:} Each column instruments the named realized-tone measure with the assigned hawkish instruction in the same 25-regeneration paired panel. The LOO embedding direction is trained leaving each meeting out. Raw $T_{\perp}$ residualizes lexicon tone on 36 embedding principal components; content $T_{\perp}$ removes only the instrument-predictable content component. Coefficients differ in scale, so the effect per one within-sample standard deviation is reported for comparison. We cluster standard errors by Copom meeting. * $p<0.10$, ** $p<0.05$, *** $p<0.01$.
 \end{tablenotes}
 \end{scriptsize}
 \end{threeparttable}

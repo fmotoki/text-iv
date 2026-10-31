@@ -2,7 +2,7 @@
 \color{revisionred}
 \centering
 \begin{threeparttable}
-\caption{Embedding and token preservation in the 25-regeneration binary experiment}
+\caption{Embedding and token similarity in the hawkish and dovish rewrites}
 \label{tab:embedding-preservation}
 \begin{scriptsize}
 \begin{tabular}{lcc}
@@ -21,7 +21,7 @@ Meeting clusters & 71 & 71 \\
 \end{tabular}
 \begin{tablenotes}[flushleft]
 \scriptsize
-\item \textit{Notes:} Embeddings use the multilingual paraphrase-MiniLM-L12-v2 sentence-transformer and are averaged over deterministic sentence segments. Subword distributions use the same tokenizer. Similarities are high and sentence counts are stable, but both rewrite arms contain about 24 percent more subword tokens than the original minutes. This length shift is disclosed and motivates the content-orthogonal tone specifications.
+\item \textit{Notes:} Each column contains 1,775 generated minutes: 25 versions of each of 71 source minutes. We compare every generated minute with its source minute. Document and sentence similarities use the multilingual paraphrase-MiniLM-L12-v2 sentence transformer model. Subword measures use the same tokenizer. Count ratios divide the rewrite count by the source-minute count.
 \end{tablenotes}
 \end{scriptsize}
 \end{threeparttable}

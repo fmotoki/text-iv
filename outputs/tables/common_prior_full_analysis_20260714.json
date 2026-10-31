@@ -4,9 +4,9 @@
   "packages": [
     "2.4.6",
     "1.18.2.1",
-    "0.13.2",
+    "0.14.0",
     "2.5.5",
-    "0.6.7",
+    "0.6.8",
     "3.1.1",
     "0.9.40",
     "3.1.5",
@@ -679,6 +679,41 @@
       "draws": 5
     }
   ],
+  "dose_slopes": [
+    {
+      "sample": "Composite",
+      "estimate": 0.00966574202571165,
+      "std_error": 0.0018615116291964,
+      "t_statistic": 5.19241560144551,
+      "p_value": 1.94443469120698e-06,
+      "observations": 1775,
+      "pair_fe_groups": 355,
+      "meeting_clusters": 71,
+      "draws": 5
+    },
+    {
+      "sample": "Anchored",
+      "estimate": 0.00578873239436619,
+      "std_error": 0.00112338294672987,
+      "t_statistic": 5.15294665208958,
+      "p_value": 2.2653244120124e-06,
+      "observations": 1775,
+      "pair_fe_groups": 355,
+      "meeting_clusters": 71,
+      "draws": 5
+    },
+    {
+      "sample": "Unanchored",
+      "estimate": 0.0146394366197183,
+      "std_error": 0.00290930105720755,
+      "t_statistic": 5.03194283845267,
+      "p_value": 3.60799964246289e-06,
+      "observations": 1775,
+      "pair_fe_groups": 355,
+      "meeting_clusters": 71,
+      "draws": 5
+    }
+  ],
   "dose_pairwise_contrasts": [
     {
       "sample": "Composite",
@@ -1137,7 +1172,7 @@
       "draws": 5
     },
     {
-      "measure_label": "Semantic blind",
+      "measure_label": "Direct rating",
       "sample": "Ordered five-arm dose",
       "tone_measure": "semantic_score",
       "instrument": "assigned_dose",
@@ -1151,26 +1186,6 @@
       "prompt_iv": 0.141434335729264,
       "prompt_iv_se": 0.0300119436723147,
       "prompt_iv_p": 1.20523946041926e-05,
-      "observations": 1775,
-      "pair_fe_groups": 355,
-      "meeting_clusters": 71,
-      "draws": 5
-    },
-    {
-      "measure_label": "Pairwise blind",
-      "sample": "Ordered five-arm dose",
-      "tone_measure": "pairwise_score",
-      "instrument": "assigned_dose",
-      "reduced_form": 0.00966574202571165,
-      "reduced_form_se": 0.0018615116291964,
-      "reduced_form_p": 1.94443469120698e-06,
-      "first_stage": 0.21830985915493,
-      "first_stage_se": 0.00967957124509431,
-      "first_stage_p": 7.91425656232815e-34,
-      "first_stage_f": 508.668047019476,
-      "prompt_iv": 0.044275334440356,
-      "prompt_iv_se": 0.0087526481745487,
-      "prompt_iv_p": 3.25877414603906e-06,
       "observations": 1775,
       "pair_fe_groups": 355,
       "meeting_clusters": 71,
@@ -1254,6 +1269,7 @@
     "main_by_draw_csv": "outputs/tables/common_prior_main_by_draw_20260714.csv",
     "main_heterogeneity_csv": "outputs/tables/common_prior_main_heterogeneity_20260714.csv",
     "arm_effects_csv": "outputs/tables/common_prior_dose_arm_effects_20260714.csv",
+    "dose_slopes_csv": "outputs/tables/common_prior_dose_slopes_20260714.csv",
     "outcome_cells_csv": "outputs/tables/common_prior_dose_outcome_cells_20260714.csv",
     "contrasts_csv": "outputs/tables/common_prior_dose_contrasts_20260714.csv",
     "dose_heterogeneity_csv": "outputs/tables/common_prior_dose_heterogeneity_20260714.csv",

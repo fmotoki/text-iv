@@ -318,7 +318,6 @@
     "trends_csv": "outputs/tables/arm_specific_prior_dose_trends_20260714.csv",
     "table_tex": "outputs/tables/arm_specific_prior_dose_arm_effects_20260714.tex",
     "paper_table_tex": "results/tables/rr_arm_specific_prior_dose_arm_effects.tex",
-    "paper_section_tex": "results/tables/rr_arm_specific_prior_dose_section.tex",
     "figure_pdf": "results/figures/rr_arm_specific_prior_dose_gradient.pdf",
     "figure_png": "results/qa/rr_arm_specific_prior_dose_gradient.png"
   }

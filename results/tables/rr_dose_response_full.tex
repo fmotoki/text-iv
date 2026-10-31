@@ -1,0 +1,52 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Tone and forecast revisions by assigned dose}
+\label{tab:dose-response}
+\begin{footnotesize}
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{lcddd}
+\toprule
+\multicolumn{5}{l}{\textit{Panel A. Tone}} \\
+Assigned prompt & Dose & \mc{Lexicon tone (pp)} & \mc{Direct rating} & \\
+\midrule
+High intensity dove & -2 & 1.1189 & 0.0716 & \\
+ & & (0.1112) & (0.0738) & \\
+Low intensity dove & -1 & 1.4839 & 0.0514 & \\
+ & & (0.1118) & (0.0719) & \\
+Neutral & 0 & 1.6721 & 0.1389 & \\
+ & & (0.1135) & (0.0723) & \\
+Low intensity hawk & 1 & 2.1398 & 0.2484 & \\
+ & & (0.1180) & (0.0693) & \\
+High intensity hawk & 2 & 2.4581 & 0.3149 & \\
+ & & (0.1247) & (0.0664) & \\
+\addlinespace[0.08cm]
+Change per assigned dose & & 0.3334\sym{***} & 0.0683\sym{***} & \\
+ & & (0.0071) & (0.0068) & \\
+\addlinespace[0.18cm]
+\multicolumn{5}{l}{\textit{Panel B. Synthetic forecast revision}} \\
+Assigned prompt & Dose & \mc{Composite} & \mc{Anchored} & \mc{Unanchored} \\
+\midrule
+High intensity dove & -2 & -0.0103\sym{*} & -0.0126\sym{*} & -0.0150 \\
+ & & (0.0061) & (0.0068) & (0.0095) \\
+Low intensity dove & -1 & -0.0084 & -0.0085 & -0.0123 \\
+ & & (0.0052) & (0.0059) & (0.0083) \\
+Neutral & 0 & 0.0018 & -0.0079 & 0.0037 \\
+ & & (0.0057) & (0.0065) & (0.0090) \\
+Low intensity hawk & 1 & 0.0179\sym{***} & 0.0094\sym{*} & 0.0272\sym{***} \\
+ & & (0.0051) & (0.0051) & (0.0081) \\
+High intensity hawk & 2 & 0.0249\sym{***} & 0.0074 & 0.0385\sym{***} \\
+ & & (0.0059) & (0.0056) & (0.0095) \\
+\addlinespace[0.08cm]
+Change per assigned dose (bp) & & 0.97\sym{***} & 0.58\sym{***} & 1.46\sym{***} \\
+ & & (0.19) & (0.11) & (0.29) \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} Each prompt produces 355 versions of the minutes, with five regenerations for each of 71 meetings. Panel A reports mean tone. Panel B reports mean forecast revisions relative to the original minute within the same meeting and regeneration. The rows labeled \emph{Change per assigned dose} report coefficients from linear regressions of each outcome on the assigned dose, coded $-2,-1,0,1,2$, with fixed effects for meeting and regeneration pairs. A one-unit increase in dose moves one step toward hawkishness. All standard errors are clustered by meeting. Panel B means are in percentage points; its change-per-dose row is in basis points. The composite applies the full sample calibration coefficients to the anchored and unanchored revisions. Within each profile and meeting, every assignment and regeneration starts from the same prior. * $p<0.10$, ** $p<0.05$, *** $p<0.01$.
+\end{tablenotes}
+\end{footnotesize}
+\end{threeparttable}
+\end{table}

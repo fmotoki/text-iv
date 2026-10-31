@@ -1,0 +1,33 @@
+\begin{table}[htbp]
+\color{revisionred}
+\centering
+\begin{threeparttable}
+\caption{Average changes per assigned dose}
+\label{tab:app-dose-slopes}
+\begin{footnotesize}
+\setlength{\tabcolsep}{5.2pt}
+\begin{tabular}{lddd}
+\toprule
+\multicolumn{4}{l}{\textit{Panel A. Tone}} \\
+ & \mc{Lexicon} & \mc{Direct rating} & \\
+Change per assigned dose & 0.3334\sym{***} & 0.0683\sym{***} & \\
+ & (0.0071) & (0.0068) & \\
+First-stage $F$ statistic & 2193.8 & 101.1 & \\
+\addlinespace
+\multicolumn{4}{l}{\textit{Panel B. Synthetic forecast revision}} \\
+ & \mc{Composite} & \mc{Anchored} & \mc{Unanchored} \\
+Change per assigned dose (bp) & 0.97\sym{***} & 0.58\sym{***} & 1.46\sym{***} \\
+ & (0.19) & (0.11) & (0.29) \\
+\midrule
+Meeting and regeneration fixed effects & \mc{Yes} & \mc{Yes} & \mc{Yes} \\
+Observations & \mc{1,775} & \mc{1,775} & \mc{1,775} \\
+Meeting clusters & \mc{71} & \mc{71} & \mc{71} \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[flushleft]
+\scriptsize
+\item \textit{Notes:} The assigned doses are $-2,-1,0,1,2$, running from high intensity dove to high intensity hawk. Panel A reports the change in each tone measure for a one level increase in the assigned dose. Lexicon tone is the difference between hawkish and dovish expression counts per 100 words. GPT-5.5 rates each text from $-1$ for very dovish to $1$ for very hawkish without seeing its assignment. Panel B reports the change in the synthetic twelve-month-ahead inflation forecast in basis points. One basis point equals 0.01 percentage point. We cluster standard errors by meeting. * $p<0.10$, ** $p<0.05$, *** $p<0.01$.
+\end{tablenotes}
+\end{footnotesize}
+\end{threeparttable}
+\end{table}

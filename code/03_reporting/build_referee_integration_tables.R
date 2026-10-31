@@ -26,12 +26,13 @@ fmt <- function(x, digits = 4) {
 }
 
 stars <- function(p) {
-  ifelse(is.na(p), "", ifelse(p < 0.01, "***", ifelse(p < 0.05, "**", ifelse(p < 0.10, "*", ""))))
+  ifelse(is.na(p), "", ifelse(p < 0.01, "\\sym{***}", ifelse(p < 0.05, "\\sym{**}", ifelse(p < 0.10, "\\sym{*}", ""))))
 }
 
 coef_cell <- function(estimate, p, digits = 4) paste0(fmt(estimate, digits), stars(p))
 se_cell <- function(se, digits = 4) paste0("(", fmt(se, digits), ")")
 ci_cell <- function(lo, hi, digits = 3) paste0("[", fmt(lo, digits), ", ", fmt(hi, digits), "]")
+mc <- function(x) paste0("\\mc{", x, "}")
 p_cell <- function(p, digits = 3) {
   if (length(p) != 1L || !is.finite(p)) return("--")
   if (p < 0.001) return("$<0.001$")
@@ -78,34 +79,33 @@ h_u <- d6_h[parameter == "Unanchored weight"][1]
 eb <- d6_eb[1]
 
 calibration_lines <- c(
-  table_header("Calibration weights under admissibility restrictions", "tab:calibration-restrictions"),
+  table_header("Calibration weights after removing word count", "tab:calibration-restrictions"),
   "\\setlength{\\tabcolsep}{3.8pt}",
-  "\\begin{tabular}{lcccc}",
+  "\\begin{tabular}{ldddd}",
   "\\toprule",
-  " & (1) & (2) & (3) & (4) \\\\",
-  " & Unrestricted & Convex & Hierarchical & Empirical Bayes \\\\",
+  paste0(" & ", paste(mc(paste0("(", 1:4, ")")), collapse = " & "), " \\\\"),
+  paste0(" & ", paste(mc(c("OLS", "Convex shares", "Bayesian shares", "Ridge shrinkage")), collapse = " & "), " \\\\"),
   "\\midrule",
-  paste0("Anchored weight & ", coef_cell(ols_nowc$anchored_weight, ols_nowc$anchored_p_value), " & ", fmt(ifelse(abs(convex$anchored_weight) < 5e-8, 0, convex$anchored_weight)), " & ", fmt(h_a$mean), " & ", fmt(eb$anchored_weight), " \\\\"),
-  paste0(" & ", se_cell(ols_nowc$anchored_std_error), " & ", se_cell(convex$anchored_std_error), " & ", se_cell(h_a$sd), " & ", se_cell(eb$anchored_std_error), " \\\\"),
+  paste0("Anchored weight & ", fmt(ols_nowc$anchored_weight), " & ", fmt(ifelse(abs(convex$anchored_weight) < 5e-8, 0, convex$anchored_weight)), " & ", fmt(h_a$mean), " & ", fmt(eb$anchored_weight), " \\\\"),
+  paste0("95\\% interval & ", paste(mc(c(ci_cell(ols_nowc$anchored_ci_low, ols_nowc$anchored_ci_high, 4), ci_cell(convex$anchored_ci_low, convex$anchored_ci_high, 4), ci_cell(h_a$q025, h_a$q975, 4), ci_cell(eb$anchored_ci_low, eb$anchored_ci_high, 4))), collapse = " & "), " \\\\"),
   "\\addlinespace",
-  paste0("Unanchored weight & ", coef_cell(ols_nowc$unanchored_weight, ols_nowc$unanchored_p_value), " & ", fmt(convex$unanchored_weight), " & ", fmt(h_u$mean), " & ", fmt(eb$unanchored_weight), " \\\\"),
-  paste0(" & ", se_cell(ols_nowc$unanchored_std_error), " & ", se_cell(convex$unanchored_std_error), " & ", se_cell(h_u$sd), " & ", se_cell(eb$unanchored_std_error), " \\\\"),
+  paste0("Unanchored weight & ", fmt(ols_nowc$unanchored_weight), " & ", fmt(convex$unanchored_weight), " & ", fmt(h_u$mean), " & ", fmt(eb$unanchored_weight), " \\\\"),
+  paste0("95\\% interval & ", paste(mc(c(ci_cell(ols_nowc$unanchored_ci_low, ols_nowc$unanchored_ci_high, 4), ci_cell(convex$unanchored_ci_low, convex$unanchored_ci_high, 4), ci_cell(h_u$q025, h_u$q975, 4), ci_cell(eb$unanchored_ci_low, eb$unanchored_ci_high, 4))), collapse = " & "), " \\\\"),
   "\\midrule",
-  "Weights sum to one & No & Yes & Yes & Yes \\\\",
-  "Nonnegative weights imposed & No & Yes & Yes & No \\\\",
-  "Word-count control & No & No & No & No \\\\",
-  "Observations & 71 & 71 & 71 & 71 \\\\",
+  paste0("Weights sum to one & ", paste(mc(c("No", "Yes", "Yes", "Yes")), collapse = " & "), " \\\\"),
+  paste0("Weights restricted to $[0,1]$ & ", paste(mc(c("No", "Yes", "Yes", "No")), collapse = " & "), " \\\\"),
+  paste0("Word count included & ", paste(mc(rep("No", 4)), collapse = " & "), " \\\\"),
+  paste0("Observations & ", paste(mc(rep("71", 4)), collapse = " & "), " \\\\"),
   "\\bottomrule",
   "\\end{tabular}",
   table_footer(paste(
     "The outcome is the median twelve-month-ahead Focus IPCA expectation.",
-    "Column (1) is OLS without the original-text word count; parentheses contain HC2 heteroskedasticity-robust standard errors, and stars apply only to this column.",
-    "Column (2) solves the nonnegative unit-sum quadratic program; parentheses contain meeting-bootstrap standard deviations from 1,999 replications.",
-    "Column (3) reports posterior means with posterior standard deviations in parentheses from a learned symmetric Dirichlet prior.",
-    "Column (4) reports the empirical-Bayes ridge centered on equal weights with meeting-bootstrap standard deviations in parentheses; it imposes unit sum but not nonnegativity in every bootstrap replication.",
-    "Conventional significance stars are not reported for Columns (2)--(4) because boundary constraints, posterior uncertainty, and shrinkage make their reference distributions nonstandard.",
-    "For Column (1), * $p < 0.10$, ** $p < 0.05$, *** $p < 0.01$.",
-    "The table concerns calibration weights, not population shares."
+    "Every specification includes a constant and the three IBC-Br controls.",
+    "Column (1) reports OLS estimates and HC2 confidence intervals.",
+    "Column (2) restricts both weights to the unit interval and their sum to one; its confidence intervals use percentiles from 1,999 meeting bootstrap replications.",
+    "Column (3) reports posterior means and 95 percent credible intervals under a symmetric Dirichlet prior with concentration estimated from the data.",
+    "Column (4) reports empirical Bayes ridge estimates centered on equal weights; the weights sum to one and may fall outside the unit interval.",
+    "Its confidence intervals use percentiles from 1,999 meeting bootstrap replications."
   ))
 )
 write_tex("rr_calibration_restrictions.tex", calibration_lines)
@@ -128,9 +128,9 @@ if (nrow(d2_rows) != length(d2_terms) || anyNA(d2_rows$term)) {
 
 orthogonality_lines <- c(
   table_header("Pre-meeting covariates and the realized treatment-induced tone gap", "tab:preassignment-orthogonality", "footnotesize"),
-  "\\begin{tabular}{lc}",
+  "\\begin{tabular}{ld}",
   "\\toprule",
-  " & Hawk-minus-dove tone gap \\\\",
+  paste0(" & ", mc("Hawk-minus-dove tone gap"), " \\\\"),
   "\\midrule",
   unlist(Map(function(label, estimate, se, p) {
     c(
@@ -139,9 +139,9 @@ orthogonality_lines <- c(
     )
   }, d2_labels, d2_rows$estimate, d2_rows$std_error, d2_rows$p_value)),
   "\\midrule",
-  paste0("Joint $F$ statistic & ", fmt(d2_joint$statistic, 3), " \\\\"),
-  paste0("Joint-test $p$ value & ", fmt(d2_joint$p_value, 3), " \\\\"),
-  paste0("Meetings & ", d2_joint$observations, " \\\\"),
+  paste0("Joint $F$ statistic & ", mc(fmt(d2_joint$statistic, 3)), " \\\\"),
+  paste0("Joint-test $p$ value & ", mc(fmt(d2_joint$p_value, 3)), " \\\\"),
+  paste0("Meetings & ", mc(d2_joint$observations), " \\\\"),
   "\\bottomrule",
   "\\end{tabular}",
   table_footer(paste(
@@ -239,7 +239,7 @@ regime_panel <- function(panel_title, regime_order, regime_labels) {
   c(
     paste0("\\multicolumn{5}{l}{\\textit{", panel_title, "}} \\\\"),
     "\\addlinespace",
-    paste0(" & ", paste(regime_labels, collapse = " & "), " \\\\"),
+    paste0(" & ", paste(mc(regime_labels), collapse = " & "), " \\\\"),
     "\\midrule",
     paste0("Anchored weight $\\widehat\\phi_A$ & ", paste(mapply(coef_cell, rows$anchored_weight, rows$anchored_weight_p), collapse = " & "), " \\\\"),
     paste0(" & ", paste(vapply(rows$anchored_weight_se_hc2, se_cell, character(1)), collapse = " & "), " \\\\"),
@@ -254,7 +254,7 @@ regime_panel <- function(panel_title, regime_order, regime_labels) {
     paste0(" & ", paste(vapply(rows$focus_tone_se_hac, se_cell, character(1)), collapse = " & "), " \\\\"),
     paste0("Focus persistence $\\widehat\\rho^{\\mathrm{Focus}}$ & ", paste(mapply(coef_cell, rows$focus_rho, rows$focus_rho_p), collapse = " & "), " \\\\"),
     paste0(" & ", paste(vapply(rows$focus_rho_se_hac, se_cell, character(1)), collapse = " & "), " \\\\"),
-    paste0("Meetings & ", paste(rows$meetings, collapse = " & "), " \\\\")
+    paste0("Meetings & ", paste(mc(rows$meetings), collapse = " & "), " \\\\")
   )
 }
 
@@ -277,7 +277,7 @@ calendar_note <- paste(
 regime_lines <- c(
   table_header("Calibration, Prompt-IV, and Focus persistence across regimes", "tab:regime-promptiv"),
   "\\setlength{\\tabcolsep}{4.0pt}",
-  "\\begin{tabular}{lcccc}",
+  "\\begin{tabular}{ldddd}",
   "\\toprule",
   regime_panel("Panel A. Calendar partitions", calendar_order, c("Pre-Campos", "Campos+", "Pre-2021", "2021+")),
   "\\midrule",
@@ -312,19 +312,19 @@ top_value <- function(benchmark_filter, term_filter, field) {
 
 top_lines <- c(
   table_header("Calibration against Focus Top-5 benchmarks", "tab:top5-calibration"),
-  "\\begin{tabular}{lccc}",
+  "\\begin{tabular}{lddd}",
   "\\toprule",
-  paste0(" & ", paste0("(", 1:3, ")", collapse = " & "), " \\\\"),
-  paste0(" & ", paste(top_label, collapse = " & "), " \\\\"),
+  paste0(" & ", paste(mc(paste0("(", 1:3, ")")), collapse = " & "), " \\\\"),
+  paste0(" & ", paste(mc(top_label), collapse = " & "), " \\\\"),
   "\\midrule",
     paste0("Anchored forecast & ", paste(vapply(top_horizons, function(h) coef_cell(top_value(h, "forecast_anchored_gpt55", "estimate"), top_value(h, "forecast_anchored_gpt55", "p_value")), character(1)), collapse = " & "), " \\\\"),
     paste0(" & ", paste(vapply(top_horizons, function(h) se_cell(top_value(h, "forecast_anchored_gpt55", "std_error")), character(1)), collapse = " & "), " \\\\"),
     paste0("Unanchored forecast & ", paste(vapply(top_horizons, function(h) coef_cell(top_value(h, "forecast_unanchored_gpt55", "estimate"), top_value(h, "forecast_unanchored_gpt55", "p_value")), character(1)), collapse = " & "), " \\\\"),
     paste0(" & ", paste(vapply(top_horizons, function(h) se_cell(top_value(h, "forecast_unanchored_gpt55", "std_error")), character(1)), collapse = " & "), " \\\\"),
   "\\midrule",
-    paste0("Observations & ", paste(vapply(top_horizons, function(h) top_value(h, "forecast_unanchored_gpt55", "observations"), numeric(1)), collapse = " & "), " \\\\"),
-    paste0("$R^2$ & ", paste(vapply(top_horizons, function(h) fmt(top_value(h, "forecast_unanchored_gpt55", "r_squared"), 3), character(1)), collapse = " & "), " \\\\"),
-  "Activity controls & Yes & Yes & Yes \\\\",
+    paste0("Observations & ", paste(mc(vapply(top_horizons, function(h) top_value(h, "forecast_unanchored_gpt55", "observations"), numeric(1))), collapse = " & "), " \\\\"),
+    paste0("$R^2$ & ", paste(mc(vapply(top_horizons, function(h) fmt(top_value(h, "forecast_unanchored_gpt55", "r_squared"), 3), character(1))), collapse = " & "), " \\\\"),
+  paste0("Activity controls & ", paste(mc(rep("Yes", 3)), collapse = " & "), " \\\\"),
   "\\bottomrule",
   "\\end{tabular}",
   table_footer(paste(
@@ -338,9 +338,42 @@ write_tex("rr_top5_calibration.tex", top_lines)
 
 # Distribution and moment diagnostics remain descriptive and separate from regressions.
 d9_dist <- read_result("referee_d9_distribution_summary_20260715.csv")[1]
+d8_loo <- read_result("referee_d8_loo_summary_20260715.csv")[1]
+d8_metrics <- read_result("referee_d8_forecast_metrics_20260715.csv")
+d8_composite <- d8_metrics[model == "composite"][1]
+d8_ar1 <- d8_metrics[model == "focus_ar1"][1]
+d8_anchored <- d8_metrics[model == "anchored_agent"][1]
+
+focus_summary_lines <- c(
+  table_header("Calibration fit, recursive forecasts, and dispersion", "tab:focus-calibration-summary", "footnotesize"),
+  "\\begin{tabular}{lcc}",
+  "\\toprule",
+  "Assessment & Synthetic estimate & Focus comparison \\\\",
+  "\\midrule",
+  "Full sample $R^2$ & 0.805 &  \\\\",
+  paste0("Leave one meeting out $R^2$ & ", fmt(d8_loo$r2_cv, 3), " &  \\\\"),
+  paste0("Leave one meeting out RMSE (pp) & ", fmt(d8_loo$rmse, 3), " &  \\\\"),
+  "\\addlinespace",
+  paste0("Expanding window RMSE, composite (pp) & ", fmt(d8_composite$rmse, 3), " & ", fmt(d8_ar1$rmse, 3), " \\\\"),
+  paste0("Expanding window RMSE, anchored profile (pp) & ", fmt(d8_anchored$rmse, 3), " & ", fmt(d8_ar1$rmse, 3), " \\\\"),
+  "\\addlinespace",
+  paste0("Mean cross-sectional SD (pp) & ", fmt(d9_dist$mean_synthetic_sd, 3), " & ", fmt(d9_dist$mean_focus_sd, 3), " \\\\"),
+  paste0("Synthetic-to-Focus SD ratio & ", fmt(d9_dist$mean_synthetic_to_focus_sd_ratio, 3), " & 1.000 \\\\"),
+  paste0("Correlation of meeting dispersions & ", fmt(d9_dist$correlation_date_level_dispersion, 3), " &  \\\\"),
+  "\\bottomrule",
+  "\\end{tabular}",
+  table_footer(paste(
+    "The Focus comparison for expanding-window RMSE is a recursively estimated Focus AR(1).",
+    "The expanding window contains 47 forecasts after an initial 24 meetings.",
+    "Leave-one-meeting-out statistics use all 71 meetings.",
+    "Focus dispersion is the standard deviation across survey respondents. Synthetic dispersion is the standard deviation across the two profiles."
+  ), "footnotesize")
+)
+write_tex("rr_focus_calibration_summary.tex", focus_summary_lines)
+
 dist_lines <- c(
   table_header("Focus dispersion and the synthetic cross section", "tab:focus-dispersion", "footnotesize"),
-  "\\begin{tabular}{lc}",
+  "\\begin{tabular}{ld}",
   "\\toprule",
   "Statistic & Estimate \\\\",
   "\\midrule",
@@ -400,7 +433,7 @@ macro_lines <- c(
   table_header("Macro correlates of tone in the published Copom minutes", "tab:macro-tone-correlates", "footnotesize"),
   "\\begin{tabular}{lc}",
   "\\toprule",
-  " & Original-minute tone \\\\",
+  paste0(" & ", mc("Original-minute tone"), " \\\\"),
   "\\midrule",
   unlist(Map(function(label, estimate, se, p) {
     c(
@@ -409,8 +442,8 @@ macro_lines <- c(
     )
   }, d22_labels, d22_rows$estimate, d22_rows$std_error, d22_rows$p_value)),
   "\\midrule",
-  paste0("Observations & ", d22_rows$observations[[1]], " \\\\"),
-  paste0("$R^2$ & ", fmt(d22_rows$r_squared[[1]], 3), " \\\\"),
+  paste0("Observations & ", mc(d22_rows$observations[[1]]), " \\\\"),
+  paste0("$R^2$ & ", mc(fmt(d22_rows$r_squared[[1]], 3)), " \\\\"),
   "\\bottomrule",
   "\\end{tabular}",
   table_footer(paste(
@@ -426,12 +459,12 @@ write_tex("rr_macro_tone_correlates.tex", macro_lines)
 d10_order <- read_result("referee_d10_sunspot_order_bootstrap_20260715.csv")
 sun_order <- c("anchored", "unanchored", "equal_weight", "hierarchical_simplex")
 s10 <- d10_order[match(sun_order, synthetic_aggregate)]
-sun_labels <- c("Anchored", "Unanchored", "Equal weight", "Hierarchical")
+sun_labels <- c("Anchored", "Unanchored", "Equal weight", "Bayesian shares")
 
 sunspot_lines <- c(
   table_header("Tone-as-sunspot variance-ordering diagnostic", "tab:sunspot-ordering"),
   "\\setlength{\\tabcolsep}{3.6pt}",
-  "\\begin{tabular}{lcccc}",
+  "\\begin{tabular}{ldddd}",
   "\\toprule",
   paste0(" & ", paste(sun_labels, collapse = " & "), " \\\\"),
   "\\midrule",
@@ -449,7 +482,7 @@ sunspot_lines <- c(
     "This is an empirical laboratory analogue of the Branch--McGough--Zhu variance ordering, not a structural restricted-perceptions-equilibrium estimate.",
     "Entries are variances of meeting-level mean forecast revisions, in squared percentage points; regeneration replicates are averaged within meeting-arm-profile cells before aggregation.",
     "The quasi-REE proxy is the original-minute response, assigned tone uses the hawk and dove arms, and the neutral-rewrite proxy imperfectly approximates the requested fundamentals-only benchmark.",
-    "The unanchored, hierarchical, and equal-weight aggregates reject the BMZ ordering in point estimates; the exact paired assignment also has no serial assignment state and lies outside the diagnostic existence region."
+    "The unanchored, Bayesian share, and equal-weight aggregates reject the BMZ ordering in point estimates; the exact paired assignment also has no serial assignment state and lies outside the diagnostic existence region."
   ))
 )
 write_tex("rr_sunspot_ordering.tex", sunspot_lines)
@@ -493,7 +526,7 @@ write_tournament(
   "Bayesian model tournament for the synthetic calibration",
   "tab:tournament-calibration",
   c("Unanchored agent plus fundamentals", "Unconstrained two-agent projection", "Hierarchical Dirichlet constrained projection", "Equal-weight constrained projection", "Anchored agent plus fundamentals", "Fundamentals only"),
-  c("Unanchored plus fundamentals", "Unconstrained two-agent", "Hierarchical simplex", "Equal weight", "Anchored plus fundamentals", "Fundamentals only"),
+  c("Unanchored plus fundamentals", "Unconstrained two-agent", "Bayesian share model", "Equal weight", "Anchored plus fundamentals", "Fundamentals only"),
   "All synthetic-calibration candidates omit original-minute word count so that the tournament compares agent restrictions on a common predictor set; the unrestricted candidate here is therefore not the paper's full baseline calibration."
 )
 
@@ -521,7 +554,7 @@ topic_lines <- c(
 )
 write_tex("rr_topic_preservation.tex", topic_lines)
 
-# Embedding and token preservation for the 25-draw binary experiment.
+# Embedding and token preservation for the hawkish and dovish rewrites.
 d16_pres <- read_result("referee_d16_embedding_preservation_20260715.csv")
 pres_metrics <- c("document_cosine_similarity", "symmetric_sentence_similarity", "subword_jensen_shannon", "subword_count_ratio", "sentence_count_ratio")
 pres_labels <- c("Document cosine similarity", "Symmetric sentence similarity", "Subword Jensen--Shannon distance", "Subword-count ratio", "Sentence-count ratio")
@@ -538,7 +571,7 @@ pres_value <- function(role_filter, metric_filter, field = "estimate") {
 }
 
 embedding_lines <- c(
-  table_header("Embedding and token preservation in the 25-regeneration binary experiment", "tab:embedding-preservation"),
+  table_header("Embedding and token similarity in the hawkish and dovish rewrites", "tab:embedding-preservation"),
   "\\begin{tabular}{lcc}",
   "\\toprule",
   "Metric relative to original & Dovish rewrite & Hawkish rewrite \\\\",
@@ -550,9 +583,10 @@ embedding_lines <- c(
   "\\bottomrule",
   "\\end{tabular}",
   table_footer(paste(
-    "Embeddings use the multilingual paraphrase-MiniLM-L12-v2 sentence-transformer and are averaged over deterministic sentence segments.",
-    "Subword distributions use the same tokenizer. Similarities are high and sentence counts are stable, but both rewrite arms contain about 24 percent more subword tokens than the original minutes.",
-    "This length shift is disclosed and motivates the content-orthogonal tone specifications."
+    "Each column contains 1,775 generated minutes: 25 versions of each of 71 source minutes.",
+    "We compare every generated minute with its source minute.",
+    "Document and sentence similarities use the multilingual paraphrase-MiniLM-L12-v2 sentence transformer model.",
+    "Subword measures use the same tokenizer. Count ratios divide the rewrite count by the source-minute count."
   ))
 )
 write_tex("rr_embedding_preservation.tex", embedding_lines)
@@ -580,33 +614,33 @@ alternative_iv_lines <- c(
   "\\setlength{\\tabcolsep}{3.8pt}",
   "\\begin{tabular}{lcccc}",
   "\\toprule",
-  paste0(" & ", paste0("(", 1:4, ")", collapse = " & "), " \\\\"),
-  paste0(" & ", paste(measure_labels, collapse = " & "), " \\\\"),
+  paste0(" & ", paste(mc(paste0("(", 1:4, ")")), collapse = " & "), " \\\\"),
+  paste0(" & ", paste(mc(measure_labels), collapse = " & "), " \\\\"),
   "\\midrule",
   "\\multicolumn{5}{l}{\\textit{Panel A. Unrestricted descriptive calibration}} \\\\",
   write_iv_panel("current_unrestricted"),
   "\\addlinespace",
-  "\\multicolumn{5}{l}{\\textit{Panel B. Hierarchical simplex calibration}} \\\\",
+  "\\multicolumn{5}{l}{\\textit{Panel B. Bayesian share calibration}} \\\\",
   write_iv_panel("hierarchical_simplex"),
   "\\midrule",
-  "Pair fixed effects & Yes & Yes & Yes & Yes \\\\",
-  "SE clustered by meeting & Yes & Yes & Yes & Yes \\\\",
-  "Observations & 3,550 & 3,550 & 3,550 & 3,550 \\\\",
-  "Meeting clusters & 71 & 71 & 71 & 71 \\\\",
+  paste0("Pair fixed effects & ", paste(mc(rep("Yes", 4)), collapse = " & "), " \\\\"),
+  paste0("SE clustered by meeting & ", paste(mc(rep("Yes", 4)), collapse = " & "), " \\\\"),
+  paste0("Observations & ", paste(mc(rep("3,550", 4)), collapse = " & "), " \\\\"),
+  paste0("Meeting clusters & ", paste(mc(rep("71", 4)), collapse = " & "), " \\\\"),
   "\\bottomrule",
   "\\end{tabular}",
   table_footer(paste(
     "Each column instruments the named realized-tone measure with the assigned hawkish instruction in the same 25-regeneration paired panel.",
     "The LOO embedding direction is trained leaving each meeting out. Raw $T_{\\perp}$ residualizes lexicon tone on 36 embedding principal components; content $T_{\\perp}$ removes only the instrument-predictable content component.",
     "Coefficients differ in scale, so the effect per one within-sample standard deviation is reported for comparison.",
-    "Standard errors are clustered by Copom meeting. * $p<0.10$, ** $p<0.05$, *** $p<0.01$."
+    "We cluster standard errors by Copom meeting. * $p<0.10$, ** $p<0.05$, *** $p<0.01$."
   ))
 )
 write_tex("rr_alternative_tone_iv.tex", alternative_iv_lines)
 
 # Dose IV with one column per alternative tone measure.
-dose_measures <- c("lexicon_tone_pp", "semantic_score", "pairwise_score")
-dose_labels <- c("Lexicon", "Blinded semantic", "Blinded pairwise")
+dose_measures <- c("lexicon_tone_pp", "semantic_score")
+dose_labels <- c("Lexicon", "Direct rating")
 write_dose_panel <- function(outcome_name) {
   z <- d16_iv[sample == "Common-prior five-level assigned-dose design" & outcome == outcome_name][match(dose_measures, tone_measure)]
   c(
@@ -621,32 +655,227 @@ write_dose_panel <- function(outcome_name) {
 }
 
 dose_iv_lines <- c(
-  table_header("Five-level assigned-dose IV under alternative tone measures", "tab:dose-tone-iv"),
-  "\\begin{tabular}{lccc}",
+  table_header("Dose-response IV estimates using two tone measures", "tab:dose-tone-iv"),
+  "\\begin{tabular}{ldd}",
   "\\toprule",
-  paste0(" & ", paste0("(", 1:3, ")", collapse = " & "), " \\\\"),
-  paste0(" & ", paste(dose_labels, collapse = " & "), " \\\\"),
+  paste0(" & ", paste(mc(paste0("(", 1:2, ")")), collapse = " & "), " \\\\"),
+  paste0(" & ", paste(mc(dose_labels), collapse = " & "), " \\\\"),
   "\\midrule",
-  "\\multicolumn{4}{l}{\\textit{Panel A. Unrestricted descriptive calibration}} \\\\",
+  "\\multicolumn{3}{l}{\\textit{Panel A. Unrestricted descriptive calibration}} \\\\",
   write_dose_panel("current_unrestricted"),
   "\\addlinespace",
-  "\\multicolumn{4}{l}{\\textit{Panel B. Hierarchical simplex calibration}} \\\\",
+  "\\multicolumn{3}{l}{\\textit{Panel B. Bayesian share calibration}} \\\\",
   write_dose_panel("hierarchical_simplex"),
   "\\midrule",
-  "Pair fixed effects & Yes & Yes & Yes \\\\",
-  "SE clustered by meeting & Yes & Yes & Yes \\\\",
-  "Observations & 1,775 & 1,775 & 1,775 \\\\",
-  "Meeting clusters & 71 & 71 & 71 \\\\",
+  paste0("Pair fixed effects & ", paste(mc(rep("Yes", 2)), collapse = " & "), " \\\\"),
+  paste0("SE clustered by meeting & ", paste(mc(rep("Yes", 2)), collapse = " & "), " \\\\"),
+  paste0("Observations & ", paste(mc(rep("1,775", 2)), collapse = " & "), " \\\\"),
+  paste0("Meeting clusters & ", paste(mc(rep("71", 2)), collapse = " & "), " \\\\"),
   "\\bottomrule",
   "\\end{tabular}",
   table_footer(paste(
-    "Assigned doses are $-2,-1,0,1,2$ for high dove, low dove, neutral, low hawk, and high hawk.",
-    "The lexicon, semantic, and pairwise scores are independently scaled, so coefficient magnitudes are not directly comparable.",
-    "The pairwise score is ordinal and is included as a robustness measure rather than a cardinal tone index.",
+    "Assigned doses are $-2,-1,0,1,2$ for high intensity dove, low intensity dove, neutral, low intensity hawk, and high intensity hawk.",
+    "For the direct rating, GPT-5.5 scores each text without its assignment label from $-1$ for very dovish to $1$ for very hawkish.",
+    "The two measures use different scales.",
     "Standard errors are clustered by Copom meeting. * $p<0.10$, ** $p<0.05$, *** $p<0.01$."
   ))
 )
 write_tex("rr_dose_tone_iv.tex", dose_iv_lines)
+
+# Average dose slopes for the appendix.
+dose_slopes <- read_result("common_prior_dose_slopes_20260714.csv")
+dose_tone_summary <- d16_iv[
+  sample == "Common-prior five-level assigned-dose design" &
+    outcome == "current_unrestricted"
+][match(c("lexicon_tone_pp", "semantic_score"), tone_measure)]
+dose_tone_summary[, first_stage_p := stats::pf(
+  first_stage_f,
+  df1 = 1,
+  df2 = 70,
+  lower.tail = FALSE
+)]
+dose_forecast_summary <- dose_slopes[
+  match(c("Composite", "Anchored", "Unanchored"), sample)
+]
+if (anyNA(dose_tone_summary$first_stage) ||
+    anyNA(dose_forecast_summary$estimate)) {
+  stop("Dose-response summary inputs are incomplete")
+}
+
+dose_summary_lines <- c(
+  table_header("Average changes per assigned dose", "tab:app-dose-slopes", size = "footnotesize"),
+  "\\setlength{\\tabcolsep}{5.2pt}",
+  "\\begin{tabular}{lddd}",
+  "\\toprule",
+  "\\multicolumn{4}{l}{\\textit{Panel A. Tone}} \\\\",
+  " & \\mc{Lexicon} & \\mc{Direct rating} & \\\\",
+  paste0(
+    "Change per assigned dose & ",
+    paste(mapply(
+      coef_cell,
+      dose_tone_summary$first_stage,
+      dose_tone_summary$first_stage_p,
+      MoreArgs = list(digits = 4)
+    ), collapse = " & "),
+    " & \\\\"
+  ),
+  paste0(
+    " & ",
+    paste(vapply(dose_tone_summary$first_stage_se, se_cell, character(1)), collapse = " & "),
+    " & \\\\"
+  ),
+  paste0(
+    "First-stage $F$ statistic & ",
+    paste(fmt(dose_tone_summary$first_stage_f, 1), collapse = " & "),
+    " & \\\\"
+  ),
+  "\\addlinespace",
+  "\\multicolumn{4}{l}{\\textit{Panel B. Synthetic forecast revision}} \\\\",
+  " & \\mc{Composite} & \\mc{Anchored} & \\mc{Unanchored} \\\\",
+  paste0(
+    "Change per assigned dose (bp) & ",
+    paste(mapply(
+      coef_cell,
+      100 * dose_forecast_summary$estimate,
+      dose_forecast_summary$p_value,
+      MoreArgs = list(digits = 2)
+    ), collapse = " & "),
+    " \\\\"
+  ),
+  paste0(
+    " & ",
+    paste(vapply(100 * dose_forecast_summary$std_error, se_cell, character(1), digits = 2), collapse = " & "),
+    " \\\\"
+  ),
+  "\\midrule",
+  "Meeting and regeneration fixed effects & \\mc{Yes} & \\mc{Yes} & \\mc{Yes} \\\\",
+  "Observations & \\mc{1,775} & \\mc{1,775} & \\mc{1,775} \\\\",
+  "Meeting clusters & \\mc{71} & \\mc{71} & \\mc{71} \\\\",
+  "\\bottomrule",
+  "\\end{tabular}",
+  table_footer(paste(
+    "The assigned doses are $-2,-1,0,1,2$, running from high intensity dove to high intensity hawk.",
+    "Panel A reports the change in each tone measure for a one level increase in the assigned dose.",
+    "Lexicon tone is the difference between hawkish and dovish expression counts per 100 words.",
+    "GPT-5.5 rates each text from $-1$ for very dovish to $1$ for very hawkish without seeing its assignment.",
+    "Panel B reports the change in the synthetic twelve-month-ahead inflation forecast in basis points.",
+    "One basis point equals 0.01 percentage point.",
+    "We cluster standard errors by meeting. * $p<0.10$, ** $p<0.05$, *** $p<0.01$."
+  ), size = "footnotesize")
+)
+write_tex("rr_dose_response_summary.tex", dose_summary_lines)
+
+# Dose means for the main text.
+dose_tone_cells <- read_result("common_prior_dose_tone_cells_20260714.csv")
+dose_arm_effects <- read_result("common_prior_dose_arm_effects_20260714.csv")
+dose_arm_order <- c("dove_high", "dove_low", "neutral", "hawk_low", "hawk_high")
+dose_arm_labels <- c(
+  dove_high = "High intensity dove",
+  dove_low = "Low intensity dove",
+  neutral = "Neutral",
+  hawk_low = "Low intensity hawk",
+  hawk_high = "High intensity hawk"
+)
+dose_values <- c(dove_high = -2, dove_low = -1, neutral = 0, hawk_low = 1, hawk_high = 2)
+
+dose_full_lines <- c(
+  table_header(
+    "Tone and forecast revisions by assigned dose",
+    "tab:dose-response",
+    size = "footnotesize"
+  ),
+  "\\setlength{\\tabcolsep}{6pt}",
+  "\\begin{tabular}{lcddd}",
+  "\\toprule",
+  "\\multicolumn{5}{l}{\\textit{Panel A. Tone}} \\\\",
+  "Assigned prompt & Dose & \\mc{Lexicon tone (pp)} & \\mc{Direct rating} & \\\\",
+  "\\midrule"
+)
+for (arm in dose_arm_order) {
+  arm_name <- arm
+  rows <- dose_tone_cells[
+    get("arm") == arm_name & measure %in% c("tone_pp", "semantic_score")
+  ][match(c("tone_pp", "semantic_score"), measure)]
+  if (nrow(rows) != 2L || anyNA(rows$estimate)) stop("Dose tone lookup failed")
+  dose_full_lines <- c(
+    dose_full_lines,
+    paste0(
+      dose_arm_labels[[arm]], " & ", dose_values[[arm]], " & ",
+      paste(fmt(rows$estimate, 4), collapse = " & "), " & \\\\"
+    ),
+    paste0(" & & ", paste(vapply(rows$std_error, se_cell, character(1)), collapse = " & "), " & \\\\")
+  )
+}
+dose_full_lines <- c(
+  dose_full_lines,
+  "\\addlinespace[0.08cm]",
+  paste0(
+    "Change per assigned dose & & ",
+    paste(mapply(
+      coef_cell,
+      dose_tone_summary$first_stage,
+      dose_tone_summary$first_stage_p,
+      MoreArgs = list(digits = 4)
+    ), collapse = " & "),
+    " & \\\\"
+  ),
+  paste0(
+    " & & ",
+    paste(vapply(dose_tone_summary$first_stage_se, se_cell, character(1)), collapse = " & "),
+    " & \\\\"
+  ),
+  "\\addlinespace[0.18cm]",
+  "\\multicolumn{5}{l}{\\textit{Panel B. Synthetic forecast revision}} \\\\",
+  "Assigned prompt & Dose & \\mc{Composite} & \\mc{Anchored} & \\mc{Unanchored} \\\\",
+  "\\midrule"
+)
+for (arm in dose_arm_order) {
+  arm_name <- arm
+  rows <- dose_arm_effects[
+    get("arm") == arm_name & sample %in% c("Composite", "Anchored", "Unanchored")
+  ][match(c("Composite", "Anchored", "Unanchored"), sample)]
+  if (nrow(rows) != 3L || anyNA(rows$estimate)) stop("Dose forecast lookup failed")
+  dose_full_lines <- c(
+    dose_full_lines,
+    paste0(
+      dose_arm_labels[[arm]], " & ", dose_values[[arm]], " & ",
+      paste(mapply(coef_cell, rows$estimate, rows$p_value), collapse = " & "), " \\\\"
+    ),
+    paste0(" & & ", paste(vapply(rows$std_error, se_cell, character(1)), collapse = " & "), " \\\\")
+  )
+}
+dose_full_lines <- c(
+  dose_full_lines,
+  "\\addlinespace[0.08cm]",
+  paste0(
+    "Change per assigned dose (bp) & & ",
+    paste(mapply(
+      coef_cell,
+      100 * dose_forecast_summary$estimate,
+      dose_forecast_summary$p_value,
+      MoreArgs = list(digits = 2)
+    ), collapse = " & "),
+    " \\\\"
+  ),
+  paste0(
+    " & & ",
+    paste(vapply(100 * dose_forecast_summary$std_error, se_cell, character(1), digits = 2), collapse = " & "),
+    " \\\\"
+  ),
+  "\\bottomrule",
+  "\\end{tabular}",
+  table_footer(paste(
+    "Each prompt produces 355 versions of the minutes, with five regenerations for each of 71 meetings.",
+    "Panel A reports mean tone. Panel B reports mean forecast revisions relative to the original minute within the same meeting and regeneration.",
+    "The rows labeled \\emph{Change per assigned dose} report coefficients from linear regressions of each outcome on the assigned dose, coded $-2,-1,0,1,2$, with fixed effects for meeting and regeneration pairs.",
+    "A one-unit increase in dose moves one step toward hawkishness. All standard errors are clustered by meeting.",
+    "Panel B means are in percentage points; its change-per-dose row is in basis points.",
+    "The composite applies the full sample calibration coefficients to the anchored and unanchored revisions.",
+    "Within each profile and meeting, every assignment and regeneration starts from the same prior.",
+    "* $p<0.10$, ** $p<0.05$, *** $p<0.01$."
+  ), size = "footnotesize")
+)
+write_tex("rr_dose_response_full.tex", dose_full_lines)
 
 # Complete inference table, including the exact R wild-cluster bootstrap.
 d23_wild <- read_result("referee_d23_wild_cluster_iv_20260715.csv")[1]
@@ -811,7 +1040,7 @@ p_scatter <- ggplot(scatter[source_role != "original"], aes(x = lexicon_tone_pp,
   geom_point(alpha = 0.20, size = 0.85) +
   geom_smooth(aes(group = 1), method = "lm", formula = y ~ x, se = TRUE, colour = "#222222", fill = "#BDBDBD", linewidth = 0.65) +
   scale_colour_manual(values = arm_colors) +
-  labs(x = "Lexicon tone (percentage points)", y = "Blinded semantic tone score") +
+  labs(x = "Lexicon tone (percentage points)", y = "Direct rating") +
   theme_journal()
 ggsave(file.path(figure_dir, "rr_tone_measure_validation.pdf"), p_scatter, device = cairo_pdf, width = 7.1, height = 4.3, units = "in", bg = "white")
 

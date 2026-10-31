@@ -369,14 +369,15 @@ format_p_stars <- function(p_value) {
   fifelse(
     is.na(p_value), "",
     fifelse(
-      p_value < 0.01, "***",
-      fifelse(p_value < 0.05, "**", fifelse(p_value < 0.10, "*", ""))
+      p_value < 0.01, "\\sym{***}",
+      fifelse(p_value < 0.05, "\\sym{**}", fifelse(p_value < 0.10, "\\sym{*}", ""))
     )
   )
 }
 format_estimate <- function(estimate, p_value) {
   paste0(sprintf("%.4f", estimate), format_p_stars(p_value))
 }
+mc <- function(x) paste0("\\mc{", x, "}")
 
 write_arm_table <- function(path) {
   columns <- c("Composite", "Anchored", "Unanchored")
@@ -388,10 +389,10 @@ write_arm_table <- function(path) {
     "\\caption{Persistent synthetic forecast gaps under arm-specific recursive priors}",
     "\\label{tab:arm-specific-prior-dose-arms}",
     "\\begin{footnotesize}",
-    "\\begin{tabular}{lccc}",
+    "\\begin{tabular}{lddd}",
     "\\toprule",
-    " & (1) & (2) & (3) \\\\",
-    " & Composite & Anchored & Unanchored \\\\",
+    " & \\mc{(1)} & \\mc{(2)} & \\mc{(3)} \\\\",
+    " & \\mc{Composite} & \\mc{Anchored} & \\mc{Unanchored} \\\\",
     "\\midrule"
   )
   for (arm_name in arm_terms) {
@@ -418,32 +419,32 @@ write_arm_table <- function(path) {
   lines <- c(
     lines,
     "\\midrule",
-    "Original-text trajectory (reference arm) & Yes & Yes & Yes \\\\",
-    "Meeting-by-regeneration fixed effects & Yes & Yes & Yes \\\\",
-    "Two-way clustered standard errors & Yes & Yes & Yes \\\\",
+    "Original-text trajectory (reference arm) & \\mc{Yes} & \\mc{Yes} & \\mc{Yes} \\\\",
+    "Meeting-by-regeneration fixed effects & \\mc{Yes} & \\mc{Yes} & \\mc{Yes} \\\\",
+    "Two-way clustered standard errors & \\mc{Yes} & \\mc{Yes} & \\mc{Yes} \\\\",
     paste0(
       "Observations & ",
-      paste(vapply(first_rows, function(x) format(x$observations, big.mark = ","), ""),
+      paste(vapply(first_rows, function(x) mc(format(x$observations, big.mark = ",")), ""),
             collapse = " & "),
       " \\\\"
     ),
     paste0(
       "Meeting-by-regeneration groups & ",
-      paste(vapply(first_rows, function(x) format(x$pair_fe_groups, big.mark = ","), ""),
+      paste(vapply(first_rows, function(x) mc(format(x$pair_fe_groups, big.mark = ",")), ""),
             collapse = " & "),
       " \\\\"
     ),
     paste0(
-      "Recursive trajectory clusters & ", expected_draws * 6L, " & ",
-      expected_draws * 6L, " & ", expected_draws * 6L, " \\\\"
+      "Recursive trajectory clusters & ", mc(expected_draws * 6L), " & ",
+      mc(expected_draws * 6L), " & ", mc(expected_draws * 6L), " \\\\"
     ),
     paste0(
-      "Meeting clusters & ", expected_meetings, " & ", expected_meetings,
-      " & ", expected_meetings, " \\\\"
+      "Meeting clusters & ", mc(expected_meetings), " & ", mc(expected_meetings),
+      " & ", mc(expected_meetings), " \\\\"
     ),
     paste0(
-      "Regeneration replicates & ", expected_draws, " & ", expected_draws,
-      " & ", expected_draws, " \\\\"
+      "Regeneration replicates & ", mc(expected_draws), " & ", mc(expected_draws),
+      " & ", mc(expected_draws), " \\\\"
     ),
     "\\bottomrule",
     "\\end{tabular}",
@@ -483,7 +484,7 @@ if (publish_paper) {
   write_arm_table(paper_table_output)
 }
 
-gradient_order <- c("hawk_high", "hawk_low", "neutral", "dove_low", "dove_high")
+gradient_order <- c("dove_high", "dove_low", "neutral", "hawk_low", "hawk_high")
 gradient_labels <- c(
   hawk_high = "High\nhawk",
   hawk_low = "Low\nhawk",
@@ -648,123 +649,6 @@ ggsave(
   bg = "white"
 )
 
-paper_section_output <- NULL
-if (publish_paper) {
-  section_arm_order <- c(
-    "hawk_high", "hawk_low", "neutral", "dove_low", "dove_high"
-  )
-  composite_effects <- arm_effects[sample == "Composite"]
-  section_bp <- setNames(
-    vapply(section_arm_order, function(arm_name) {
-      100 * composite_effects[get("arm") == arm_name, estimate][[1]]
-    }, numeric(1)),
-    section_arm_order
-  )
-  section_trend <- path_trends[sample == "Composite"][1]
-  format_section_p <- function(p_value) {
-    if (is.na(p_value)) {
-      return("p unavailable")
-    }
-    if (p_value < 0.001) {
-      "$p<0.001$"
-    } else {
-      sprintf("$p=%.3f$", p_value)
-    }
-  }
-  monotonicity_text <- if (all(diff(section_bp) <= 0)) {
-    paste0(
-      "The five composite means are monotone in the intended direction, ",
-      "from high hawk to high dove. "
-    )
-  } else {
-    paste0(
-      "The five composite means are not monotone at every adjacent step, so the ",
-      "linear coefficient is interpreted as an average path gradient rather than ",
-      "as evidence that every neighboring intensity is separately ordered. "
-    )
-  }
-  paper_section_output <- file.path(
-    args$paper_table_dir,
-    "rr_arm_specific_prior_dose_section.tex"
-  )
-  section_lines <- c(
-    "\\subsubsection[Recursive arm-specific prior paths]{\\color{revisionred}Recursive arm-specific prior paths}",
-    "\\label{subsec:arm-specific-prior-dose}",
-    "{\\color{revisionred}",
-    paste0(
-      "Figure~\\ref{fig:arm-specific-prior-dose-gradient} and ",
-      "Table~\\ref{tab:arm-specific-prior-dose-arms} report the complementary ",
-      "recursive-path exercise. Unlike the common-prior design, only the initial ",
-      "3.80 percent forecast is shared. From the second meeting onward, each ",
-      "textual arm receives the forecast generated by that same arm in the ",
-      "preceding meeting; the original text follows its own recursive reference ",
-      "path. The comparison therefore captures accumulated synthetic state ",
-      "dependence rather than the one-shot effect of the current communication."
-    ),
-    "\\par}",
-    "\\begin{figure}[htbp]",
-    "\\color{revisionred}",
-    "\\centering",
-    paste0(
-      "\\includegraphics[width=\\textwidth]{graficos/",
-      args$figure_stem,
-      ".pdf}"
-    ),
-    paste0(
-      "\\caption{Generated-text tone and persistent synthetic forecast paths ",
-      "under arm-specific recursive priors}"
-    ),
-    "\\label{fig:arm-specific-prior-dose-gradient}",
-    "\\begin{minipage}{0.95\\textwidth}",
-    "\\footnotesize",
-    paste0(
-      "\\textit{Notes:} Panel A reports the tone score measured in each ",
-      "LLM-generated rewrite, not the tone of the published Copom minute. ",
-      "Panel B reports the calibrated synthetic forecast-level gap relative to ",
-      "the recursive original-text path. Every arm starts from 3.80 percent at ",
-      "the first meeting and then uses only its own lagged forecast as its prior. ",
-      "One basis point equals 0.01 percentage point. Whiskers are 95 percent ",
-      "confidence intervals based on two-way clustered standard errors by Copom ",
-      "meeting and recursive trajectory (regeneration replicate by textual arm)."
-    ),
-    "\\end{minipage}",
-    "\\end{figure}",
-    "{\\color{revisionred}",
-    paste0(
-      "Relative to the recursive original-text path, the composite forecast gaps ",
-      "are $", sprintf("%+.2f", section_bp[["hawk_high"]]), "$ bp under high hawk, ",
-      "$", sprintf("%+.2f", section_bp[["hawk_low"]]), "$ bp under low hawk, ",
-      "$", sprintf("%+.2f", section_bp[["neutral"]]), "$ bp under neutral, ",
-      "$", sprintf("%+.2f", section_bp[["dove_low"]]), "$ bp under low dove, and ",
-      "$", sprintf("%+.2f", section_bp[["dove_high"]]), "$ bp under high dove. "
-    ),
-    paste0(
-      "The linear path gradient is $",
-      sprintf("%+.2f", 100 * section_trend$estimate),
-      "$ bp per step toward hawkishness (two-way clustered standard error ",
-      sprintf("%.2f", 100 * section_trend$std_error),
-      "; ",
-      format_section_p(section_trend$p_value),
-      "). ",
-      monotonicity_text,
-      "Table~\\ref{tab:arm-specific-prior-dose-arms} reports the anchored and ",
-      "unanchored components using the same specification."
-    ),
-    "\\par}",
-    "\\input{tabelas/rr_arm_specific_prior_dose_arm_effects.tex}",
-    "{\\color{revisionred}",
-    paste0(
-      "Because the prior is endogenous to earlier synthetic responses within each ",
-      "path, these coefficients are persistent model-trajectory comparisons. They ",
-      "are deliberately reported alongside, and not substituted for, the immediate ",
-      "common-prior Prompt-IV estimand."
-    ),
-    "\\par}",
-    "\\FloatBarrier"
-  )
-  writeLines(section_lines, paper_section_output, useBytes = TRUE)
-}
-
 summary <- list(
   run_id = args$run_id,
   tasks = unname(task_status$tasks),
@@ -784,7 +668,6 @@ summary <- list(
     trends_csv = path_trends_path,
     table_tex = table_output,
     paper_table_tex = paper_table_output,
-    paper_section_tex = paper_section_output,
     figure_pdf = pdf_path,
     figure_png = png_path
   )

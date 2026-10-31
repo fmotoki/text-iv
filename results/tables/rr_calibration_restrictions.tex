@@ -2,30 +2,30 @@
 \color{revisionred}
 \centering
 \begin{threeparttable}
-\caption{Calibration weights under admissibility restrictions}
+\caption{Calibration weights after removing word count}
 \label{tab:calibration-restrictions}
 \begin{scriptsize}
 \setlength{\tabcolsep}{3.8pt}
-\begin{tabular}{lcccc}
+\begin{tabular}{ldddd}
 \toprule
- & (1) & (2) & (3) & (4) \\
- & Unrestricted & Convex & Hierarchical & Empirical Bayes \\
+ & \mc{(1)} & \mc{(2)} & \mc{(3)} & \mc{(4)} \\
+ & \mc{OLS} & \mc{Convex shares} & \mc{Bayesian shares} & \mc{Ridge shrinkage} \\
 \midrule
 Anchored weight & 0.0262 & 0.6710 & 0.6523 & 0.5233 \\
- & (0.3282) & (0.1374) & (0.1192) & (0.0190) \\
+95\% interval & \mc{[-0.6170, 0.6694]} & \mc{[0.4034, 0.9307]} & \mc{[0.4179, 0.8927]} & \mc{[0.4892, 0.5623]} \\
 \addlinespace
-Unanchored weight & 0.6651*** & 0.3290 & 0.3477 & 0.4767 \\
- & (0.2119) & (0.1374) & (0.1192) & (0.0190) \\
+Unanchored weight & 0.6651 & 0.3290 & 0.3477 & 0.4767 \\
+95\% interval & \mc{[0.2497, 1.0805]} & \mc{[0.0693, 0.5966]} & \mc{[0.1073, 0.5821]} & \mc{[0.4377, 0.5108]} \\
 \midrule
-Weights sum to one & No & Yes & Yes & Yes \\
-Nonnegative weights imposed & No & Yes & Yes & No \\
-Word-count control & No & No & No & No \\
-Observations & 71 & 71 & 71 & 71 \\
+Weights sum to one & \mc{No} & \mc{Yes} & \mc{Yes} & \mc{Yes} \\
+Weights restricted to $[0,1]$ & \mc{No} & \mc{Yes} & \mc{Yes} & \mc{No} \\
+Word count included & \mc{No} & \mc{No} & \mc{No} & \mc{No} \\
+Observations & \mc{71} & \mc{71} & \mc{71} & \mc{71} \\
 \bottomrule
 \end{tabular}
 \begin{tablenotes}[flushleft]
 \scriptsize
-\item \textit{Notes:} The outcome is the median twelve-month-ahead Focus IPCA expectation. Column (1) is OLS without the original-text word count; parentheses contain HC2 heteroskedasticity-robust standard errors, and stars apply only to this column. Column (2) solves the nonnegative unit-sum quadratic program; parentheses contain meeting-bootstrap standard deviations from 1,999 replications. Column (3) reports posterior means with posterior standard deviations in parentheses from a learned symmetric Dirichlet prior. Column (4) reports the empirical-Bayes ridge centered on equal weights with meeting-bootstrap standard deviations in parentheses; it imposes unit sum but not nonnegativity in every bootstrap replication. Conventional significance stars are not reported for Columns (2)--(4) because boundary constraints, posterior uncertainty, and shrinkage make their reference distributions nonstandard. For Column (1), * $p < 0.10$, ** $p < 0.05$, *** $p < 0.01$. The table concerns calibration weights, not population shares.
+\item \textit{Notes:} The outcome is the median twelve-month-ahead Focus IPCA expectation. Every specification includes a constant and the three IBC-Br controls. Column (1) reports OLS estimates and HC2 confidence intervals. Column (2) restricts both weights to the unit interval and their sum to one; its confidence intervals use percentiles from 1,999 meeting bootstrap replications. Column (3) reports posterior means and 95 percent credible intervals under a symmetric Dirichlet prior with concentration estimated from the data. Column (4) reports empirical Bayes ridge estimates centered on equal weights; the weights sum to one and may fall outside the unit interval. Its confidence intervals use percentiles from 1,999 meeting bootstrap replications.
 \end{tablenotes}
 \end{scriptsize}
 \end{threeparttable}

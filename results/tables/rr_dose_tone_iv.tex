@@ -2,41 +2,41 @@
 \color{revisionred}
 \centering
 \begin{threeparttable}
-\caption{Five-level assigned-dose IV under alternative tone measures}
+\caption{Dose-response IV estimates using two tone measures}
 \label{tab:dose-tone-iv}
 \begin{scriptsize}
-\begin{tabular}{lccc}
+\begin{tabular}{ldd}
 \toprule
- & (1) & (2) & (3) \\
- & Lexicon & Blinded semantic & Blinded pairwise \\
+ & \mc{(1)} & \mc{(2)} \\
+ & \mc{Lexicon} & \mc{Direct rating} \\
 \midrule
-\multicolumn{4}{l}{\textit{Panel A. Unrestricted descriptive calibration}} \\
-Second-stage coefficient & 0.0290*** & 0.1414*** & 0.0443*** \\
- & (0.0056) & (0.0300) & (0.0088) \\
-Effect per measure SD & 0.0315 & 0.0856 & 0.0326 \\
+\multicolumn{3}{l}{\textit{Panel A. Unrestricted descriptive calibration}} \\
+Second-stage coefficient & 0.0290\sym{***} & 0.1414\sym{***} \\
+ & (0.0056) & (0.0300) \\
+Effect per measure SD & 0.0315 & 0.0856 \\
 \addlinespace
-First-stage coefficient & 0.3334 & 0.0683 & 0.2183 \\
- & (0.0071) & (0.0068) & (0.0097) \\
-First-stage $F$ & 2193.8 & 101.1 & 508.7 \\ 
+First-stage coefficient & 0.3334 & 0.0683 \\
+ & (0.0071) & (0.0068) \\
+First-stage $F$ & 2193.8 & 101.1 \\ 
 \addlinespace
-\multicolumn{4}{l}{\textit{Panel B. Hierarchical simplex calibration}} \\
-Second-stage coefficient & 0.0266*** & 0.1297*** & 0.0406*** \\
- & (0.0041) & (0.0237) & (0.0065) \\
-Effect per measure SD & 0.0289 & 0.0785 & 0.0299 \\
+\multicolumn{3}{l}{\textit{Panel B. Bayesian share calibration}} \\
+Second-stage coefficient & 0.0266\sym{***} & 0.1297\sym{***} \\
+ & (0.0041) & (0.0237) \\
+Effect per measure SD & 0.0289 & 0.0785 \\
 \addlinespace
-First-stage coefficient & 0.3334 & 0.0683 & 0.2183 \\
- & (0.0071) & (0.0068) & (0.0097) \\
-First-stage $F$ & 2193.8 & 101.1 & 508.7 \\ 
+First-stage coefficient & 0.3334 & 0.0683 \\
+ & (0.0071) & (0.0068) \\
+First-stage $F$ & 2193.8 & 101.1 \\ 
 \midrule
-Pair fixed effects & Yes & Yes & Yes \\
-SE clustered by meeting & Yes & Yes & Yes \\
-Observations & 1,775 & 1,775 & 1,775 \\
-Meeting clusters & 71 & 71 & 71 \\
+Pair fixed effects & \mc{Yes} & \mc{Yes} \\
+SE clustered by meeting & \mc{Yes} & \mc{Yes} \\
+Observations & \mc{1,775} & \mc{1,775} \\
+Meeting clusters & \mc{71} & \mc{71} \\
 \bottomrule
 \end{tabular}
 \begin{tablenotes}[flushleft]
 \scriptsize
-\item \textit{Notes:} Assigned doses are $-2,-1,0,1,2$ for high dove, low dove, neutral, low hawk, and high hawk. The lexicon, semantic, and pairwise scores are independently scaled, so coefficient magnitudes are not directly comparable. The pairwise score is ordinal and is included as a robustness measure rather than a cardinal tone index. Standard errors are clustered by Copom meeting. * $p<0.10$, ** $p<0.05$, *** $p<0.01$.
+\item \textit{Notes:} Assigned doses are $-2,-1,0,1,2$ for high intensity dove, low intensity dove, neutral, low intensity hawk, and high intensity hawk. For the direct rating, GPT-5.5 scores each text without its assignment label from $-1$ for very dovish to $1$ for very hawkish. The two measures use different scales. Standard errors are clustered by Copom meeting. * $p<0.10$, ** $p<0.05$, *** $p<0.01$.
 \end{tablenotes}
 \end{scriptsize}
 \end{threeparttable}

@@ -272,9 +272,9 @@ fmt <- function(value, digits = 4L) {
   formatC(value, format = "f", digits = digits)
 }
 significance_stars <- function(p_value) {
-  if (p_value < 0.01) return("***")
-  if (p_value < 0.05) return("**")
-  if (p_value < 0.10) return("*")
+  if (p_value < 0.01) return("\\sym{***}")
+  if (p_value < 0.05) return("\\sym{**}")
+  if (p_value < 0.10) return("\\sym{*}")
   ""
 }
 
@@ -318,6 +318,8 @@ write_expanding_table <- function(path) {
   model_order <- c(
     "composite",
     "focus_ar1",
+    "anchored_agent",
+    "unanchored_agent",
     "equal_weight",
     "bates_granger"
   )
@@ -333,10 +335,10 @@ write_expanding_table <- function(path) {
     "\\caption{Expanding-window forecast accuracy for Focus expectations}",
     "\\label{tab:llm-expanding}",
     "\\begin{scriptsize}",
-    "\\setlength{\\tabcolsep}{4.5pt}",
-    "\\begin{tabular}{lcccc}",
+    "\\setlength{\\tabcolsep}{3.0pt}",
+      "\\begin{tabular*}{\\textwidth}{@{\\extracolsep{\\fill}}lcccccc@{}}",
     "\\toprule",
-    " & LLM composite & Focus AR(1) & Equal weight & Bates--Granger \\\\",
+    " & Composite & Focus AR(1) & Anchored & Unanchored & Equal weight & Bates--Granger \\\\",
     "\\midrule",
     paste0("RMSE (pp) & ", value_row("rmse"), " \\\\"),
     paste0("MAE (pp) & ", value_row("mae"), " \\\\"),
@@ -356,7 +358,7 @@ write_expanding_table <- function(path) {
       " \\\\"
     ),
     "\\bottomrule",
-    "\\end{tabular}",
+      "\\end{tabular*}",
     "\\begin{tablenotes}[flushleft]",
     "\\scriptsize",
     paste(
@@ -399,9 +401,9 @@ write_loss_test_table <- function(path) {
     "\\caption{HAC tests of mean squared-error differentials against Focus AR(1)}",
     "\\label{tab:llm-gw}",
     "\\begin{footnotesize}",
-    "\\begin{tabular}{lccc}",
+    "\\begin{tabular}{lddd}",
     "\\toprule",
-    "Competing model & Mean loss differential & HAC SE & $t$ statistic \\\\",
+    "Competing model & \\mc{Mean loss differential} & \\mc{HAC SE} & \\mc{$t$ statistic} \\\\",
     "\\midrule",
     body,
     "\\bottomrule",
