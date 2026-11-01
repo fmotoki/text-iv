@@ -1,12 +1,17 @@
-"""Download all available Copom minutes without overwriting existing files.
+"""Download available Copom minutes and update their meeting-date mapping.
 
 Requires requests, beautifulsoup4 and PyMuPDF (imported as fitz). The Banco
 Central API provides older minutes as HTML or links to PDFs. Historical files
 retain the available document text; modern files contain the policy discussion
-in the same format as the existing recent minutes.
+in the same format as the existing recent minutes. Existing minute text files
+are never overwritten; _dates.csv is refreshed for meetings 203 onward.
 """
 
+import csv
+import io
 import re
+import tempfile
+from datetime import date
 from pathlib import Path
 
 import fitz
@@ -17,6 +22,7 @@ from bs4 import BeautifulSoup
 # The script lives in replication/code/01_data_preparation.
 MINUTES_DIR = Path(__file__).resolve().parents[2] / "data" / "raw" / "copom_minutes"
 API_URL = "https://www.bcb.gov.br/api/servico/sitebcb/copom"
+FIRST_ANALYSIS_MEETING = 203
 
 # Increase the requested count if the listing fills the current limit.
 quantity = 1000
@@ -34,6 +40,42 @@ meeting_numbers = [record["nroReuniao"] for record in listing]
 if (any(not isinstance(number, int) or number < 1 for number in meeting_numbers)
         or len(meeting_numbers) != len(set(meeting_numbers))):
     raise ValueError("The API listing contains invalid or duplicate meeting numbers")
+
+# Use the API reference date (the meeting date), not the publication date.
+# A contiguous sample check prevents an incomplete listing from replacing an
+# existing mapping with a shorter one.
+meeting_dates = sorted(
+    (record["nroReuniao"], record["dataReferencia"])
+    for record in listing
+    if record["nroReuniao"] >= FIRST_ANALYSIS_MEETING
+)
+if (not meeting_dates
+        or [number for number, _ in meeting_dates]
+        != list(range(FIRST_ANALYSIS_MEETING, meeting_dates[-1][0] + 1))):
+    raise ValueError("The API listing does not contain a complete sample from meeting 203")
+for meeting, meeting_date in meeting_dates:
+    try:
+        if date.fromisoformat(meeting_date).isoformat() != meeting_date:
+            raise ValueError("Date is not in YYYY-MM-DD format")
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"Invalid reference date for meeting {meeting}: {meeting_date}") from error
+
+dates_path = MINUTES_DIR / "_dates.csv"
+if dates_path.exists():
+    with dates_path.open(encoding="utf-8", newline="") as existing_file:
+        existing_dates = csv.DictReader(existing_file)
+        if existing_dates.fieldnames != ["meeting_number", "meeting_date"]:
+            raise ValueError(f"Unexpected date-mapping columns: {dates_path}")
+        existing_numbers = [int(row["meeting_number"]) for row in existing_dates]
+    if (len(existing_numbers) != len(set(existing_numbers))
+            or not set(existing_numbers).issubset({number for number, _ in meeting_dates})):
+        raise ValueError("The API listing is missing meetings in the existing date mapping")
+
+date_buffer = io.StringIO(newline="")
+date_writer = csv.writer(date_buffer, lineterminator="\n")
+date_writer.writerow(["meeting_number", "meeting_date"])
+date_writer.writerows(meeting_dates)
+date_bytes = date_buffer.getvalue().encode("utf-8")
 
 missing_meetings = [
     number for number in sorted(meeting_numbers)
@@ -144,4 +186,21 @@ for meeting, text in minutes.items():
     else:
         print(f"Saved: {destination.name}")
 
-print(f"Finished. Existing files were left unchanged.")
+# Replace the date mapping only after all requested minute texts are prepared.
+# A temporary file in the same directory keeps the previous CSV intact if
+# writing fails and allows the final replacement to be atomic.
+if not dates_path.exists() or dates_path.read_bytes() != date_bytes:
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=MINUTES_DIR, delete=False) as temporary_file:
+            temporary_path = Path(temporary_file.name)
+            temporary_file.write(date_bytes)
+        temporary_path.replace(dates_path)
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+    print(f"Updated: {dates_path.name} ({len(meeting_dates)} meetings)")
+else:
+    print(f"Already current: {dates_path.name} ({len(meeting_dates)} meetings)")
+
+print("Finished. Existing minute text files were left unchanged.")
