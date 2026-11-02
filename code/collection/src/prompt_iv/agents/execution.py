@@ -10,6 +10,7 @@ from prompt_iv.agents.simulation import build_agent_request, parse_agent_decisio
 from prompt_iv.io.jsonl import append_jsonl, read_jsonl
 from prompt_iv.io.minutes import read_text
 from prompt_iv.llm.runner import LLMRunner
+from prompt_iv.paths import load_spec, specification_metadata, validate_artifact_path
 
 
 COMPLETED_STATUSES = {"completed"}
@@ -42,6 +43,9 @@ def _valid_resume_prefix(
     tasks: list[dict],
     latest_rows: dict[str, dict],
     resumable_statuses: set[str],
+    model: str,
+    reasoning_effort: str,
+    temperature: float,
 ) -> tuple[set[str], float | None]:
     """Return task ids that form a valid recursive prefix and its final state.
 
@@ -68,7 +72,14 @@ def _valid_resume_prefix(
             float(current_expectation) if current_expectation is not None else float(task["initial_expectation"])
         )
         if not _float_equal(float(row["previous_expectation"]), expected_previous):
-            break
+            raise ValueError("Cached agent prior differs from its chronological predecessor")
+        request = build_agent_request(text=read_text(task["source_path"]),
+            forecaster_type=str(task["forecaster_type"]), previous_expectation=expected_previous,
+            inflation_target=float(task["inflation_target"]), seed=int(task["agent_seed"]),
+            meeting_number=int(task["meeting_number"]), model=model,
+            reasoning_effort=reasoning_effort, temperature=temperature)
+        if row.get("runner_dry_run") or row.get("request_input_hash") != request.input_hash or any(row.get(key) != value for key, value in specification_metadata().items()):
+            raise ValueError("Cached agent source/prompt/model/specification differs")
 
         done_ids.add(task_id)
         current_expectation = float(row["new_expectation"])
@@ -121,6 +132,12 @@ def _execute_agent_sequence(
                 new_expectation = None
                 output_hash = None
                 stats["usage_limited"] += 1
+            elif (response.metadata or {}).get("returncode") not in (None, 0):
+                status = "failed"
+                perceived_tone = None
+                new_expectation = None
+                output_hash = _sha256_text(response.text)
+                stats["failed"] += 1
             else:
                 try:
                     decision = parse_agent_decision(response.text)
@@ -193,13 +210,18 @@ def execute_agent_manifest(
     manifest_path: str | Path,
     output_jsonl: str | Path,
     runner: LLMRunner,
-    model: str = "gpt-5.5",
+    model: str = "gpt-5.6-terra",
     reasoning_effort: str = "high",
     temperature: float = 1.0,
     limit: int | None = None,
     resume: bool = True,
     max_workers: int = 1,
 ) -> dict:
+    spec = load_spec(require_frozen=True)
+    validate_artifact_path(manifest_path, spec)
+    output_jsonl = validate_artifact_path(output_jsonl, spec)
+    if (model, reasoning_effort) != (spec["model"], spec["reasoning_effort"]):
+        raise ValueError("Agent model/effort disagree with the specification")
     tasks = read_jsonl(manifest_path)
     existing = read_jsonl(output_jsonl) if resume else []
     resumable_statuses = set(COMPLETED_STATUSES)
@@ -214,7 +236,8 @@ def execute_agent_manifest(
     done_ids: set[str] = set()
     state: dict[tuple[str, str, int], float] = {}
     for key, group_tasks in grouped_all.items():
-        group_done, group_state = _valid_resume_prefix(group_tasks, latest_rows, resumable_statuses)
+        group_done, group_state = _valid_resume_prefix(group_tasks, latest_rows, resumable_statuses,
+                                                      model, reasoning_effort, temperature)
         done_ids.update(group_done)
         if group_state is not None:
             state[key] = group_state
@@ -280,6 +303,8 @@ def execute_agent_manifest(
         parse_failed += stats["parse_failed"]
         usage_limited += stats["usage_limited"]
 
+    for record in records:
+        record.update(specification_metadata(spec))
     written = append_jsonl(output_jsonl, records)
     attempted = len(records)
     return {

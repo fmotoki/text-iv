@@ -1,5 +1,26 @@
 # Prompt-IV SQLite database
 
+## Current Terra route
+
+Use the [Terra protocol](terra56_collection_validation_protocol.md) and explicit
+specification. The new warehouse, candidate frozen source, and working database
+are distinct paths under the sibling artifact run. All seven source/agent/scorer
+identities are recorded. Candidate export is read-only on the warehouse and
+refuses an existing target. Scoring imports and embedding writes are scoped to
+the selected cohorts and preserve old rows.
+
+Only a minutes bootstrap and the initial selected dose manifest use file sync
+before DB-first execution. Never resync an executed DB-first dose run, use
+all-directory discovery, or use `--replace`. Resume validates exact configuration,
+source/prompt hashes, model/effort, and real completion. Raw blinded tables use
+the scorer run with a source-run link. Realized doses retain the dose source run
+and identify the scorer separately. Embedding metadata is keyed by run and model.
+
+Production collection and the new frozen source remain unrun. The historical
+commands below document old behavior and are not current execution instructions.
+
+## Historical collection record
+
 This file documents the historical author-side collection workflow. Exact reproduction
 of the paper does not run these commands; it starts from the immutable, curated snapshot
 `data/generated/prompt_iv_replication_source.sqlite`. Within the released package, the

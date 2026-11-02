@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 from prompt_iv.agents.common_prior import (
@@ -30,7 +31,7 @@ from prompt_iv.generation.corpus import assemble_counterfactual_corpus
 from prompt_iv.generation.execution import execute_rewrite_database, execute_rewrite_manifest
 from prompt_iv.generation.quality import evaluate_counterfactual_results
 from prompt_iv.llm.runner import CodexCliRunner, DryRunRunner, LLMRequest
-from prompt_iv.paths import load_paths
+from prompt_iv.paths import load_paths, load_spec, validate_artifact_path
 from prompt_iv.pipelines.full import run_safe_pipeline
 from prompt_iv.pipelines.generation import prepare_generation_plan
 from prompt_iv.pipelines.replication import (
@@ -45,6 +46,7 @@ from prompt_iv.pipelines.tone import score_counterfactual_minutes, score_minutes
 from prompt_iv.pipelines.empirical import estimate_baseline
 from prompt_iv.referees.backlog import parse_revision_plan, write_backlog_yaml
 from prompt_iv.storage import sync_project_database
+from prompt_iv.storage.sqlite import connect_database, sync_minutes
 from prompt_iv.tone import SentimentAnalyzer
 
 
@@ -132,6 +134,25 @@ def cmd_sync_database(args: argparse.Namespace) -> int:
     if not minutes_dir.is_absolute():
         minutes_dir = paths.root / minutes_dir
     run_dirs = [_resolve_project_path(paths.root, item) for item in args.run_dir] if args.run_dir else None
+    if args.replace:
+        raise ValueError("Prospective collection never replaces a database")
+    if args.minutes_only:
+        if run_dirs:
+            raise ValueError("--minutes-only cannot include --run-dir")
+        conn = connect_database(args.output)
+        try:
+            with conn:
+                count = sync_minutes(conn, paths.root, minutes_dir)
+                found = {int(row[0]) for row in conn.execute("SELECT meeting_number FROM minutes")}
+                if not set(paths.specification["sample"]["meeting_numbers"]).issubset(found):
+                    raise ValueError("Selected original minutes are incomplete")
+            summary = {"database": args.output, "minutes_ingested": count, "minutes_only": True}
+        finally:
+            conn.close()
+        print(json.dumps(summary, ensure_ascii=False, indent=2))
+        return 0
+    if not run_dirs:
+        raise ValueError("Provide explicit --run-dir selections. Automatic all-directory sync is disabled.")
     summary = sync_project_database(
         db_path=_resolve_project_path(paths.root, args.output),
         root=paths.root,
@@ -158,7 +179,7 @@ def cmd_generate_counterfactuals(args: argparse.Namespace) -> int:
         iterations=args.iterations,
         parts=args.parts,
         max_meetings=args.max_meetings,
-        meeting_numbers=_split_int_csv(args.meeting_numbers),
+        meeting_numbers=_meeting_selection(args),
         prompt_version=args.prompt_version,
     )
     runner = DryRunRunner(log_path=paths.logs_dir / "generation_plan_dry_run.jsonl")
@@ -188,6 +209,7 @@ def cmd_run_agents(args: argparse.Namespace) -> int:
         initial_expectation=args.initial_expectation,
         random_seed=args.random_seed,
         max_meetings=args.max_meetings,
+        meeting_numbers=paths.specification["sample"]["meeting_numbers"],
     )
     written = write_agent_plan_manifest(tasks, output)
     summary = summarize_agent_plan(tasks)
@@ -296,6 +318,13 @@ def cmd_audit_common_prior_db(args: argparse.Namespace) -> int:
     return 0 if ready else 1
 
 
+# argparse requires one callback for this existing audit primitive.
+def cmd_audit_original_priors_db(args: argparse.Namespace) -> int:
+    report = audit_original_prior_run(args.database, args.run_id)
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+    return 0 if report["ready"] else 1
+
+
 def cmd_prepare_arm_specific_priors_db(args: argparse.Namespace) -> int:
     paths = load_paths(Path(args.root) if args.root else None)
     database = _resolve_project_path(paths.root, args.database)
@@ -363,6 +392,8 @@ def cmd_prepare_replication(args: argparse.Namespace) -> int:
         temperature=args.temperature,
         max_meetings=args.max_meetings,
         prompt_version=args.prompt_version,
+        meeting_numbers=_meeting_selection(args),
+        run_directory=args.run_directory,
     )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0
@@ -471,6 +502,7 @@ def cmd_assemble_counterfactuals(args: argparse.Namespace) -> int:
         output_csv=output,
         required_stances=tuple(_split_csv(args.required_stances)),
         require_complete=not args.allow_incomplete,
+        manifest_path=args.manifest,
     )
     print(json.dumps({"rows": len(df), "output": str(output), "columns": list(df.columns)}, ensure_ascii=False, indent=2))
     return 0
@@ -481,9 +513,10 @@ def cmd_evaluate_counterfactuals(args: argparse.Namespace) -> int:
     results = _resolve_project_path(paths.root, args.results)
     output = _resolve_project_path(paths.root, args.output)
     details = _resolve_project_path(paths.root, args.details_output)
-    summary = evaluate_counterfactual_results(results, output_json=output, details_csv=details)
+    summary = evaluate_counterfactual_results(results, output_json=output, details_csv=details,
+                                              manifest_path=args.manifest)
     print(json.dumps(summary, ensure_ascii=False, indent=2))
-    return 0
+    return 0 if summary["acceptance_passed"] else 1
 
 
 def cmd_prepare_semantic_tone(args: argparse.Namespace) -> int:
@@ -639,7 +672,6 @@ def cmd_estimate_baseline(args: argparse.Namespace) -> int:
                 "n_meetings": report["n_meetings"],
                 "mixture_r2": report["mixture"]["r2"],
                 "llm_fit_r2": report["llm_fit"]["r2"],
-                "beta_iv_profile_composite": report["prompt_iv"]["beta_iv"],
                 "focus_tone_observational": report["focus_ar"]["beta_focus"],
                 "focus_persistence": report["focus_ar"]["rho_focus"],
                 "design_status": report["design_status"],
@@ -665,6 +697,7 @@ def cmd_run_pipeline(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="prompt-iv")
+    parser.add_argument("--spec", help="Explicit specification. Alternatively set REPLICATION_SPEC_PATH.")
     parser.add_argument("--root", help="Project root. Defaults to auto-discovery.")
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -692,6 +725,8 @@ def build_parser() -> argparse.ArgumentParser:
     gen.add_argument("--parts", type=int, default=5)
     gen.add_argument("--max-meetings", type=int, help="Limit the number of meetings for smoke planning.")
     gen.add_argument("--meeting-numbers", help="Comma-separated meeting numbers to include, e.g. 28,29.")
+    gen.add_argument("--first-meeting", type=int, default=203)
+    gen.add_argument("--last-meeting", type=int, default=281)
     gen.add_argument(
         "--prompt-version",
         default="production_v0.2",
@@ -726,12 +761,12 @@ def build_parser() -> argparse.ArgumentParser:
     prior_prepare.add_argument("--database", default="data/interim/prompt_iv.sqlite")
     prior_prepare.add_argument("--run-id", required=True)
     prior_prepare.add_argument("--first-meeting", type=int, default=203)
-    prior_prepare.add_argument("--last-meeting", type=int, default=273)
+    prior_prepare.add_argument("--last-meeting", type=int, default=281)
     prior_prepare.add_argument("--meeting-numbers", help="Optional comma-separated meeting subset.")
     prior_prepare.add_argument("--forecaster-types", default="anchored,unanchored")
     prior_prepare.add_argument("--initial-expectation", type=float, default=3.80)
     prior_prepare.add_argument("--random-seed", type=int, default=20260712)
-    prior_prepare.add_argument("--model", default="gpt-5.5")
+    prior_prepare.add_argument("--model", default="gpt-5.6-terra")
     prior_prepare.add_argument("--reasoning-effort", default="high")
     prior_prepare.add_argument("--temperature", type=float, default=1.0)
     prior_prepare.set_defaults(func=cmd_prepare_original_priors_db)
@@ -757,13 +792,13 @@ def build_parser() -> argparse.ArgumentParser:
     common_prepare.add_argument("--source-run-id", required=True)
     common_prepare.add_argument("--prior-run-id", required=True)
     common_prepare.add_argument("--first-meeting", type=int, default=203)
-    common_prepare.add_argument("--last-meeting", type=int, default=273)
+    common_prepare.add_argument("--last-meeting", type=int, default=281)
     common_prepare.add_argument("--meeting-numbers", help="Optional comma-separated meeting subset.")
     common_prepare.add_argument("--iterations", required=True, help="Comma-separated source draw numbers.")
     common_prepare.add_argument("--roles", default="hawk,dove")
     common_prepare.add_argument("--forecaster-types", default="anchored,unanchored")
     common_prepare.add_argument("--random-seed", type=int, default=20260712)
-    common_prepare.add_argument("--model", default="gpt-5.5")
+    common_prepare.add_argument("--model", default="gpt-5.6-terra")
     common_prepare.add_argument("--reasoning-effort", default="high")
     common_prepare.add_argument("--temperature", type=float, default=1.0)
     common_prepare.set_defaults(func=cmd_prepare_common_prior_agents_db)
@@ -792,6 +827,10 @@ def build_parser() -> argparse.ArgumentParser:
     common_audit.add_argument("--prior-run-id")
     common_audit.add_argument("--iterations", help="Audit only this comma-separated draw gate.")
     common_audit.set_defaults(func=cmd_audit_common_prior_db)
+    original_audit = sub.add_parser("audit-original-priors-db", help="Audit the original chronological trajectories.")
+    original_audit.add_argument("--database", required=True)
+    original_audit.add_argument("--run-id", required=True)
+    original_audit.set_defaults(func=cmd_audit_original_priors_db)
 
     arm_prior_prepare = sub.add_parser(
         "prepare-arm-specific-priors-db",
@@ -804,7 +843,7 @@ def build_parser() -> argparse.ArgumentParser:
     arm_prior_prepare.add_argument("--run-id", required=True)
     arm_prior_prepare.add_argument("--source-run-id", required=True)
     arm_prior_prepare.add_argument("--first-meeting", type=int, default=203)
-    arm_prior_prepare.add_argument("--last-meeting", type=int, default=273)
+    arm_prior_prepare.add_argument("--last-meeting", type=int, default=281)
     arm_prior_prepare.add_argument("--meeting-numbers", help="Optional comma-separated meeting subset.")
     arm_prior_prepare.add_argument("--iterations", required=True, help="Comma-separated source draw numbers.")
     arm_prior_prepare.add_argument(
@@ -814,7 +853,7 @@ def build_parser() -> argparse.ArgumentParser:
     arm_prior_prepare.add_argument("--forecaster-types", default="anchored,unanchored")
     arm_prior_prepare.add_argument("--initial-expectation", type=float, default=3.80)
     arm_prior_prepare.add_argument("--random-seed", type=int, default=20260714)
-    arm_prior_prepare.add_argument("--model", default="gpt-5.5")
+    arm_prior_prepare.add_argument("--model", default="gpt-5.6-terra")
     arm_prior_prepare.add_argument("--reasoning-effort", default="high")
     arm_prior_prepare.add_argument("--temperature", type=float, default=1.0)
     arm_prior_prepare.set_defaults(func=cmd_prepare_arm_specific_priors_db)
@@ -841,12 +880,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     repl = sub.add_parser("prepare-replication", help="Create an isolated replication run directory and rewrite manifest.")
     repl.add_argument("--run-id", required=True)
+    repl.add_argument("--run-directory", required=True)
+    repl.add_argument("--meeting-numbers")
+    repl.add_argument("--first-meeting", type=int, default=203)
+    repl.add_argument("--last-meeting", type=int, default=281)
     repl.add_argument("--minutes-dir", help="Defaults to data/raw/copom_minutes if available, otherwise legacy texto/atas.")
     repl.add_argument("--stances", default="hawk,dove")
     repl.add_argument("--iterations", type=int, default=5)
     repl.add_argument("--parts", type=int, default=5)
     repl.add_argument("--max-meetings", type=int, help="Limit meetings for a pilot replication.")
-    repl.add_argument("--model", default="gpt-5.5")
+    repl.add_argument("--model", default="gpt-5.6-terra")
     repl.add_argument("--reasoning-effort", default="high")
     repl.add_argument("--temperature", type=float, default=1.0)
     repl.add_argument(
@@ -887,7 +930,7 @@ def build_parser() -> argparse.ArgumentParser:
     assemble_cf_agents.set_defaults(func=cmd_assemble_counterfactual_agents)
 
     estimate_repl = sub.add_parser("estimate-replication", help="Estimate Prompt-IV on replicated counterfactual draws.")
-    estimate_repl.add_argument("--baseline-dataset", default="outputs/work/gpt55_calibration_data.dta")
+    estimate_repl.add_argument("--baseline-dataset", default="outputs/work/calibration_data.dta")
     estimate_repl.add_argument("--tone-scores", required=True)
     estimate_repl.add_argument("--agent-wide", required=True)
     estimate_repl.add_argument("--output", required=True)
@@ -899,7 +942,7 @@ def build_parser() -> argparse.ArgumentParser:
     exec_cf.add_argument("--output", default="data/interim/counterfactuals/rewrite_results.jsonl")
     exec_cf.add_argument("--runner", choices=["dry-run", "codex"], default="dry-run")
     exec_cf.add_argument("--allow-real-llm", action="store_true", help="Required with --runner codex to permit real model calls.")
-    exec_cf.add_argument("--model", default="gpt-5.5")
+    exec_cf.add_argument("--model", default="gpt-5.6-terra")
     exec_cf.add_argument("--reasoning-effort", default="high")
     exec_cf.add_argument("--temperature", type=float, default=1.0)
     exec_cf.add_argument("--timeout-seconds", type=int, default=300)
@@ -917,7 +960,7 @@ def build_parser() -> argparse.ArgumentParser:
     exec_cf_db.add_argument("--run-id", required=True)
     exec_cf_db.add_argument("--runner", choices=["dry-run", "codex"], default="dry-run")
     exec_cf_db.add_argument("--allow-real-llm", action="store_true", help="Required with --runner codex to permit real model calls.")
-    exec_cf_db.add_argument("--model", default="gpt-5.5")
+    exec_cf_db.add_argument("--model", default="gpt-5.6-terra")
     exec_cf_db.add_argument("--reasoning-effort", default="high")
     exec_cf_db.add_argument("--temperature", type=float, default=1.0)
     exec_cf_db.add_argument("--timeout-seconds", type=int, default=300)
@@ -928,6 +971,7 @@ def build_parser() -> argparse.ArgumentParser:
     exec_cf_db.set_defaults(func=cmd_execute_counterfactuals_db)
 
     assemble_cf = sub.add_parser("assemble-counterfactuals", help="Assemble completed rewrite block results into a meeting-level CSV corpus.")
+    assemble_cf.add_argument("--manifest", required=True)
     assemble_cf.add_argument("--results", default="data/interim/counterfactuals/rewrite_results.jsonl")
     assemble_cf.add_argument("--output", default="data/interim/counterfactuals/counterfactual_corpus.csv")
     assemble_cf.add_argument("--required-stances", default="hawk,dove")
@@ -935,6 +979,7 @@ def build_parser() -> argparse.ArgumentParser:
     assemble_cf.set_defaults(func=cmd_assemble_counterfactuals)
 
     eval_cf = sub.add_parser("evaluate-counterfactuals", help="Evaluate real counterfactual rewrite outputs for numeric and tone quality.")
+    eval_cf.add_argument("--manifest", required=True)
     eval_cf.add_argument("--results", default="data/interim/counterfactuals/rewrite_results.jsonl")
     eval_cf.add_argument("--output", default="outputs/logs/counterfactual_quality_report.json")
     eval_cf.add_argument("--details-output", default="outputs/logs/counterfactual_quality_details.csv")
@@ -951,7 +996,7 @@ def build_parser() -> argparse.ArgumentParser:
     sem_exec.add_argument("--output", default="data/interim/dose_response/semantic_tone_results.jsonl")
     sem_exec.add_argument("--runner", choices=["dry-run", "codex"], default="dry-run")
     sem_exec.add_argument("--allow-real-llm", action="store_true", help="Required with --runner codex to permit real model calls.")
-    sem_exec.add_argument("--model", default="gpt-5.5")
+    sem_exec.add_argument("--model", default="gpt-5.6-terra")
     sem_exec.add_argument("--reasoning-effort", default="high")
     sem_exec.add_argument("--temperature", type=float, default=1.0)
     sem_exec.add_argument("--timeout-seconds", type=int, default=300)
@@ -970,7 +1015,7 @@ def build_parser() -> argparse.ArgumentParser:
     pair_exec.add_argument("--output", default="data/interim/dose_response/pairwise_tone_results.jsonl")
     pair_exec.add_argument("--runner", choices=["dry-run", "codex"], default="dry-run")
     pair_exec.add_argument("--allow-real-llm", action="store_true", help="Required with --runner codex to permit real model calls.")
-    pair_exec.add_argument("--model", default="gpt-5.5")
+    pair_exec.add_argument("--model", default="gpt-5.6-terra")
     pair_exec.add_argument("--reasoning-effort", default="high")
     pair_exec.add_argument("--temperature", type=float, default=1.0)
     pair_exec.add_argument("--timeout-seconds", type=int, default=300)
@@ -996,7 +1041,7 @@ def build_parser() -> argparse.ArgumentParser:
     exec_agents.add_argument("--output", default="data/interim/agents/agent_results.jsonl")
     exec_agents.add_argument("--runner", choices=["dry-run", "codex"], default="dry-run")
     exec_agents.add_argument("--allow-real-llm", action="store_true", help="Required with --runner codex to permit real model calls.")
-    exec_agents.add_argument("--model", default="gpt-5.5")
+    exec_agents.add_argument("--model", default="gpt-5.6-terra")
     exec_agents.add_argument("--reasoning-effort", default="high")
     exec_agents.add_argument("--temperature", type=float, default=1.0)
     exec_agents.add_argument("--timeout-seconds", type=int, default=300)
@@ -1017,7 +1062,8 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         help="Replication run directory to ingest. Repeatable; defaults to every data/interim/replications/* directory.",
     )
-    sync_db.add_argument("--replace", action="store_true", help="Delete and rebuild the SQLite file before syncing.")
+    sync_db.add_argument("--minutes-only", action="store_true", help="Bootstrap only original texts and hashes.")
+    sync_db.add_argument("--replace", action="store_true", help="Unsupported for prospective collection.")
     sync_db.set_defaults(func=cmd_sync_database)
 
     score_minutes = sub.add_parser("score-minutes", help="Score all Copom minute text files.")
@@ -1036,8 +1082,8 @@ def build_parser() -> argparse.ArgumentParser:
     summarize.add_argument("--output", default="docs/data_summary.csv")
     summarize.set_defaults(func=cmd_summarize_data)
 
-    estimate = sub.add_parser("estimate-baseline", help="Estimate the GPT-5.5 profile calibration and observational Focus AR benchmark.")
-    estimate.add_argument("--dataset", default="outputs/work/gpt55_calibration_data.dta")
+    estimate = sub.add_parser("estimate-baseline", help="Estimate the Terra 5.6 profile calibration and observational Focus AR benchmark.")
+    estimate.add_argument("--dataset", default="outputs/work/calibration_data.dta")
     estimate.add_argument("--output", default="outputs/tables/baseline_estimates.json")
     estimate.set_defaults(func=cmd_estimate_baseline)
 
@@ -1054,6 +1100,28 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.spec:
+        os.environ["REPLICATION_SPEC_PATH"] = str(Path(args.spec).resolve(strict=True))
+    if args.command == "score-text":
+        return args.func(args)
+    spec = load_spec(source_root=args.root, require_frozen=True)
+    args.root = spec["source_root"]
+    if hasattr(args, "model") and (args.model, args.reasoning_effort) != (spec["model"], spec["reasoning_effort"]):
+        raise ValueError("Requested model/effort do not match the specification")
+    if hasattr(args, "run_id") and args.run_id not in spec["run_ids"].values():
+        raise ValueError("Run ID is outside the selected cohort")
+    # CLI collection and audits use the mutable warehouse. Frozen analysis
+    # databases are read by the separate read-only analytical consumers.
+    artifact_fields = ("output", "details_output", "long_output", "wide_output", "text_dir",
+        "database", "manifest", "results", "corpus", "input", "semantic_results",
+        "pairwise_results", "dose_data", "tone_scores", "agent_wide", "baseline_dataset",
+        "dataset", "run_directory")
+    for field in artifact_fields:
+        value = getattr(args, field, None)
+        if value:
+            setattr(args, field, str(validate_artifact_path(value, spec, allow_frozen=False)))
+    for value in getattr(args, "run_dir", []):
+        validate_artifact_path(value, spec)
     return args.func(args)
 
 

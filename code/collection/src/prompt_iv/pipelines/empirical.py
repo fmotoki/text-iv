@@ -6,11 +6,12 @@ from pathlib import Path
 import pandas as pd
 
 from prompt_iv.econometrics import add_constant, ols
+from prompt_iv.paths import load_spec, specification_metadata, validate_artifact_path
 
 
 MIXTURE_COLUMNS = [
-    "forecast_anchored_gpt55",
-    "forecast_unanchored_gpt55",
+    "forecast_anchored",
+    "forecast_unanchored",
     "wc_orig",
     "ibcbr_agro",
     "ibcbr_service",
@@ -19,9 +20,17 @@ MIXTURE_COLUMNS = [
 
 
 def estimate_baseline(dataset_path: str | Path, output_json: str | Path | None = None) -> dict[str, object]:
+    spec = load_spec(require_frozen=True)
+    validate_artifact_path(dataset_path, spec, allow_frozen=True)
+    if output_json:
+        output_json = validate_artifact_path(output_json, spec)
     df = pd.read_stata(dataset_path).sort_values("reuniao").reset_index(drop=True)
+    if df["reuniao"].astype(int).tolist() != spec["sample"]["meeting_numbers"]:
+        raise ValueError("Calibration panel does not match the selected exact meeting set")
     needed = ["inflacao12m", *MIXTURE_COLUMNS]
     working = df.dropna(subset=needed).copy()
+    if len(working) != len(df):
+        raise ValueError("Missing calibration values cannot silently change the selected sample")
 
     x = add_constant(working, MIXTURE_COLUMNS)
     y = working["inflacao12m"].to_numpy(dtype=float)
@@ -38,9 +47,10 @@ def estimate_baseline(dataset_path: str | Path, output_json: str | Path | None =
     rho_focus = float(focus_ar["beta"][2])
 
     report = {
+        **specification_metadata(spec),
         "dataset": str(dataset_path),
         "design_status": (
-            "GPT-5.5 original-minute calibration only. Prompt-IV is estimated "
+            "Terra 5.6 original-minute calibration only. Prompt-IV is estimated "
             "from the frozen common-prior panels by the R replication master."
         ),
         "n_meetings": int(working["reuniao"].nunique()),

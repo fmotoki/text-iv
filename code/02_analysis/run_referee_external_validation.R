@@ -1,3 +1,25 @@
+# Read the explicit run authority before opening any artifact.
+source_root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+source(file.path(source_root, "code", "read_run_spec.R"), local = TRUE)
+
+# The neutral dataset name must still identify this exact model and specification.
+calibration_audit_path <- run_path("outputs/work/calibration_audit.json")
+if (!file.exists(spec$paths$calibration_data) || !file.exists(calibration_audit_path)) {
+  stop("Selected Terra calibration is absent. Production collection/calibration has not run")
+}
+calibration_audit <- jsonlite::fromJSON(calibration_audit_path, simplifyVector = TRUE)
+if (!identical(calibration_audit$fingerprint, spec$fingerprint) ||
+    !identical(calibration_audit$spec_sha256,spec_sha256) ||
+    !identical(calibration_audit$original_run,spec$run_ids$original_priors) ||
+    !identical(calibration_audit$main_text_run,spec$run_ids$main_text) ||
+    !identical(calibration_audit$model, spec$model) ||
+    !identical(calibration_audit$reasoning_effort, spec$reasoning_effort) ||
+    !identical(as.integer(calibration_audit$meetings), as.integer(spec$sample$meeting_numbers)) ||
+    !identical(calibration_audit$calibration_sha256,
+      digest::digest(spec$paths$calibration_data, algo = "sha256", file = TRUE, serialize = FALSE))) {
+  stop("Calibration provenance, membership or bytes do not match this run")
+}
+
 suppressPackageStartupMessages({
   library(DBI)
   library(RSQLite)
@@ -13,14 +35,13 @@ suppressPackageStartupMessages({
 
 data.table::setDTthreads(1L)
 
-root <- normalizePath(".", winslash = "/", mustWork = TRUE)
-source(file.path(root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
-database_path <- file.path(root, "outputs", "work", "prompt_iv_replication.sqlite")
-dataset_path <- file.path(root, "outputs", "work", "gpt55_calibration_data.dta")
-table_dir <- file.path(root, "outputs", "tables")
+source(file.path(source_root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
+database_path <- spec$paths$work_database
+dataset_path <- spec$paths$calibration_data
+table_dir <- run_path("outputs/tables")
 dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
 
-stamp <- "20260715"
+stamp <- result_stamp
 seed <- 20260715L
 
 con <- dbConnect(SQLite(), database_path)
@@ -37,12 +58,15 @@ sgs <- as.data.table(dbGetQuery(
 ))
 sgs[, date := as.Date(date)]
 setorder(sgs, series_code, date)
+if (!all(c(7478L,24364L,10813L,432L,13522L) %in% sgs$series_code) ||
+    anyDuplicated(sgs[,.(series_code,date)]) || anyNA(sgs[,.(series_code,date,value)]) ||
+    any(!is.finite(sgs$value))) stop("Selected SGS support is missing, duplicated or invalid")
 
 focus <- as.data.table(dbGetQuery(
   con,
   paste(
     "SELECT source_entity, indicator, date, reference_period, meeting,",
-    "calculation_type, mean, median, sd, min, max, respondents",
+    "calculation_type, smoothed, calculation_base, mean, median, sd, min, max, respondents",
     "FROM external_focus_statistics"
   )
 ))
@@ -71,12 +95,20 @@ series_nearest <- function(code, target, max_distance = 45L) {
 
 focus_latest <- function(entity, cutoff, calculation_type_filter = NULL, meeting_filter = NULL) {
   values <- focus[source_entity == entity & date <= cutoff]
+  if (entity %in% c("ExpectativasMercadoInflacao12Meses", "ExpectativasMercadoTop5Inflacao12Meses")) {
+    values <- values[indicator == "IPCA" & smoothed == "N"]
+  }
+  if (entity %in% c("ExpectativasMercadoInflacao12Meses", "ExpectativasMercadoSelic")) {
+    values <- values[calculation_base == 0L]
+  }
   if (!is.null(calculation_type_filter)) {
     values <- values[values$calculation_type == calculation_type_filter]
   }
   if (!is.null(meeting_filter)) values <- values[values$meeting == meeting_filter]
   if (!nrow(values)) return(NULL)
-  values[which.max(date)]
+  latest <- values[date == max(date)]
+  if (nrow(latest) != 1L) stop("Duplicate Focus observation after explicit entity/filter/meeting selection")
+  latest
 }
 
 baseline[, calendar_year := as.integer(format(date_daily, "%Y"))]
@@ -86,7 +118,6 @@ baseline[, focus_meeting_code := sprintf("R%d/%d", meeting_in_year, calendar_yea
 
 build_external_row <- function(date, meeting_code) {
   ipca15 <- series_history(7478L, date - 20L, 2L)
-  ibc <- series_history(24364L, date - 45L, 2L)
   brl <- series_history(10813L, date - 1L, 21L)
   focus_now <- focus_latest("ExpectativasMercadoInflacao12Meses", date - 1L)
   focus_week <- focus_latest("ExpectativasMercadoInflacao12Meses", date - 8L)
@@ -107,7 +138,6 @@ build_external_row <- function(date, meeting_code) {
 
   data.table(
     ipca15_change_pre = if (length(ipca15) == 2L) diff(ipca15) else NA_real_,
-    ibc_change_pre = if (length(ibc) == 2L) 100 * log(ibc[[2]] / ibc[[1]]) else NA_real_,
     brl_return_5d_pre = brl_return,
     brl_volatility_20d_pre = brl_volatility,
     focus_drift_7d_pre = if (!is.null(focus_now) && !is.null(focus_week)) {
@@ -131,6 +161,44 @@ external <- cbind(
   baseline[, .(meeting_number = reuniao, date = date_daily, focus_meeting_code)],
   external
 )
+
+# Aggregate IBC changes use two observations from the selected verified release vintage.
+aggregate_path <- run_path("data/analysis/meeting_ibc_aggregate_controls.csv")
+aggregate_audit_path <- run_path("data/analysis/meeting_ibc_aggregate_availability.csv")
+if (!file.exists(aggregate_path) || !file.exists(aggregate_audit_path)) {
+  stop("Strict aggregate IBC input is blocked. Inspect meeting_ibc_aggregate_availability.csv")
+}
+aggregate_ibc <- fread(aggregate_path, showProgress = FALSE)
+aggregate_audit <- fread(aggregate_audit_path, showProgress = FALSE)
+# The latest audit owns the selected release vintage and values, even if an older panel survives.
+aggregate_identity <- c("meeting_number", "meeting_date", "series_code", "release_id",
+  "reference_month", "actual_release_date", "actual_release_timestamp", "vintage_status",
+  "source_hash", "retrieval_vintage", "selected_value", "ibc_change_pre", "availability_status")
+if (!all(aggregate_identity %in% names(aggregate_audit)) ||
+    nrow(aggregate_audit) != 79L || anyDuplicated(aggregate_audit$meeting_number) ||
+    !setequal(aggregate_audit$meeting_number, as.integer(spec$sample$meeting_numbers)) ||
+    anyNA(aggregate_audit$availability_status) || any(aggregate_audit$availability_status != "READY") ||
+    anyNA(aggregate_audit$series_code) || any(aggregate_audit$series_code != 24364L) ||
+    anyNA(aggregate_audit$vintage_status) || any(aggregate_audit$vintage_status != "VERIFIED_RELEASE_VINTAGE") ||
+    anyNA(aggregate_audit$selected_value) || any(!is.finite(aggregate_audit$selected_value)) ||
+    anyNA(aggregate_audit$ibc_change_pre) || any(!is.finite(aggregate_audit$ibc_change_pre))) {
+  stop("Latest aggregate IBC release/vintage audit is not complete and READY")
+}
+if (!all(aggregate_identity %in% names(aggregate_ibc)) ||
+    nrow(aggregate_ibc) != 79L || anyDuplicated(aggregate_ibc$meeting_number) ||
+    !setequal(aggregate_ibc$meeting_number, as.integer(spec$sample$meeting_numbers)) ||
+    anyNA(aggregate_ibc$ibc_change_pre) || any(!is.finite(aggregate_ibc$ibc_change_pre)) ||
+    anyNA(aggregate_ibc$availability_status) || any(aggregate_ibc$availability_status != "READY")) {
+  stop("Aggregate IBC release/vintage support is not complete")
+}
+if (nrow(fsetdiff(aggregate_audit[, ..aggregate_identity], aggregate_ibc[, ..aggregate_identity])) ||
+    nrow(fsetdiff(aggregate_ibc[, ..aggregate_identity], aggregate_audit[, ..aggregate_identity]))) {
+  stop("Aggregate IBC panel does not match the latest selected release/vintage audit")
+}
+external <- merge(external, aggregate_ibc[, .(meeting_number, ibc_change_pre)],
+                  by = "meeting_number", all.x = TRUE, sort = FALSE)
+setorder(external, meeting_number)
+fwrite(aggregate_ibc, run_path(file.path("outputs", "tables", paste0("referee_ibc_availability_", stamp, ".csv"))))
 
 focus_meeting_rows <- rbindlist(lapply(baseline$date_daily, function(date) {
   aggregate <- focus_latest("ExpectativasMercadoInflacao12Meses", date - 1L)
@@ -189,7 +257,7 @@ tone <- as.data.table(dbGetQuery(
   paste(
     "SELECT meeting_number, iteration, role, 100.0 * score AS tone_pp",
     "FROM tone_scores",
-    "WHERE run_id = 'v10_referee_d5_25draws_20260620'",
+    sprintf("WHERE run_id = '%s'", spec$run_ids$main_text),
     "AND role IN ('hawk_text','dove_text')"
   )
 ))
@@ -252,13 +320,18 @@ dose_original <- as.data.table(dbGetQuery(
   paste(
     "SELECT meeting_number, corpus_iteration, forecaster_type, new_expectation",
     "FROM agent_results_latest",
-    "WHERE run_id = 'common_prior_dose_6arm_5draws_v1_20260713'",
-    "AND source_role = 'original' AND status = 'completed'"
+    sprintf("WHERE run_id = '%s'", spec$run_ids$common_prior_dose),
+    "AND source_role = 'original' AND status = 'completed' AND model = 'gpt-5.6-terra' AND reasoning_effort = 'high'"
   )
 ))
-if (nrow(dose_original) != 710L) {
-  stop(sprintf("Expected 710 common-prior original-arm rows, found %d", nrow(dose_original)))
+if (nrow(dose_original) != 790L) {
+  stop(sprintf("Expected 790 common-prior original-arm rows, found %d", nrow(dose_original)))
 }
+original_keys <- CJ(meeting_number=as.integer(spec$sample$meeting_numbers),
+  corpus_iteration=seq_len(spec$draws$dose), forecaster_type=as.character(spec$profiles))
+key_columns <- names(original_keys)
+if (anyDuplicated(dose_original[, ..key_columns]) ||
+    nrow(fsetdiff(original_keys, dose_original[, ..key_columns]))) stop("D9 profile-by-draw support failed")
 synthetic_distribution <- dose_original[, .(
   synthetic_mean = mean(new_expectation),
   synthetic_sd = sd(new_expectation),
@@ -295,11 +368,11 @@ calibration_data <- merge(
   by.y = "meeting_number"
 )
 
-calibration_terms <- c("forecast_anchored_gpt55", "forecast_unanchored_gpt55")
+calibration_terms <- c("forecast_anchored", "forecast_unanchored")
 fit_top5 <- function(outcome, label) {
   formula <- as.formula(paste(
     outcome,
-    "~ forecast_anchored_gpt55 + forecast_unanchored_gpt55 + ibcbr_agro + ibcbr_industry + ibcbr_service"
+    "~ forecast_anchored + forecast_unanchored + ibcbr_agro + ibcbr_industry + ibcbr_service"
   ))
   model <- lm(formula, data = calibration_data)
   vc <- vcovHC(model, type = "HC2")
@@ -342,9 +415,17 @@ validation <- merge(
 )
 validation[, realized_ipca_12m_horizon := vapply(
   date_daily + 365L,
-  function(target) series_nearest(13522L, target, 45L),
+  function(target) {
+    # A not-yet-observed horizon is unavailable even if an earlier month is nearby.
+    if (target > max(sgs[series_code == 13522L, date])) return(NA_real_)
+    series_nearest(13522L, target, 45L)
+  },
   numeric(1)
 )]
+
+fwrite(validation[, .(meeting_number = reuniao, meeting_date = date_daily,
+  target_date = date_daily + 365L, realized_horizon_available = is.finite(realized_ipca_12m_horizon))],
+  run_path(file.path("outputs", "tables", paste0("referee_realized_horizon_support_", stamp, ".csv"))))
 
 d6_summary <- read_json(
   file.path(table_dir, paste0("referee_d6_bayesian_calibration_", stamp, ".json")),
@@ -355,7 +436,7 @@ phi_a <- d6_summary$hierarchical_dirichlet$summary$mean[
 ]
 phi_u <- 1 - phi_a
 validation[, synthetic_convex :=
-  phi_a * forecast_anchored_gpt55 + phi_u * forecast_unanchored_gpt55]
+  phi_a * forecast_anchored + phi_u * forecast_unanchored]
 
 cg_row <- function(name, forecast) {
   work <- data.table(
@@ -385,8 +466,8 @@ cg_row <- function(name, forecast) {
 }
 d23_cg <- rbindlist(list(
   cg_row("Focus aggregate median", validation$focus_median),
-  cg_row("LLM anchored", validation$forecast_anchored_gpt55),
-  cg_row("LLM unanchored", validation$forecast_unanchored_gpt55),
+  cg_row("LLM anchored", validation$forecast_anchored),
+  cg_row("LLM unanchored", validation$forecast_unanchored),
   cg_row("LLM convex composite", validation$synthetic_convex)
 ))
 
@@ -419,7 +500,7 @@ if (!file.exists(d8_loo_path)) {
 }
 d8_loo <- fread(d8_loo_path)
 if (nrow(d8_loo) != 1L ||
-    d8_loo$n[[1L]] != 71L ||
+    d8_loo$n[[1L]] != 79L ||
     !is.finite(d8_loo$r2_cv[[1L]])) {
   stop("D8 leave-one-meeting-out summary is malformed")
 }
@@ -463,10 +544,10 @@ trajectory <- as.data.table(dbGetQuery(
   paste(
     "SELECT meeting_number, forecaster_type, previous_expectation, new_expectation",
     "FROM agent_results_latest",
-    "WHERE run_id = 'common_prior_original_v1_20260712' AND status = 'completed'"
+    sprintf("WHERE run_id = '%s' AND status = 'completed' AND model = 'gpt-5.6-terra' AND reasoning_effort = 'high'", spec$run_ids$original_priors)
   )
 ))
-if (nrow(trajectory) != 142L) stop("Original common-prior trajectory is incomplete")
+if (nrow(trajectory) != 158L) stop("Original common-prior trajectory is incomplete")
 trajectory_wide <- dcast(
   trajectory,
   meeting_number ~ forecaster_type,

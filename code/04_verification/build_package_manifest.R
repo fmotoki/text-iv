@@ -5,11 +5,14 @@ suppressPackageStartupMessages({
 
 script_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
 script_path <- normalizePath(sub("^--file=", "", script_arg[[1L]]), winslash = "/")
-root <- normalizePath(file.path(dirname(script_path), "..", ".."), winslash = "/")
-setwd(root)
+source_root <- normalizePath(file.path(dirname(script_path), "..", ".."), winslash = "/")
+setwd(source_root)
+source(file.path(source_root, "code", "read_run_spec.R"))
 
 excluded_roots <- c(
   ".git",
+  "archives",
+  "runs",
   "renv/library",
   "renv/library_broken_20260816",
   "renv/staging",
@@ -67,9 +70,15 @@ manifest <- rbindlist(lapply(seq_along(paths), function(index) {
   data.table(
     path = relative[[index]],
     size_bytes = file.info(paths[[index]])$size,
-    sha256 = digest(paths[[index]], algo = "sha256", file = TRUE, serialize = FALSE)
+    sha256 = digest(paths[[index]], algo = "sha256", file = TRUE, serialize = FALSE),
+    release_id = spec$release_id,
+    model = spec$model,
+    reasoning_effort = spec$reasoning_effort,
+    fingerprint = spec$fingerprint,
+    specification_sha256 = spec_sha256,
+    raw_snapshot_manifest_sha256 = if (is.null(spec$raw_snapshot$manifest_sha256)) NA_character_ else spec$raw_snapshot$manifest_sha256
   )
 }))
 setorder(manifest, path)
-fwrite(manifest, file.path(root, "data", "metadata", "package_file_manifest.csv"))
+fwrite(manifest, run_path("data/metadata/package_file_manifest.csv"))
 cat(sprintf("Package manifest written for %d files\n", nrow(manifest)))

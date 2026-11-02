@@ -1,5 +1,20 @@
 # Data Availability Statement
 
+## Current source status
+
+The [Terra implementation](terra56_collection_validation_protocol.md) uses
+meetings 203 through 281 and new data/result versions outside the Git repository.
+Production Terra outcomes have not been collected or accepted. Strict activity
+inputs may remain blocked by release evidence, historical vintages, cutoff
+ordering, or the sector series' first public availability. Only labelled fixture
+data and the limited QA requests in the implementation handoff are new outputs.
+Existing minute texts and GPT-5.5 results remain unchanged.
+
+## Inherited GPT-5.5 release
+
+The following statement describes the preserved version 2.0.0 release. Its input
+and clean-room claims do not apply to the prospective Terra results.
+
 All data and code required to reproduce the reported tables, figures, and
 numerical results are included in this package. The exact replication starts
 from public source data and frozen author-generated outputs; it requires no

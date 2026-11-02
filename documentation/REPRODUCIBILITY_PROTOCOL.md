@@ -1,5 +1,14 @@
 # AEA-ready reproducibility protocol
 
+## Prospective Terra implementation
+
+Current source code follows the [Terra protocol](terra56_collection_validation_protocol.md).
+It requires an explicit effective specification and keeps Git source versions
+separate from data/result versions in the sibling artifact directory. No new
+production collection, accepted numerical baseline, or clean-room pass is implied.
+The release rules below describe the inherited package and the requirements for
+a later accepted deposit.
+
 ## Release construction
 
 1. Curate only the inputs read by active analysis programs.
@@ -15,7 +24,7 @@
 
 ## Release gates
 
-- **Isolation:** no path in active analysis or reporting code may resolve outside the package.
+- **Isolation:** code lookup is restricted to the selected source package. Artifact writes and cleanup are restricted to its separately selected run root. Shared immutable inputs are explicitly fingerprinted.
 - **Integrity:** every frozen input must match `data/metadata/input_checksums.csv`.
 - **Completeness:** all rows in `data/metadata/exhibit_manifest.csv` must produce a nonempty artifact.
 - **Numerical reproduction:** all rows in `results/verification_report.csv` must pass.
@@ -27,3 +36,7 @@
 ## Versioning rule
 
 Any change to a frozen input, prompt family, run identifier, econometric specification, or paper exhibit increments the package version and requires a new clean-room run. Recollection results are never merged silently into an existing frozen run.
+
+During implementation, Git commits identify code changes and a new artifact
+release ID identifies each substantive rerun. A final package version and deposit
+are assigned only with the later reviewed freeze and clean-room run.

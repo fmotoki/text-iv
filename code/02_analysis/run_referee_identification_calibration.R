@@ -1,3 +1,25 @@
+# Read the explicit run authority before opening any artifact.
+source_root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+source(file.path(source_root, "code", "read_run_spec.R"), local = TRUE)
+
+# The neutral dataset name must still identify this exact model and specification.
+calibration_audit_path <- run_path("outputs/work/calibration_audit.json")
+if (!file.exists(spec$paths$calibration_data) || !file.exists(calibration_audit_path)) {
+  stop("Selected Terra calibration is absent. Production collection/calibration has not run")
+}
+calibration_audit <- jsonlite::fromJSON(calibration_audit_path, simplifyVector = TRUE)
+if (!identical(calibration_audit$fingerprint, spec$fingerprint) ||
+    !identical(calibration_audit$spec_sha256,spec_sha256) ||
+    !identical(calibration_audit$original_run,spec$run_ids$original_priors) ||
+    !identical(calibration_audit$main_text_run,spec$run_ids$main_text) ||
+    !identical(calibration_audit$model, spec$model) ||
+    !identical(calibration_audit$reasoning_effort, spec$reasoning_effort) ||
+    !identical(as.integer(calibration_audit$meetings), as.integer(spec$sample$meeting_numbers)) ||
+    !identical(calibration_audit$calibration_sha256,
+      digest::digest(spec$paths$calibration_data, algo = "sha256", file = TRUE, serialize = FALSE))) {
+  stop("Calibration provenance, membership or bytes do not match this run")
+}
+
 suppressPackageStartupMessages({
   library(DBI)
   library(RSQLite)
@@ -24,13 +46,12 @@ options(error = function() {
   quit(save = "no", status = 1L, runLast = FALSE)
 })
 
-root <- normalizePath(".", winslash = "/", mustWork = TRUE)
-source(file.path(root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
-database_path <- file.path(root, "outputs", "work", "prompt_iv_replication.sqlite")
-dataset_path <- file.path(root, "outputs", "work", "gpt55_calibration_data.dta")
-out_dir <- file.path(root, "outputs", "tables")
+source(file.path(source_root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
+database_path <- spec$paths$work_database
+dataset_path <- spec$paths$calibration_data
+out_dir <- run_path("outputs/tables")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
-stamp <- "20260715"
+stamp <- result_stamp
 seed <- 20260715L
 
 write_result <- function(data, name) {
@@ -68,7 +89,11 @@ read_agent_run <- function(run_id, source_run_id, tone_suffix = "") {
     " AND ts.meeting_number = r.meeting_number",
     " AND ts.iteration = r.corpus_iteration",
     " AND ts.role = r.source_role || ?",
-    "WHERE r.run_id = ? AND r.status = 'completed' AND a.source_run_id = ?"
+    "JOIN corpus_texts c ON c.run_id = a.source_run_id",
+    " AND c.meeting_number = a.meeting_number AND c.iteration = a.corpus_iteration",
+    " AND c.role = a.source_role AND c.text_hash = a.source_text_hash AND c.complete = 1",
+    "WHERE r.run_id = ? AND r.status = 'completed' AND a.source_run_id = ?",
+    " AND r.model = 'gpt-5.6-terra' AND r.reasoning_effort = 'high'"
   )
   as.data.table(dbGetQuery(con, sql, params = list(tone_suffix, run_id, source_run_id)))
 }
@@ -78,20 +103,27 @@ baseline[, date_daily := as.Date(date_daily)]
 setorder(baseline, reuniao)
 
 main <- read_agent_run(
-  "common_prior_main_25draws_v1_20260712",
-  "v10_referee_d5_25draws_20260620",
+  spec$run_ids$common_prior_main,
+  spec$run_ids$main_text,
   "_text"
 )
-if (nrow(main) != 7100L || uniqueN(main$pair_id) != 3550L) {
+if (nrow(main) != 7900L || uniqueN(main$pair_id) != 3950L) {
   stop("The common-prior 25-draw panel is incomplete")
+}
+main_keys <- CJ(meeting_number = as.integer(spec$sample$meeting_numbers),
+  corpus_iteration = seq_len(spec$draws$main), forecaster_type = as.character(spec$profiles),
+  source_role = c("hawk", "dove"))
+key_columns <- names(main_keys)
+if (anyDuplicated(main[, ..key_columns]) || nrow(fsetdiff(main_keys, main[, ..key_columns]))) {
+  stop("Identification analysis requires the exact Terra main key product")
 }
 main[, `:=`(
   hawk = as.integer(source_role == "hawk"),
   pair_id = factor(pair_id)
 )]
 
-mixture_formula <- inflacao12m ~ forecast_anchored_gpt55 +
-  forecast_unanchored_gpt55 + wc_orig + ibcbr_agro +
+mixture_formula <- inflacao12m ~ forecast_anchored +
+  forecast_unanchored + wc_orig + ibcbr_agro +
   ibcbr_service + ibcbr_industry
 mixture_model <- lm(mixture_formula, data = baseline)
 mixture_weights <- coef(mixture_model)
@@ -107,8 +139,8 @@ build_composite <- function(weights, meetings = NULL) {
     stop("Composite panel is missing an anchored or unanchored response")
   }
   wide[, forecast_revision :=
-         unname(weights[["forecast_anchored_gpt55"]]) * anchored +
-         unname(weights[["forecast_unanchored_gpt55"]]) * unanchored]
+         unname(weights[["forecast_anchored"]]) * anchored +
+         unname(weights[["forecast_unanchored"]]) * unanchored]
   wide[, pair_id := factor(paste(meeting_number, corpus_iteration, sep = "::"))]
   if (!is.null(meetings)) wide <- wide[meeting_number %in% meetings]
   wide
@@ -185,8 +217,8 @@ cat(sprintf(
   ),
   paste(sort(unique(main$forecaster_type)), collapse = ", "),
   paste(names(main_composite), collapse = ", "),
-    format(unname(mixture_weights[["forecast_anchored_gpt55"]]), digits = 8),
-    format(unname(mixture_weights[["forecast_unanchored_gpt55"]]), digits = 8),
+    format(unname(mixture_weights[["forecast_anchored"]]), digits = 8),
+    format(unname(mixture_weights[["forecast_unanchored"]]), digits = 8),
   sum(is.finite(main_composite$anchored)),
   nrow(main_composite),
   sum(is.finite(main_composite$unanchored)),
@@ -260,7 +292,7 @@ retry <- as.data.table(dbGetQuery(
     "SUM(retry_attempts_used) AS rejected_attempts,",
     "SUM(1 + retry_attempts_used) AS total_attempts",
     "FROM rewrite_results_latest",
-    "WHERE run_id = 'v10_referee_d5_25draws_20260620' AND status = 'completed'",
+    sprintf("WHERE run_id = '%s' AND status = 'completed'", spec$run_ids$main_text),
     "GROUP BY stance"
   )
 ))
@@ -321,7 +353,7 @@ flush.console()
 
 # D6: unconstrained, convex, Dirichlet-compatible, and centered-ridge calibration.
 d6_unrestricted <- lm(
-  inflacao12m ~ forecast_anchored_gpt55 + forecast_unanchored_gpt55 +
+  inflacao12m ~ forecast_anchored + forecast_unanchored +
     ibcbr_agro + ibcbr_industry + ibcbr_service,
   data = baseline
 )
@@ -329,14 +361,14 @@ d6_vcov <- vcovHC(d6_unrestricted, type = "HC2")
 d6_coeftest <- coeftest(d6_unrestricted, vcov. = d6_vcov)
 d6_test_u1 <- linearHypothesis(
   d6_unrestricted,
-  "forecast_unanchored_gpt55 = 1",
+  "forecast_unanchored = 1",
   vcov. = d6_vcov,
   test = "F"
 )
 
 convex_data <- baseline[, .(
-    y_adj = inflacao12m - forecast_unanchored_gpt55,
-    diff_agent = forecast_anchored_gpt55 - forecast_unanchored_gpt55,
+    y_adj = inflacao12m - forecast_unanchored,
+    diff_agent = forecast_anchored - forecast_unanchored,
   ibcbr_agro,
   ibcbr_industry,
   ibcbr_service
@@ -400,20 +432,20 @@ ridge_lambda_a <- 0.5 + unname(ridge_coef["diff_agent", 1])
 d6_table <- rbindlist(list(
   data.table(
     specification = "Unrestricted OLS, no word count",
-    anchored_weight = coef(d6_unrestricted)[["forecast_anchored_gpt55"]],
-    unanchored_weight = coef(d6_unrestricted)[["forecast_unanchored_gpt55"]],
-    anchored_std_error = sqrt(d6_vcov["forecast_anchored_gpt55", "forecast_anchored_gpt55"]),
-    unanchored_std_error = sqrt(d6_vcov["forecast_unanchored_gpt55", "forecast_unanchored_gpt55"]),
-    anchored_p_value = d6_coeftest["forecast_anchored_gpt55", 4],
-    unanchored_p_value = d6_coeftest["forecast_unanchored_gpt55", 4],
-    anchored_ci_low = coef(d6_unrestricted)[["forecast_anchored_gpt55"]] -
-      1.96 * sqrt(d6_vcov["forecast_anchored_gpt55", "forecast_anchored_gpt55"]),
-    anchored_ci_high = coef(d6_unrestricted)[["forecast_anchored_gpt55"]] +
-      1.96 * sqrt(d6_vcov["forecast_anchored_gpt55", "forecast_anchored_gpt55"]),
-    unanchored_ci_low = coef(d6_unrestricted)[["forecast_unanchored_gpt55"]] -
-      1.96 * sqrt(d6_vcov["forecast_unanchored_gpt55", "forecast_unanchored_gpt55"]),
-    unanchored_ci_high = coef(d6_unrestricted)[["forecast_unanchored_gpt55"]] +
-      1.96 * sqrt(d6_vcov["forecast_unanchored_gpt55", "forecast_unanchored_gpt55"]),
+    anchored_weight = coef(d6_unrestricted)[["forecast_anchored"]],
+    unanchored_weight = coef(d6_unrestricted)[["forecast_unanchored"]],
+    anchored_std_error = sqrt(d6_vcov["forecast_anchored", "forecast_anchored"]),
+    unanchored_std_error = sqrt(d6_vcov["forecast_unanchored", "forecast_unanchored"]),
+    anchored_p_value = d6_coeftest["forecast_anchored", 4],
+    unanchored_p_value = d6_coeftest["forecast_unanchored", 4],
+    anchored_ci_low = coef(d6_unrestricted)[["forecast_anchored"]] -
+      1.96 * sqrt(d6_vcov["forecast_anchored", "forecast_anchored"]),
+    anchored_ci_high = coef(d6_unrestricted)[["forecast_anchored"]] +
+      1.96 * sqrt(d6_vcov["forecast_anchored", "forecast_anchored"]),
+    unanchored_ci_low = coef(d6_unrestricted)[["forecast_unanchored"]] -
+      1.96 * sqrt(d6_vcov["forecast_unanchored", "forecast_unanchored"]),
+    unanchored_ci_high = coef(d6_unrestricted)[["forecast_unanchored"]] +
+      1.96 * sqrt(d6_vcov["forecast_unanchored", "forecast_unanchored"]),
     rmse = sqrt(mean(resid(d6_unrestricted)^2)),
     constraint = "none"
   ),
@@ -500,12 +532,12 @@ fit_regime <- function(label, meetings) {
     start_date = min(sample$date_daily),
     end_date = max(sample$date_daily),
     meetings = nrow(sample),
-      anchored_weight = unname(weights[["forecast_anchored_gpt55"]]),
-      anchored_weight_se_hc2 = unname(mix_ct["forecast_anchored_gpt55", "Std. Error"]),
-      anchored_weight_p = unname(mix_ct["forecast_anchored_gpt55", "Pr(>|t|)"]),
-      unanchored_weight = unname(weights[["forecast_unanchored_gpt55"]]),
-      unanchored_weight_se_hc2 = unname(mix_ct["forecast_unanchored_gpt55", "Std. Error"]),
-      unanchored_weight_p = unname(mix_ct["forecast_unanchored_gpt55", "Pr(>|t|)"]),
+      anchored_weight = unname(weights[["forecast_anchored"]]),
+      anchored_weight_se_hc2 = unname(mix_ct["forecast_anchored", "Std. Error"]),
+      anchored_weight_p = unname(mix_ct["forecast_anchored", "Pr(>|t|)"]),
+      unanchored_weight = unname(weights[["forecast_unanchored"]]),
+      unanchored_weight_se_hc2 = unname(mix_ct["forecast_unanchored", "Std. Error"]),
+      unanchored_weight_p = unname(mix_ct["forecast_unanchored", "Pr(>|t|)"]),
     prompt_iv = iv$prompt_iv,
     prompt_iv_se = iv$prompt_iv_se,
     prompt_iv_p = iv$prompt_iv_p,
@@ -658,7 +690,7 @@ tone_components <- as.data.table(dbGetQuery(
   paste(
     "SELECT meeting_number, iteration, role, hawk_count, dove_count, word_count,",
     "100.0 * score AS tone_pp",
-    "FROM tone_scores WHERE run_id = 'v10_referee_d5_25draws_20260620'",
+    sprintf("FROM tone_scores WHERE run_id = '%s'", spec$run_ids$main_text),
     "AND role IN ('original','hawk_text','dove_text')"
   )
 ))

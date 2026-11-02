@@ -12,6 +12,7 @@ from prompt_iv.generation.tasks import build_rewrite_user_prompt
 from prompt_iv.io.jsonl import append_jsonl, read_jsonl
 from prompt_iv.io.minutes import read_text, segment_text
 from prompt_iv.llm.runner import LLMRequest, LLMRunner
+from prompt_iv.paths import load_spec, specification_metadata, validate_artifact_path
 from prompt_iv.storage.sqlite import (
     append_rewrite_result_event,
     connect_database,
@@ -54,6 +55,10 @@ def _build_request_from_manifest(
         extra=extra or (),
         prompt_version=prompt_version,
     )
+    if record.get("original_text_hash") != _sha256_text(original_text) or record.get("system_prompt_hash") != _sha256_text(system_prompt):
+        raise ValueError("Rewrite source or system prompt differs from the registered manifest")
+    if retry_attempt == 0 and record.get("user_prompt_hash") != _sha256_text(user_prompt):
+        raise ValueError("Rewrite user prompt differs from the registered manifest")
     request = LLMRequest(
         system_prompt=system_prompt,
         user_prompt=user_prompt,
@@ -202,6 +207,8 @@ def _execute_one_rewrite_task(
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "error_type": type(exc).__name__,
                 "error": str(exc),
+                "response_metadata": response.metadata if response is not None else None,
+                "raw_response": response.text if response is not None else None,
             },
             stats,
         )
@@ -211,7 +218,7 @@ def execute_rewrite_manifest(
     manifest_path: str | Path,
     output_jsonl: str | Path,
     runner: LLMRunner,
-    model: str = "gpt-5.5",
+    model: str = "gpt-5.6-terra",
     reasoning_effort: str = "high",
     temperature: float = 1.0,
     limit: int | None = None,
@@ -220,16 +227,28 @@ def execute_rewrite_manifest(
     max_retries: int = 2,
     max_workers: int = 1,
 ) -> dict:
+    spec = load_spec(require_frozen=True)
+    validate_artifact_path(manifest_path, spec)
+    output_jsonl = validate_artifact_path(output_jsonl, spec)
+    if (model, reasoning_effort) != (spec["model"], spec["reasoning_effort"]):
+        raise ValueError("Rewrite execution model/effort mismatch")
     tasks = read_jsonl(manifest_path)
     existing = read_jsonl(output_jsonl) if resume else []
     resumable_statuses = set(COMPLETED_STATUSES)
     if runner.name == "dry-run":
         resumable_statuses.add("dry_run")
-    done_ids = {
-        str(row.get("task_id"))
-        for row in existing
-        if row.get("status") in resumable_statuses and row.get("task_id") is not None
-    }
+    latest = {str(row["task_id"]): row for row in existing if row.get("task_id")}
+    done_ids = set()
+    for task in tasks:
+        _build_request_from_manifest(task, model, reasoning_effort, temperature)
+        row = latest.get(str(task["task_id"]))
+        if not row or row.get("status") not in resumable_statuses:
+            continue
+        if row.get("status") == "completed" and (row.get("runner_dry_run") or row.get("numeric_ok") is not True):
+            raise ValueError("Cached rewrite is not a real numeric-valid completion")
+        if row.get("manifest_input_hash") != task["input_hash"] or row.get("model") != model or row.get("reasoning_effort") != reasoning_effort or row.get("temperature") != temperature or any(row.get(key) != value for key, value in specification_metadata(spec).items()):
+            raise ValueError(f"Cached rewrite configuration/source mismatch: {task['task_id']}")
+        done_ids.add(str(task["task_id"]))
 
     pending = [task for task in tasks if str(task.get("task_id")) not in done_ids]
     if limit is not None:
@@ -244,6 +263,7 @@ def execute_rewrite_manifest(
 
     def consume_result(record: dict, stats: dict[str, int]) -> None:
         nonlocal failed, numeric_failed, dry_run, usage_limited, retry_calls, written
+        record.update(specification_metadata(spec))
         written += append_jsonl(output_jsonl, [record])
         failed += stats["failed"]
         numeric_failed += stats["numeric_failed"]
@@ -306,7 +326,7 @@ def execute_rewrite_database(
     database_path: str | Path,
     run_id: str,
     runner: LLMRunner,
-    model: str = "gpt-5.5",
+    model: str = "gpt-5.6-terra",
     reasoning_effort: str = "high",
     temperature: float = 1.0,
     limit: int | None = None,
@@ -315,12 +335,23 @@ def execute_rewrite_database(
     max_retries: int = 2,
     max_workers: int = 1,
 ) -> dict:
+    spec = load_spec(require_frozen=True)
+    if (model, reasoning_effort) != (spec["model"], spec["reasoning_effort"]):
+        raise ValueError("Rewrite execution model/effort mismatch")
     done_statuses = set(COMPLETED_STATUSES)
     if runner.name == "dry-run":
         done_statuses.add("dry_run")
 
     conn = connect_database(database_path)
     try:
+        if run_id not in (spec["run_ids"]["main_text"], spec["run_ids"]["dose_text"]):
+            raise ValueError("Rewrite executor requires a selected text run")
+        cached = conn.execute("SELECT t.raw_json,r.raw_json FROM rewrite_tasks t JOIN rewrite_results_latest r ON r.run_id=t.run_id AND r.task_id=t.task_id WHERE t.run_id=? AND r.status='completed'", (run_id,)).fetchall()
+        for task_json, result_json in cached:
+            task, row = json.loads(task_json), json.loads(result_json)
+            _build_request_from_manifest(task, model, reasoning_effort, temperature)
+            if row.get("runner_dry_run") or row.get("numeric_ok") is not True or row.get("manifest_input_hash") != task["input_hash"] or row.get("model") != model or row.get("reasoning_effort") != reasoning_effort or row.get("temperature") != temperature or any(row.get(key) != value for key, value in specification_metadata(spec).items()):
+                raise ValueError(f"Cached database rewrite configuration/source mismatch: {task['task_id']}")
         tasks, tasks_total, done_existing = load_pending_rewrite_tasks(
             conn,
             run_id=run_id,
@@ -341,6 +372,7 @@ def execute_rewrite_database(
         written = 0
 
         def consume_result(record: dict, stats: dict[str, int]) -> None:
+            record.update(specification_metadata(spec))
             nonlocal failed, numeric_failed, dry_run, usage_limited, retry_calls, written
             with conn:
                 append_rewrite_result_event(conn, run_id, record)

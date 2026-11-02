@@ -1,274 +1,226 @@
-suppressPackageStartupMessages(library(data.table))
-
-root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
-intermediate <- file.path(root, "outputs", "tables")
-result_dir <- file.path(root, "results")
-manifest <- fread(file.path(root, "data", "metadata", "exhibit_manifest.csv"))
-
-normalized_text <- function(path) {
-  paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+# Verify the selected Terra release without accepting numerical references.
+source_root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+source(file.path(source_root, "code", "read_run_spec.R"))
+suppressPackageStartupMessages({library(data.table); library(haven)})
+result_dir <- run_path("results")
+intermediate <- run_path("outputs/tables")
+dir.create(run_path("results/qa"), recursive = TRUE, showWarnings = FALSE)
+checks <- data.table(check_id = character(), status = character(), detail = character())
+required <- paste0("knowledge_cutoff_", c("training", "coefficients", "predictions", "metrics",
+  "framing_draws", "framing_meetings", "framing_summary"), "_", result_stamp, ".csv")
+missing <- required[!file.exists(file.path(intermediate, required))]
+if (length(missing)) {
+  checks <- data.table(check_id = paste0("input:", missing), status = "NOT RUN", detail = "Production Terra diagnostic is absent")
+  fwrite(checks, run_path("results/verification_report.csv"))
+  stop("NOT RUN: full Terra diagnostic inputs are absent")
 }
-
-artifact_rows <- rbindlist(lapply(seq_len(nrow(manifest)), function(index) {
-  output_path <- file.path(root, manifest$output_path[[index]])
-  reference_path <- file.path(root, manifest$reference_path[[index]])
-  output_size <- if (file.exists(output_path)) file.info(output_path)$size else 0
-  present <- is.finite(output_size) && output_size > 0
-  is_table <- identical(tolower(manifest$type[[index]]), "table")
-  reference_present <- file.exists(reference_path) &&
-    is.finite(file.info(reference_path)$size) &&
-    file.info(reference_path)$size > 0
-  passed <- if (is_table) {
-    present &&
-      reference_present &&
-      identical(
-        normalized_text(output_path),
-        normalized_text(reference_path)
-      )
-  } else {
-    present
-  }
-  data.table(
-    check_id = paste0("artifact:", manifest$output_path[[index]]),
-    observed = as.numeric(passed),
-    expected = 1,
-    tolerance = 0,
-    status = if (passed) "pass" else "fail",
-    detail = if (is_table) {
-      paste("exact normalized-text match to reference;", manifest$producer[[index]])
-    } else {
-      manifest$producer[[index]]
+training <- fread(file.path(intermediate, required[[1]]))
+coefficients <- fread(file.path(intermediate, required[[2]]))
+predictions <- fread(file.path(intermediate, required[[3]]))
+metrics <- fread(file.path(intermediate, required[[4]]))
+draws <- fread(file.path(intermediate, required[[5]]))
+meetings <- fread(file.path(intermediate, required[[6]]))
+summary <- fread(file.path(intermediate, required[[7]]))
+base <- as.data.table(haven::read_dta(spec$paths$calibration_data))
+setorder(base, reuniao)
+if (!identical(as.integer(base$reuniao), 203:281) || anyDuplicated(base$reuniao)) stop("Invalid calibration membership")
+canonical <- fread(spec$sample$dates_csv)[meeting_number %in% 203:281]
+setorder(canonical, meeting_number)
+if (!identical(as.integer(canonical$meeting_number), 203:281) ||
+    anyDuplicated(canonical$meeting_date) || anyNA(canonical$meeting_date) ||
+    !identical(as.character(as.Date(base$date_daily)), as.character(as.Date(canonical$meeting_date)))) {
+  stop("Calibration dates differ from the canonical map")
+}
+training_key <- if ("meeting_number" %in% names(training)) training$meeting_number else training$reuniao
+if (!identical(sort(as.integer(training_key)), 203:271)) stop("The training set is not the frozen69")
+training <- training[order(training_key)]
+training_columns <- c("inflacao12m","forecast_anchored","forecast_unanchored","wc_orig",
+                      "ibcbr_agro","ibcbr_service","ibcbr_industry")
+if (!all(training_columns %in% names(training)) ||
+    !identical(as.character(as.Date(training$date_daily)), as.character(as.Date(base[reuniao <= 271L,date_daily])))) {
+  stop("Saved training dates or fields differ")
+}
+for (column in training_columns) {
+  if (any(!is.finite(training[[column]])) ||
+      max(abs(training[[column]]-base[reuniao <= 271L][[column]])) > 1e-12) stop("Saved training input differs: ", column)
+}
+formula <- inflacao12m ~ forecast_anchored + forecast_unanchored + wc_orig + ibcbr_agro + ibcbr_service + ibcbr_industry
+fit <- stats::lm(formula, data = base[reuniao <= 271L], na.action = na.fail)
+if (fit$rank != 7L || nrow(coefficients) != 7L || anyDuplicated(coefficients$term) ||
+    !setequal(coefficients$term, names(stats::coef(fit))) ||
+    max(abs(coefficients$estimate - stats::coef(fit)[coefficients$term])) > 1e-10) stop("Frozen coefficients differ from training-only OLS")
+expected_predictions <- CJ(meeting_number = 272:281,
+  series = c("frozen_calibrated_composite", "raw_anchored", "raw_unanchored", "focus_persistence"))
+if (nrow(predictions) != 40L || anyDuplicated(predictions[, .(meeting_number,series)]) ||
+    nrow(fsetdiff(expected_predictions, predictions[, .(meeting_number,series)]))) stop("Incomplete evaluation membership")
+expected_dates <- as.Date(canonical$meeting_date[match(predictions$meeting_number, canonical$meeting_number)])
+if (!identical(as.character(as.Date(predictions$date_daily)), as.character(expected_dates)) ||
+    any(predictions$window != fifelse(predictions$meeting_number %in% 272:276, "pre", "post")) ||
+    any(predictions$after_knowledge_cutoff != (expected_dates > as.Date(spec$cutoff)))) {
+  stop("Evaluation dates, windows or cutoff flags differ from the fixed design")
+}
+base[, persistence := shift(inflacao12m)]
+for (series_name in expected_predictions[, unique(series)]) {
+  actual <- predictions[series == series_name][order(meeting_number)]
+  expected <- switch(series_name,
+    frozen_calibrated_composite = as.numeric(stats::predict(fit, newdata = base[reuniao >= 272L])),
+    raw_anchored = base[reuniao >= 272L, forecast_anchored],
+    raw_unanchored = base[reuniao >= 272L, forecast_unanchored],
+    focus_persistence = base[reuniao >= 272L, persistence])
+  if (any(!is.finite(expected)) || max(abs(actual$prediction - expected)) > 1e-10 ||
+      max(abs(actual$focus - base[reuniao >= 272L, inflacao12m])) > 1e-12 ||
+      max(abs(actual$signed_error - (actual$prediction - actual$focus))) > 1e-12 ||
+      max(abs(actual$squared_error - actual$signed_error^2)) > 1e-12 ||
+      max(abs(actual$absolute_error - abs(actual$signed_error))) > 1e-12) stop("Prediction or error identity failed: ", series_name)
+}
+if (nrow(metrics) != 8L || anyDuplicated(metrics[, .(window,series)]) || any(metrics$n != 5L)) stop("Invalid metric keys")
+for (index in seq_len(nrow(metrics))) {
+  row <- metrics[index]
+  errors <- predictions[window == row$window & series == row$series]
+  if (nrow(errors) != 5L || abs(row$rmse - sqrt(mean(errors$squared_error))) > 1e-12 ||
+      abs(row$mae - mean(errors$absolute_error)) > 1e-12 ||
+      abs(row$mean_signed_error - mean(errors$signed_error)) > 1e-12) stop("Metric formula mismatch")
+  benchmark_rmse <- metrics[window == row$window & series == "focus_persistence", rmse]
+  if (row$series != "frozen_calibrated_composite") {
+    if (!is.na(row$benchmark_rmse_ratio) || row$ratio_status != "not_applicable") stop("Ratio applies only to the composite")
+  } else if (benchmark_rmse == 0) {
+    if (!is.na(row$benchmark_rmse_ratio) || row$ratio_status != "undefined_zero_benchmark_rmse") {
+      stop("Zero persistence RMSE must produce an explicitly undefined ratio")
     }
-  )
-}))
-
-checks <- list()
-add_check <- function(id, observed, expected, tolerance, detail = "") {
-  checks[[length(checks) + 1L]] <<- data.table(
-    check_id = id,
-    observed = as.numeric(observed),
-    expected = as.numeric(expected),
-    tolerance = as.numeric(tolerance),
-    status = if (is.finite(observed) && abs(observed - expected) <= tolerance) "pass" else "fail",
-    detail = detail
-  )
-}
-
-main <- fread(file.path(intermediate, "common_prior_main_models_20260714.csv"))
-main <- main[sample == "Composite"][1]
-add_check("main_prompt_iv", main$prompt_iv, 0.0187233976525336, 1e-10)
-add_check("main_prompt_iv_se", main$prompt_iv_se, 0.00281419238078897, 1e-10)
-add_check("main_reduced_form", main$reduced_form, 0.0226657185584151, 1e-10)
-add_check("main_first_stage", main$first_stage, 1.21055584990723, 1e-10)
-add_check("main_first_stage_f", main$first_stage_f, 3347.64067699011, 1e-6)
-
-inference <- fread(file.path(
-  intermediate,
-  "common_prior_inference_20260714.csv"
-))
-inference_row <- function(method_name) {
-  row <- inference[method == method_name]
-  if (nrow(row) != 1L) {
-    stop("Expected one common-prior inference row for: ", method_name)
+  } else if (!is.finite(row$benchmark_rmse_ratio) || row$ratio_status != "defined" ||
+             abs(row$benchmark_rmse_ratio - row$rmse / benchmark_rmse) > 1e-12) stop("Composite/persistence RMSE ratio mismatch")
+  before <- metrics[window == "pre" & series == row$series]
+  after <- metrics[window == "post" & series == row$series]
+  if (nrow(before) != 1L || nrow(after) != 1L ||
+      abs(row$post_minus_pre_rmse - (after$rmse-before$rmse)) > 1e-12 ||
+      abs(row$post_minus_pre_mae - (after$mae-before$mae)) > 1e-12 ||
+      abs(row$post_minus_pre_mean_signed_error - (after$mean_signed_error-before$mean_signed_error)) > 1e-12) {
+    stop("Descriptive post-minus-pre metric changes differ")
   }
-  row
 }
-clustered_2sls <- inference_row("Meeting-clustered 2SLS")
-anderson_rubin <- inference_row("Anderson-Rubin")
-conditional_lr <- inference_row("Conditional likelihood ratio")
-add_check(
-  "inference_clustered_2sls_estimate",
-  clustered_2sls$estimate,
-  0.0187233976525336,
-  1e-10
-)
-add_check(
-  "inference_clustered_2sls_ci_low",
-  clustered_2sls$ci_low,
-  0.0132075805861872,
-  1e-10
-)
-add_check(
-  "inference_clustered_2sls_ci_high",
-  clustered_2sls$ci_high,
-  0.02423921471888,
-  1e-10
-)
-add_check(
-  "inference_ar_ci_low",
-  anderson_rubin$ci_low,
-  0.0159426961125161,
-  1e-10
-)
-add_check(
-  "inference_ar_ci_high",
-  anderson_rubin$ci_high,
-  0.0215067158705976,
-  1e-10
-)
-add_check(
-  "inference_clr_ci_low",
-  conditional_lr$ci_low,
-  0.0159426961512317,
-  1e-10
-)
-add_check(
-  "inference_clr_ci_high",
-  conditional_lr$ci_high,
-  0.0215067158318093,
-  1e-10
-)
-inference_table_text <- normalized_text(file.path(
-  result_dir,
-  "tables",
-  "rr_inference_completion.tex"
-))
-add_check(
-  "inference_table_uses_current_main_iv",
-  grepl(
-    "Meeting-clustered 2SLS & 0.0187 & [0.0132, 0.0242]",
-    inference_table_text,
-    fixed = TRUE
-  ),
-  1,
-  0
-)
-add_check(
-  "inference_table_excludes_superseded_values",
-  !grepl(
-    "0.0258|\\[0.0172, 0.0345\\]|\\[0.0214, 0.0303\\]",
-    inference_table_text
-  ),
-  1,
-  0
-)
-
-draws <- fread(file.path(intermediate, "common_prior_main_by_draw_20260714.csv"))
-add_check("draws_positive", sum(draws$prompt_iv > 0), 25, 0)
-add_check("draw_iv_mean", mean(draws$prompt_iv), 0.0203663099696411, 1e-10)
-
-dose <- fread(file.path(intermediate, "common_prior_dose_arm_effects_20260714.csv"))
-dose <- dose[sample == "Composite"]
-dose_expected <- c(
-  dove_high = -0.0103160290562316,
-  dove_low = -0.00838254219653829,
-  neutral = 0.00184079683448314,
-  hawk_low = 0.0178954992683954,
-  hawk_high = 0.0248736603398609
-)
-for (arm_name in names(dose_expected)) {
-  add_check(
-    paste0("dose_", arm_name),
-    dose[arm == arm_name]$estimate,
-    dose_expected[[arm_name]],
-    1e-10
-  )
+expected_draws <- CJ(meeting_number = 272:281, corpus_iteration = seq_len(spec$draws$dose),
+  contrast = c("dove_high", "dove_low", "hawk_low", "hawk_high"), forecaster_type = c(spec$profiles,"composite"))
+keys <- names(expected_draws)
+if (nrow(draws) != nrow(expected_draws) || anyDuplicated(draws[, ..keys]) ||
+    nrow(fsetdiff(expected_draws, draws[, ..keys]))) stop("Incomplete framing counterparts")
+draw_dates <- as.Date(canonical$meeting_date[match(draws$meeting_number,canonical$meeting_number)])
+if (!identical(as.character(as.Date(draws$date_daily)), as.character(draw_dates)) ||
+    any(draws$window != fifelse(draws$meeting_number %in% 272:276,"pre","post"))) {
+  stop("Raw framing audit windows or dates differ from the design")
 }
+raw <- draws[forecaster_type != "composite"]
+if (anyNA(raw[, .(source_run_id,source_text_hash,corpus_hash,neutral_hash)]) ||
+    any(raw$source_run_id != spec$run_ids$dose_text) || any(raw$source_text_hash != raw$corpus_hash) ||
+    max(abs(raw$fixed_prior - raw$neutral_prior)) > 1e-12 ||
+    max(abs(raw$fixed_prior - raw$original_prior)) > 1e-12 ||
+    max(abs(raw$contrast_pp - (raw$arm_forecast - raw$neutral_forecast))) > 1e-12) stop("Framing source/prior/hash mismatch")
+wide <- dcast(raw, meeting_number+corpus_iteration+contrast ~ forecaster_type, value.var="contrast_pp")
+wide[, expected_composite := stats::coef(fit)[["forecast_anchored"]]*anchored + stats::coef(fit)[["forecast_unanchored"]]*unanchored]
+composite <- merge(wide,draws[forecaster_type=="composite"],by=c("meeting_number","corpus_iteration","contrast"),all=TRUE)
+if (nrow(composite)!=10L*spec$draws$dose*4L || anyNA(composite$expected_composite) ||
+    max(abs(composite$expected_composite-composite$contrast_pp))>1e-12) stop("Composite framing weights differ from the frozen slopes")
+expected_means <- draws[, .(contrast_pp = mean(contrast_pp)), by = .(meeting_number,contrast,forecaster_type)]
+expected_dates <- as.Date(canonical$meeting_date[match(meetings$meeting_number, canonical$meeting_number)])
+if (anyNA(expected_dates) ||
+    !identical(as.character(as.Date(meetings$date_daily)), as.character(expected_dates)) ||
+    any(meetings$window != fifelse(meetings$meeting_number %in% 272:276, "pre", "post"))) {
+  stop("Framing dates or five-meeting window membership changed")
+}
+matched <- merge(expected_means, meetings, by = c("meeting_number","contrast","forecaster_type"), suffixes = c("_expected","_saved"), all = TRUE)
+if (nrow(matched) != 120L || anyNA(matched$contrast_pp_expected) || anyNA(matched$contrast_pp_saved) ||
+    max(abs(matched$contrast_pp_expected - matched$contrast_pp_saved)) > 1e-12) stop("Draw-to-meeting weights differ")
+expected_windows <- meetings[, .(mean_contrast_pp = mean(contrast_pp), n_meetings = .N), by = .(window,contrast,forecaster_type)]
+matched <- merge(expected_windows, summary, by = c("window","contrast","forecaster_type"), suffixes = c("_expected","_saved"), all = TRUE)
+if (nrow(matched) != 24L || any(matched$n_meetings_expected != 5L) ||
+    max(abs(matched$mean_contrast_pp_expected - matched$mean_contrast_pp_saved)) > 1e-12) stop("Window weights differ")
+audit <- jsonlite::fromJSON(file.path(intermediate, paste0("knowledge_cutoff_audit_", result_stamp, ".json")))
+if (!identical(audit$model,spec$model) || !identical(audit$reasoning_effort,spec$reasoning_effort) ||
+    !identical(audit$fingerprint,spec$fingerprint) || !identical(audit$units,"percentage_points") ||
+    !identical(audit$error_sign,"prediction_minus_Focus") || audit$n_per_window != 5L ||
+    !identical(audit$spec_sha256,spec_sha256) || !identical(audit$source_runs,spec$run_ids) ||
+    !identical(as.integer(audit$training),203:271) || !identical(as.integer(audit$pre),272:276) ||
+    !identical(as.integer(audit$post),277:281) ||
+    !identical(audit$calibration_sha256,digest::digest(spec$paths$calibration_data,algo="sha256",file=TRUE,serialize=FALSE)) ||
+    !grepl("^[0-9a-f]{64}$",audit$fit_fingerprint) || !grepl("^[0-9a-f]{64}$",audit$training_input_sha256) ||
+    !identical(audit$frozen_coefficient_sha256,digest::digest(file.path(intermediate,required[[2]]),algo="sha256",file=TRUE,serialize=FALSE))) stop("Cutoff audit identity failed")
+checks <- data.table(check_id = c("frozen69","predictions40","metrics8","framing_weights","audit_identity"), status = "PASS", detail = spec$fingerprint)
 
-heldout <- fread(file.path(intermediate, "common_prior_heldout_20260714.csv"))
-heldout <- heldout[specification == "Held-out 2024-2025, pre-2024 calibration"][1]
-add_check("heldout_prompt_iv", heldout$prompt_iv, 0.00951157687719227, 1e-10)
+# Verify the data actually passed to all affected date plots, including raw tone.
+plot_files <- c("baseline_figure_data.csv", "tone_figure_data.csv", "rolling_calibration_figure_data.csv",
+                "knowledge_cutoff_agreement_figure_data.csv", "knowledge_cutoff_framing_figure_data.csv")
+for (filename in plot_files) {
+  plotted <- fread(run_path(file.path("outputs/tables", filename)))
+  if ("reuniao" %in% names(plotted)) setnames(plotted, "reuniao", "meeting_number")
+  if ("date" %in% names(plotted)) setnames(plotted, "date", "date_daily")
+  required_columns <- c("meeting_number", "date_daily", "after_knowledge_cutoff", "model", "calibration_type")
+  if (!all(required_columns %in% names(plotted)) || anyNA(plotted[, ..required_columns])) {
+    stop("Incomplete plotting metadata: ", filename)
+  }
+  expected_dates <- as.Date(canonical$meeting_date[match(plotted$meeting_number, canonical$meeting_number)])
+  if (anyNA(expected_dates) ||
+      !identical(as.character(as.Date(plotted$date_daily)), as.character(expected_dates)) ||
+      any(plotted$after_knowledge_cutoff != (expected_dates > as.Date(spec$cutoff))) ||
+      any(plotted$model != spec$model) || any(!nzchar(plotted$calibration_type))) {
+    stop("Canonical plotting dates or cutoff flags failed: ", filename)
+  }
+  expected_type <- switch(filename,
+    baseline_figure_data.csv = "full_79_and_leave_one_meeting_out",
+    tone_figure_data.csv = "lexicon_tone",
+    rolling_calibration_figure_data.csv = "rolling_24_meetings",
+    knowledge_cutoff_agreement_figure_data.csv = fifelse(plotted$series=="frozen_calibrated_composite", "frozen_69",
+      fifelse(plotted$series=="focus_persistence", "previous_meeting_focus", "raw_original_path")),
+    knowledge_cutoff_framing_figure_data.csv = fifelse(plotted$forecaster_type=="composite", "frozen_69_contrast", "raw_common_prior_contrast"))
+  if (any(plotted$calibration_type != expected_type)) stop("Incorrect plotted fit label: ", filename)
+}
+checks <- rbind(checks, data.table(check_id = "canonical_plotting_data", status = "PASS", detail = paste(plot_files,collapse = ",")))
 
-d8_loo <- fread(file.path(intermediate, "referee_d8_loo_summary_20260715.csv"))[1]
-d8_metrics <- fread(file.path(
-  intermediate,
-  "referee_d8_forecast_metrics_20260715.csv"
-))
-d8_loss <- fread(file.path(
-  intermediate,
-  "referee_d8_mean_loss_tests_20260715.csv"
-))
-d8_composite <- d8_metrics[model == "composite"][1]
-d8_ar1 <- d8_metrics[model == "focus_ar1"][1]
-d8_equal <- d8_metrics[model == "equal_weight"][1]
-d8_bates <- d8_metrics[model == "bates_granger"][1]
-d8_composite_loss <- d8_loss[model == "composite"][1]
-d8_bates_loss <- d8_loss[model == "bates_granger"][1]
-add_check("d8_loo_meetings", d8_loo$n, 71, 0)
-add_check("d8_loo_r_squared", d8_loo$r2_cv, 0.722688788581542, 1e-10)
-add_check("d8_loo_rmse", d8_loo$rmse, 0.408629324440901, 1e-10)
-add_check("d8_loo_mae", d8_loo$mae, 0.288508663523992, 1e-10)
-add_check("d8_expanding_forecasts", d8_composite$n, 47, 0)
-add_check("d8_composite_rmse", d8_composite$rmse, 0.574094257218305, 1e-10)
-add_check("d8_focus_ar1_rmse", d8_ar1$rmse, 0.474253866457948, 1e-10)
-add_check("d8_equal_weight_rmse", d8_equal$rmse, 0.520067896549361, 1e-10)
-add_check("d8_bates_granger_rmse", d8_bates$rmse, 0.483167978690283, 1e-10)
-add_check(
-  "d8_composite_r2_oos_vs_historical_mean",
-  d8_composite$r2_oos_vs_historical_mean,
-  0.607690051411221,
-  1e-10
-)
-add_check(
-  "d8_composite_loss_difference",
-  d8_composite_loss$mean_loss_difference,
-  -0.104667486320724,
-  1e-10
-)
-add_check(
-  "d8_composite_loss_hac_se",
-  d8_composite_loss$se_hac,
-  0.104641068763104,
-  1e-10
-)
-add_check(
-  "d8_composite_loss_p",
-  d8_composite_loss$p_hac,
-  0.322421205902739,
-  1e-10
-)
-add_check(
-  "d8_bates_granger_loss_p",
-  d8_bates_loss$p_hac,
-  0.931361294848362,
-  1e-10
-)
+# Reference acceptance is an explicit later author/reviewer action.
+manifest <- fread(run_path("data/metadata/exhibit_manifest.csv"))
+for (index in seq_len(nrow(manifest))) {
+  item <- manifest[index]
+  artifact <- run_path(item$output_path)
+  present <- file.exists(artifact) && file.info(artifact)$size > 0
+  accepted <- isTRUE(spec$execution$reference_accepted)
+  reference <- run_path(item$reference_path)
+  matched <- accepted && file.exists(reference) && present
+  if (matched && item$type=="table") matched <- identical(
+    paste(readLines(artifact,warn=FALSE,encoding="UTF-8"),collapse="\n"),
+    paste(readLines(reference,warn=FALSE,encoding="UTF-8"),collapse="\n"))
+  checks <- rbind(checks, data.table(check_id = paste0("artifact:",item$exhibit_id),
+    status = if (!present) "FAIL" else if (!accepted) "NOT RUN" else if (matched) "PASS" else "FAIL",
+    detail = if (!accepted) "Candidate reference has not been accepted" else "Accepted reference present; normalized text equality for tables"))
+}
+baseline <- spec$paths$numerical_baseline
+if (!isTRUE(spec$execution$reference_accepted) || !file.exists(baseline)) {
+  checks <- rbind(checks, data.table(check_id="numerical_baseline",status="NOT RUN",detail="New numerical references are unaccepted"))
+} else {
+  numerical <- fread(baseline)
+  required_columns <- c("check_id","artifact","key_column","key_value","value_column","expected","tolerance")
+  if (!all(required_columns %in% names(numerical)) || !nrow(numerical)) stop("Invalid numerical baseline schema")
+  for (index in seq_len(nrow(numerical))) {
+    item <- numerical[index]
+    current <- fread(run_path(item$artifact))
+    if (!is.na(item$key_column) && nzchar(item$key_column)) current <- current[as.character(current[[item$key_column]]) == as.character(item$key_value)]
+    observed <- current[[item$value_column]]
+    passed <- length(observed) == 1L && is.finite(observed) && is.finite(item$expected) &&
+      is.finite(item$tolerance) && item$tolerance >= 0 && abs(observed-item$expected) <= item$tolerance
+    checks <- rbind(checks,data.table(check_id=item$check_id,status=if(passed) "PASS" else "FAIL",detail="Reviewed Terra numerical baseline"))
+  }
+}
+fwrite(checks, run_path("results/verification_report.csv"))
 
-placebo <- fread(file.path(intermediate, "referee_d5_scrambled_outcome_placebo_summary_20260715.csv"))[1]
-add_check("placebo_mean_f", placebo$mean_first_stage_f, 1.08475291586012, 1e-8)
-add_check("placebo_iv_rejection_share", placebo$share_prompt_iv_p_below_05, 0, 1e-12)
-
-hierarchical <- fread(file.path(intermediate, "referee_d6_hierarchical_dirichlet_20260715.csv"))
-add_check(
-  "hierarchical_unanchored_weight",
-  hierarchical[parameter == "Unanchored weight"]$mean,
-  0.347694228985941,
-  0.01,
-  "MCMC tolerance"
-)
-
-regime <- fread(file.path(intermediate, "referee_d7_regime_estimates_20260715.csv"))
-add_check("pre_campos_prompt_iv", regime[get("regime") == "Pre-Campos Neto"]$prompt_iv, 0.00409988541274492, 1e-9)
-add_check("campos_prompt_iv", regime[get("regime") == "Campos Neto onward"]$prompt_iv, 0.0183957165253756, 1e-9)
-
-sunspot <- fread(file.path(intermediate, "referee_d10_sunspot_order_bootstrap_20260715.csv"))
-sunspot <- sunspot[synthetic_aggregate == "hierarchical_simplex"][1]
-add_check("sunspot_bmz_share", sunspot$bmz_order_bootstrap_share, 0.27663831915958, 1e-12)
-add_check("sunspot_reverse_share", sunspot$reverse_order_bootstrap_share, 0.250625312656328, 1e-12)
-
-wild <- fread(file.path(intermediate, "referee_d23_wild_cluster_iv_20260715.csv"))[1]
-add_check("wild_cluster_estimate", wild$estimate, 0.0187233976525341, 1e-10)
-add_check("wild_cluster_ci_low", wild$ci_low, 0.0130462562760255, 1e-8)
-add_check("wild_cluster_ci_high", wild$ci_high, 0.0244005390290426, 1e-8)
-
-embedding <- fread(file.path(intermediate, "referee_d16_embedding_preservation_20260715.csv"))
-add_check(
-  "dove_document_cosine",
-  embedding[source_role == "dove" & metric == "document_cosine_similarity"]$estimate,
-  0.967692190929199,
-  1e-10
-)
-add_check(
-  "hawk_document_cosine",
-  embedding[source_role == "hawk" & metric == "document_cosine_similarity"]$estimate,
-  0.968072820817924,
-  1e-10
-)
-
-numeric_checks <- rbindlist(checks)
-verification <- rbindlist(list(artifact_rows, numeric_checks), fill = TRUE)
-write.csv(verification, file.path(result_dir, "verification_report.csv"), row.names = FALSE)
-
+# Candidate in-text macros always use the selected outputs, regardless of sign.
+main <- fread(file.path(intermediate,paste0("common_prior_main_models_",result_stamp,".csv")))[sample=="Composite"]
+dose <- fread(file.path(intermediate,paste0("common_prior_dose_arm_effects_",result_stamp,".csv")))[sample=="Composite"]
+heldout <- fread(file.path(intermediate,paste0("common_prior_heldout_",result_stamp,".csv")))[grepl("^Held-out",specification)]
+d8_loo <- fread(file.path(intermediate,paste0("referee_d8_loo_summary_",result_stamp,".csv")))
+d8_metrics <- fread(file.path(intermediate,paste0("referee_d8_forecast_metrics_",result_stamp,".csv")))
+d8_loss <- fread(file.path(intermediate,paste0("referee_d8_mean_loss_tests_",result_stamp,".csv")))
+d8_composite <- d8_metrics[model=="composite"]
+d8_ar1 <- d8_metrics[model=="focus_ar1"]
+d8_composite_loss <- d8_loss[model=="composite"]
+d8_bates_loss <- d8_loss[model=="bates_granger"]
+if (any(c(nrow(main),nrow(heldout),nrow(d8_loo),nrow(d8_composite),nrow(d8_ar1),nrow(d8_composite_loss),nrow(d8_bates_loss))!=1L)) stop("Ambiguous numerical macro inputs")
 intext <- data.table(
   result = c(
     "Main Prompt-IV", "Main standard error", "Reduced form", "First stage",
@@ -318,8 +270,6 @@ tex <- c(
 )
 writeLines(tex, file.path(result_dir, "intext_numbers.tex"), useBytes = TRUE)
 
-if (any(verification$status != "pass")) {
-  failed <- verification[status != "pass", check_id]
-  stop("Replication verification failed: ", paste(failed, collapse = ", "))
-}
-cat(sprintf("Verified %d artifacts and numerical checks\n", nrow(verification)))
+
+if (any(checks$status != "PASS")) stop("Terra verification is incomplete. See selected-run verification_report.csv")
+cat(sprintf("Verified %d selected-run checks\n",nrow(checks)))

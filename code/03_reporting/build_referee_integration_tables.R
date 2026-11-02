@@ -4,7 +4,19 @@ suppressPackageStartupMessages({
   library(scales)
 })
 
-root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+source_root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+source(file.path(source_root, "code", "read_run_spec.R"))
+calibration <- haven::read_dta(spec$paths$calibration_data)
+if (anyDuplicated(calibration$reuniao) || !identical(sort(as.integer(calibration$reuniao)), 203:281)) {
+  stop("Reporting requires the complete selected calibration panel")
+}
+sample_n <- nrow(calibration)
+main_arm_n <- sample_n * spec$draws$main
+dose_arm_n <- sample_n * spec$draws$dose
+sample_caption <- paste(spec$model, "at high reasoning. Meetings 203-281.\n",
+                        "Meetings 277-281 are dated after the model knowledge cutoff.")
+if (spec$design_type != "production") sample_caption <- paste("Synthetic QA fixture.", sample_caption)
+cutoff_date <- as.Date(spec$cutoff)
 source_dir <- file.path(root, "outputs", "tables")
 table_dir <- file.path(root, "results", "tables")
 figure_dir <- file.path(root, "results", "figures")
@@ -18,7 +30,11 @@ read_result <- function(filename) {
 }
 
 write_tex <- function(filename, lines) {
-  writeLines(lines, file.path(table_dir, filename), useBytes = TRUE)
+  # Counts come from the validated selected panel, never a historical release.
+  lines <- gsub("@N_MEETINGS@", as.character(sample_n), lines, fixed = TRUE)
+  lines <- gsub("@N_MAIN_ARM@", format(main_arm_n, big.mark = ",", scientific = FALSE, trim = TRUE), lines, fixed = TRUE)
+  lines <- gsub("@N_DOSE_ARM@", as.character(dose_arm_n), lines, fixed = TRUE)
+  writeLines(lines, run_path(file.path(table_dir, filename)), useBytes = TRUE)
 }
 
 fmt <- function(x, digits = 4) {
@@ -43,6 +59,7 @@ tex_percent <- function(x, accuracy = 0.1) {
 }
 
 table_header <- function(caption, label, size = "scriptsize") {
+  if (spec$design_type != "production") caption <- paste("Synthetic QA fixture.", caption)
   c(
     "\\begin{table}[htbp]",
     "\\color{revisionred}",
@@ -67,9 +84,9 @@ table_footer <- function(notes, size = "scriptsize") {
 }
 
 # Constrained calibration: keep this separate from the baseline regression table.
-d6 <- read_result("referee_d6_constrained_calibration_20260715.csv")
-d6_h <- read_result("referee_d6_hierarchical_dirichlet_20260715.csv")
-d6_eb <- read_result("referee_d6_empirical_bayes_20260715.csv")
+d6 <- read_result(paste0("referee_d6_constrained_calibration_", result_stamp, ".csv"))
+d6_h <- read_result(paste0("referee_d6_hierarchical_dirichlet_", result_stamp, ".csv"))
+d6_eb <- read_result(paste0("referee_d6_empirical_bayes_", result_stamp, ".csv"))
 
 get_spec <- function(pattern) d6[grepl(pattern, specification, fixed = TRUE)][1]
 ols_nowc <- get_spec("Unrestricted OLS")
@@ -95,7 +112,7 @@ calibration_lines <- c(
   paste0("Weights sum to one & ", paste(mc(c("No", "Yes", "Yes", "Yes")), collapse = " & "), " \\\\"),
   paste0("Weights restricted to $[0,1]$ & ", paste(mc(c("No", "Yes", "Yes", "No")), collapse = " & "), " \\\\"),
   paste0("Word count included & ", paste(mc(rep("No", 4)), collapse = " & "), " \\\\"),
-  paste0("Observations & ", paste(mc(rep("71", 4)), collapse = " & "), " \\\\"),
+  paste0("Observations & ", paste(mc(rep("@N_MEETINGS@", 4)), collapse = " & "), " \\\\"),
   "\\bottomrule",
   "\\end{tabular}",
   table_footer(paste(
@@ -111,8 +128,8 @@ calibration_lines <- c(
 write_tex("rr_calibration_restrictions.tex", calibration_lines)
 
 # Pre-meeting orthogonality: the outcome is the realized hawk-minus-dove tone gap.
-d2 <- read_result("referee_d2_tone_gap_orthogonality_20260715.csv")
-d2_joint <- read_result("referee_d2_joint_orthogonality_20260715.csv")[1]
+d2 <- read_result(paste0("referee_d2_tone_gap_orthogonality_", result_stamp, ".csv"))
+d2_joint <- read_result(paste0("referee_d2_joint_orthogonality_", result_stamp, ".csv"))[1]
 d2_terms <- c(
   "z_ipca15_change_pre", "z_ibc_change_pre", "z_brl_return_5d_pre",
   "z_focus_drift_7d_pre", "z_selic_surprise"
@@ -154,8 +171,8 @@ orthogonality_lines <- c(
 write_tex("rr_preassignment_orthogonality.tex", orthogonality_lines)
 
 # Generator uncertainty: keep text tone, forecast levels, and revisions in separate tables.
-d5_forecasters <- read_result("referee_d5_cross_draw_forecasters_20260715.csv")
-d5_composite <- read_result("referee_d5_cross_draw_composite_20260715.csv")
+d5_forecasters <- read_result(paste0("referee_d5_cross_draw_forecasters_", result_stamp, ".csv"))
+d5_composite <- read_result(paste0("referee_d5_cross_draw_composite_", result_stamp, ".csv"))
 d5_value <- function(role_filter, forecaster_filter, field) {
   selected <- d5_forecasters[source_role == role_filter & forecaster_type == forecaster_filter]
   if (nrow(selected) != 1L) stop("D5 forecaster selector must return exactly one row")
@@ -227,7 +244,7 @@ write_tex("rr_crossdraw_forecast_revisions.tex", crossdraw_revision_lines)
 
 # Regime stability: report every object requested by the editor, with four
 # columns per panel so that estimates and uncertainty remain legible.
-d7 <- read_result("referee_d7_regime_estimates_20260715.csv")
+d7 <- read_result(paste0("referee_d7_regime_estimates_", result_stamp, ".csv"))
 calendar_order <- c("Pre-Campos Neto", "Campos Neto onward", "Pre-2021", "2021 onward")
 state_order <- c(
   "Below-median realized inflation", "Above-median realized inflation",
@@ -292,14 +309,14 @@ regime_lines <- c(
     calendar_note,
     "The inflation split uses the latest realized twelve-month IPCA rate at each meeting: at or below versus above its sample median.",
     "Markov states are maximum-smoothed-probability classifications from a two-state Focus-on-tone AR(1) projection with switching coefficients and variance; state labels are nominal.",
-    "The 2015 reference date and the 2011--2012 Bonomo episode are outside the November 2016--September 2025 sample; the inflation and Markov partitions are noncontiguous.",
+    "The 2015 reference date and the 2011--2012 Bonomo episode are outside the November 2016--September 2026 sample; the inflation and Markov partitions are noncontiguous.",
     "Weights are predictive coefficients, not population shares. * $p<0.10$, ** $p<0.05$, *** $p<0.01$."
   ))
 )
 write_tex("rr_regime_promptiv.tex", regime_lines)
 
 # Focus Top-5 calibration, one benchmark outcome with horizons in columns.
-d9_top <- read_result("referee_d9_top5_calibration_20260715.csv")
+d9_top <- read_result(paste0("referee_d9_top5_calibration_", result_stamp, ".csv"))
 top_horizons <- c("Top-5 short horizon", "Top-5 medium horizon", "Top-5 long horizon")
 top_label <- c("Short", "Medium", "Long")
 top_value <- function(benchmark_filter, term_filter, field) {
@@ -317,13 +334,13 @@ top_lines <- c(
   paste0(" & ", paste(mc(paste0("(", 1:3, ")")), collapse = " & "), " \\\\"),
   paste0(" & ", paste(mc(top_label), collapse = " & "), " \\\\"),
   "\\midrule",
-    paste0("Anchored forecast & ", paste(vapply(top_horizons, function(h) coef_cell(top_value(h, "forecast_anchored_gpt55", "estimate"), top_value(h, "forecast_anchored_gpt55", "p_value")), character(1)), collapse = " & "), " \\\\"),
-    paste0(" & ", paste(vapply(top_horizons, function(h) se_cell(top_value(h, "forecast_anchored_gpt55", "std_error")), character(1)), collapse = " & "), " \\\\"),
-    paste0("Unanchored forecast & ", paste(vapply(top_horizons, function(h) coef_cell(top_value(h, "forecast_unanchored_gpt55", "estimate"), top_value(h, "forecast_unanchored_gpt55", "p_value")), character(1)), collapse = " & "), " \\\\"),
-    paste0(" & ", paste(vapply(top_horizons, function(h) se_cell(top_value(h, "forecast_unanchored_gpt55", "std_error")), character(1)), collapse = " & "), " \\\\"),
+    paste0("Anchored forecast & ", paste(vapply(top_horizons, function(h) coef_cell(top_value(h, "forecast_anchored", "estimate"), top_value(h, "forecast_anchored", "p_value")), character(1)), collapse = " & "), " \\\\"),
+    paste0(" & ", paste(vapply(top_horizons, function(h) se_cell(top_value(h, "forecast_anchored", "std_error")), character(1)), collapse = " & "), " \\\\"),
+    paste0("Unanchored forecast & ", paste(vapply(top_horizons, function(h) coef_cell(top_value(h, "forecast_unanchored", "estimate"), top_value(h, "forecast_unanchored", "p_value")), character(1)), collapse = " & "), " \\\\"),
+    paste0(" & ", paste(vapply(top_horizons, function(h) se_cell(top_value(h, "forecast_unanchored", "std_error")), character(1)), collapse = " & "), " \\\\"),
   "\\midrule",
-    paste0("Observations & ", paste(mc(vapply(top_horizons, function(h) top_value(h, "forecast_unanchored_gpt55", "observations"), numeric(1))), collapse = " & "), " \\\\"),
-    paste0("$R^2$ & ", paste(mc(vapply(top_horizons, function(h) fmt(top_value(h, "forecast_unanchored_gpt55", "r_squared"), 3), character(1))), collapse = " & "), " \\\\"),
+    paste0("Observations & ", paste(mc(vapply(top_horizons, function(h) top_value(h, "forecast_unanchored", "observations"), numeric(1))), collapse = " & "), " \\\\"),
+    paste0("$R^2$ & ", paste(mc(vapply(top_horizons, function(h) fmt(top_value(h, "forecast_unanchored", "r_squared"), 3), character(1))), collapse = " & "), " \\\\"),
   paste0("Activity controls & ", paste(mc(rep("Yes", 3)), collapse = " & "), " \\\\"),
   "\\bottomrule",
   "\\end{tabular}",
@@ -337,9 +354,9 @@ top_lines <- c(
 write_tex("rr_top5_calibration.tex", top_lines)
 
 # Distribution and moment diagnostics remain descriptive and separate from regressions.
-d9_dist <- read_result("referee_d9_distribution_summary_20260715.csv")[1]
-d8_loo <- read_result("referee_d8_loo_summary_20260715.csv")[1]
-d8_metrics <- read_result("referee_d8_forecast_metrics_20260715.csv")
+d9_dist <- read_result(paste0("referee_d9_distribution_summary_", result_stamp, ".csv"))[1]
+d8_loo <- read_result(paste0("referee_d8_loo_summary_", result_stamp, ".csv"))[1]
+d8_metrics <- read_result(paste0("referee_d8_forecast_metrics_", result_stamp, ".csv"))
 d8_composite <- d8_metrics[model == "composite"][1]
 d8_ar1 <- d8_metrics[model == "focus_ar1"][1]
 d8_anchored <- d8_metrics[model == "anchored_agent"][1]
@@ -365,8 +382,8 @@ focus_summary_lines <- c(
   table_footer(paste(
     "The Focus comparison for expanding-window RMSE is a recursively estimated Focus AR(1).",
     "The expanding window contains 47 forecasts after an initial 24 meetings.",
-    "Leave-one-meeting-out statistics use all 71 meetings.",
-    "Focus dispersion is the standard deviation across survey respondents. Synthetic dispersion is the standard deviation across the two profiles."
+    "Leave-one-meeting-out statistics use all @N_MEETINGS@ meetings.",
+    "Focus dispersion is the standard deviation across survey respondents. Synthetic dispersion is the within-meeting standard deviation across two synthetic profiles and five regenerations."
   ), "footnotesize")
 )
 write_tex("rr_focus_calibration_summary.tex", focus_summary_lines)
@@ -380,7 +397,7 @@ dist_lines <- c(
   paste0("Mean Focus respondents per meeting & ", fmt(d9_dist$mean_focus_respondents, 1), " \\\\"),
   paste0("Mean Focus cross-sectional SD (p.p.) & ", fmt(d9_dist$mean_focus_sd, 3), " \\\\"),
   paste0("Mean normalized Focus dispersion & ", fmt(d9_dist$mean_normalized_focus_dispersion, 3), " \\\\"),
-  paste0("Mean synthetic two-profile SD (p.p.) & ", fmt(d9_dist$mean_synthetic_sd, 3), " \\\\"),
+  paste0("Mean synthetic profile-by-draw SD (p.p.) & ", fmt(d9_dist$mean_synthetic_sd, 3), " \\\\"),
   paste0("Synthetic-to-Focus SD ratio & ", fmt(d9_dist$mean_synthetic_to_focus_sd_ratio, 3), " \\\\"),
   paste0("Correlation of meeting-level dispersions & ", fmt(d9_dist$correlation_date_level_dispersion, 3), " \\\\"),
   paste0("Meetings & ", d9_dist$meetings, " \\\\"),
@@ -388,13 +405,13 @@ dist_lines <- c(
   "\\end{tabular}",
   table_footer(paste(
     "Focus dispersion uses the BCB aggregate distribution around each Copom meeting.",
-    "Synthetic dispersion is the cross-sectional standard deviation of the two original-minute forecaster profiles and is therefore a deliberately sparse benchmark.",
+    "Synthetic dispersion is the within-meeting standard deviation across two original-minute forecaster profiles and five regenerations. It is a model-based cross section.",
     "The ratio shows that two profiles reproduce less than half of the observed survey dispersion."
   ), "footnotesize")
 )
 write_tex("rr_focus_dispersion.tex", dist_lines)
 
-d12 <- read_result("referee_d12_moment_battery_20260715.csv")
+d12 <- read_result(paste0("referee_d12_moment_battery_", result_stamp, ".csv"))
 moment_lines <- c(
   table_header("Moment validation of the synthetic calibration", "tab:moment-battery", "footnotesize"),
   "\\begin{tabular}{lcc}",
@@ -413,7 +430,7 @@ moment_lines <- c(
 write_tex("rr_moment_battery.tex", moment_lines)
 
 # Macro correlates of the tone in the published Copom minutes.
-d22_macro <- read_result("referee_d22_macro_correlates_20260715.csv")
+d22_macro <- read_result(paste0("referee_d22_macro_correlates_", result_stamp, ".csv"))
 d22_terms <- c(
   "z_selic_target_pre", "z_ibc_change_pre", "z_brl_volatility_20d_pre",
   "z_ipca15_change_pre", "z_focus_drift_7d_pre", "post_campos_neto",
@@ -456,7 +473,7 @@ macro_lines <- c(
 write_tex("rr_macro_tone_correlates.tex", macro_lines)
 
 # Branch-McGough-Zhu analogue.
-d10_order <- read_result("referee_d10_sunspot_order_bootstrap_20260715.csv")
+d10_order <- read_result(paste0("referee_d10_sunspot_order_bootstrap_", result_stamp, ".csv"))
 sun_order <- c("anchored", "unanchored", "equal_weight", "hierarchical_simplex")
 s10 <- d10_order[match(sun_order, synthetic_aggregate)]
 sun_labels <- c("Anchored", "Unanchored", "Equal weight", "Bayesian shares")
@@ -488,7 +505,7 @@ sunspot_lines <- c(
 write_tex("rr_sunspot_ordering.tex", sunspot_lines)
 
 # Bayesian model tournaments are kept in two separate tables.
-d11 <- read_result("referee_d11_posterior_tournament_20260715.csv")
+d11 <- read_result(paste0("referee_d11_posterior_tournament_", result_stamp, ".csv"))
 write_tournament <- function(panel_name, filename, caption, label, model_order, model_labels, extra_note = NULL) {
   z <- d11[panel == panel_name][match(model_order, model)]
   lines <- c(
@@ -531,7 +548,7 @@ write_tournament(
 )
 
 # Topic preservation.
-d15 <- read_result("referee_d15_topic_similarity_20260715.csv")
+d15 <- read_result(paste0("referee_d15_topic_similarity_", result_stamp, ".csv"))
 topic_roles <- c("dove_high", "dove_low", "neutral", "hawk_low", "hawk_high")
 t15 <- d15[match(topic_roles, source_role)]
 role_labels <- c("High dove", "Low dove", "Neutral", "Low hawk", "High hawk")
@@ -555,7 +572,7 @@ topic_lines <- c(
 write_tex("rr_topic_preservation.tex", topic_lines)
 
 # Embedding and token preservation for the hawkish and dovish rewrites.
-d16_pres <- read_result("referee_d16_embedding_preservation_20260715.csv")
+d16_pres <- read_result(paste0("referee_d16_embedding_preservation_", result_stamp, ".csv"))
 pres_metrics <- c("document_cosine_similarity", "symmetric_sentence_similarity", "subword_jensen_shannon", "subword_count_ratio", "sentence_count_ratio")
 pres_labels <- c("Document cosine similarity", "Symmetric sentence similarity", "Subword Jensen--Shannon distance", "Subword-count ratio", "Sentence-count ratio")
 pres_value <- function(role_filter, metric_filter, field = "estimate") {
@@ -578,12 +595,12 @@ embedding_lines <- c(
   "\\midrule",
   vapply(seq_along(pres_metrics), function(i) paste0(pres_labels[i], " & ", fmt(pres_value("dove", pres_metrics[i]), 4), " & ", fmt(pres_value("hawk", pres_metrics[i]), 4), " \\\\"), character(1)),
   "\\midrule",
-  "Rewrite observations & 1,775 & 1,775 \\\\",
-  "Meeting clusters & 71 & 71 \\\\",
+  "Rewrite observations & @N_MAIN_ARM@ & @N_MAIN_ARM@ \\\\",
+  "Meeting clusters & @N_MEETINGS@ & @N_MEETINGS@ \\\\",
   "\\bottomrule",
   "\\end{tabular}",
   table_footer(paste(
-    "Each column contains 1,775 generated minutes: 25 versions of each of 71 source minutes.",
+    "Each column contains @N_MAIN_ARM@ generated minutes: 25 versions of each of @N_MEETINGS@ source minutes.",
     "We compare every generated minute with its source minute.",
     "Document and sentence similarities use the multilingual paraphrase-MiniLM-L12-v2 sentence transformer model.",
     "Subword measures use the same tokenizer. Count ratios divide the rewrite count by the source-minute count."
@@ -592,7 +609,7 @@ embedding_lines <- c(
 write_tex("rr_embedding_preservation.tex", embedding_lines)
 
 # Regression-format alternative-tone table for the binary IV.
-d16_iv <- read_result("referee_d16_alternative_tone_iv_20260715.csv")
+d16_iv <- read_result(paste0("referee_d16_alternative_tone_iv_", result_stamp, ".csv"))
 binary_measures <- c("lexicon_tone_pp", "embedding_tone_loo", "lexicon_t_perp_raw_embedding", "lexicon_t_perp_content_embedding")
 measure_labels <- c("Lexicon", "LOO embedding", "Raw $T_{\\perp}$", "Content $T_{\\perp}$")
 
@@ -626,7 +643,7 @@ alternative_iv_lines <- c(
   paste0("Pair fixed effects & ", paste(mc(rep("Yes", 4)), collapse = " & "), " \\\\"),
   paste0("SE clustered by meeting & ", paste(mc(rep("Yes", 4)), collapse = " & "), " \\\\"),
   paste0("Observations & ", paste(mc(rep("3,550", 4)), collapse = " & "), " \\\\"),
-  paste0("Meeting clusters & ", paste(mc(rep("71", 4)), collapse = " & "), " \\\\"),
+  paste0("Meeting clusters & ", paste(mc(rep("@N_MEETINGS@", 4)), collapse = " & "), " \\\\"),
   "\\bottomrule",
   "\\end{tabular}",
   table_footer(paste(
@@ -669,13 +686,13 @@ dose_iv_lines <- c(
   "\\midrule",
   paste0("Pair fixed effects & ", paste(mc(rep("Yes", 2)), collapse = " & "), " \\\\"),
   paste0("SE clustered by meeting & ", paste(mc(rep("Yes", 2)), collapse = " & "), " \\\\"),
-  paste0("Observations & ", paste(mc(rep("1,775", 2)), collapse = " & "), " \\\\"),
-  paste0("Meeting clusters & ", paste(mc(rep("71", 2)), collapse = " & "), " \\\\"),
+  paste0("Observations & ", paste(mc(rep("@N_MAIN_ARM@", 2)), collapse = " & "), " \\\\"),
+  paste0("Meeting clusters & ", paste(mc(rep("@N_MEETINGS@", 2)), collapse = " & "), " \\\\"),
   "\\bottomrule",
   "\\end{tabular}",
   table_footer(paste(
     "Assigned doses are $-2,-1,0,1,2$ for high intensity dove, low intensity dove, neutral, low intensity hawk, and high intensity hawk.",
-    "For the direct rating, GPT-5.5 scores each text without its assignment label from $-1$ for very dovish to $1$ for very hawkish.",
+    "For the direct rating, GPT-5.6 Terra scores each text without its assignment label from $-1$ for very dovish to $1$ for very hawkish.",
     "The two measures use different scales.",
     "Standard errors are clustered by Copom meeting. * $p<0.10$, ** $p<0.05$, *** $p<0.01$."
   ))
@@ -683,7 +700,7 @@ dose_iv_lines <- c(
 write_tex("rr_dose_tone_iv.tex", dose_iv_lines)
 
 # Average dose slopes for the appendix.
-dose_slopes <- read_result("common_prior_dose_slopes_20260714.csv")
+dose_slopes <- read_result(paste0("common_prior_dose_slopes_", result_stamp, ".csv"))
 dose_tone_summary <- d16_iv[
   sample == "Common-prior five-level assigned-dose design" &
     outcome == "current_unrestricted"
@@ -749,15 +766,15 @@ dose_summary_lines <- c(
   ),
   "\\midrule",
   "Meeting and regeneration fixed effects & \\mc{Yes} & \\mc{Yes} & \\mc{Yes} \\\\",
-  "Observations & \\mc{1,775} & \\mc{1,775} & \\mc{1,775} \\\\",
-  "Meeting clusters & \\mc{71} & \\mc{71} & \\mc{71} \\\\",
+  "Observations & \\mc{@N_MAIN_ARM@} & \\mc{@N_MAIN_ARM@} & \\mc{@N_MAIN_ARM@} \\\\",
+  "Meeting clusters & \\mc{@N_MEETINGS@} & \\mc{@N_MEETINGS@} & \\mc{@N_MEETINGS@} \\\\",
   "\\bottomrule",
   "\\end{tabular}",
   table_footer(paste(
     "The assigned doses are $-2,-1,0,1,2$, running from high intensity dove to high intensity hawk.",
     "Panel A reports the change in each tone measure for a one level increase in the assigned dose.",
     "Lexicon tone is the difference between hawkish and dovish expression counts per 100 words.",
-    "GPT-5.5 rates each text from $-1$ for very dovish to $1$ for very hawkish without seeing its assignment.",
+    "GPT-5.6 Terra rates each text from $-1$ for very dovish to $1$ for very hawkish without seeing its assignment.",
     "Panel B reports the change in the synthetic twelve-month-ahead inflation forecast in basis points.",
     "One basis point equals 0.01 percentage point.",
     "We cluster standard errors by meeting. * $p<0.10$, ** $p<0.05$, *** $p<0.01$."
@@ -766,8 +783,8 @@ dose_summary_lines <- c(
 write_tex("rr_dose_response_summary.tex", dose_summary_lines)
 
 # Dose means for the main text.
-dose_tone_cells <- read_result("common_prior_dose_tone_cells_20260714.csv")
-dose_arm_effects <- read_result("common_prior_dose_arm_effects_20260714.csv")
+dose_tone_cells <- read_result(paste0("common_prior_dose_tone_cells_", result_stamp, ".csv"))
+dose_arm_effects <- read_result(paste0("common_prior_dose_arm_effects_", result_stamp, ".csv"))
 dose_arm_order <- c("dove_high", "dove_low", "neutral", "hawk_low", "hawk_high")
 dose_arm_labels <- c(
   dove_high = "High intensity dove",
@@ -865,7 +882,7 @@ dose_full_lines <- c(
   "\\bottomrule",
   "\\end{tabular}",
   table_footer(paste(
-    "Each prompt produces 355 versions of the minutes, with five regenerations for each of 71 meetings.",
+    "Each prompt produces @N_DOSE_ARM@ versions of the minutes, with five regenerations for each of @N_MEETINGS@ meetings.",
     "Panel A reports mean tone. Panel B reports mean forecast revisions relative to the original minute within the same meeting and regeneration.",
     "The rows labeled \\emph{Change per assigned dose} report coefficients from linear regressions of each outcome on the assigned dose, coded $-2,-1,0,1,2$, with fixed effects for meeting and regeneration pairs.",
     "A one-unit increase in dose moves one step toward hawkishness. All standard errors are clustered by meeting.",
@@ -878,8 +895,8 @@ dose_full_lines <- c(
 write_tex("rr_dose_response_full.tex", dose_full_lines)
 
 # Complete inference table, including the exact R wild-cluster bootstrap.
-d23_wild <- read_result("referee_d23_wild_cluster_iv_20260715.csv")[1]
-common_inference <- read_result("common_prior_inference_20260714.csv")
+d23_wild <- read_result(paste0("referee_d23_wild_cluster_iv_", result_stamp, ".csv"))[1]
+common_inference <- read_result(paste0("common_prior_inference_", result_stamp, ".csv"))
 inference_methods <- c(
   "Meeting-clustered 2SLS",
   "Anderson-Rubin",
@@ -950,7 +967,7 @@ inference_lines <- c(
 write_tex("rr_inference_completion.tex", inference_lines)
 
 # Tone numerator/denominator variance decomposition.
-d24 <- read_result("referee_d24_tone_variance_decomposition_20260715.csv")
+d24 <- read_result(paste0("referee_d24_tone_variance_decomposition_", result_stamp, ".csv"))
 d24 <- d24[match(c("dove_text", "hawk_text"), role)]
 variance_lines <- c(
   table_header("Variance decomposition of the lexicon tone index", "tab:tone-variance-decomposition", "footnotesize"),
@@ -967,7 +984,7 @@ variance_lines <- c(
   table_footer(paste(
     "The numerator is the hawkish-minus-dovish lexicon count and the denominator is document length.",
     "The exact covariance term is allocated by Shapley averaging across the two components, so the reported shares sum to one.",
-    "Most variation comes from stance-word counts rather than document length."
+    "The reported shares describe the selected model cohort."
   ), "footnotesize")
 )
 write_tex("rr_tone_variance_decomposition.tex", variance_lines)
@@ -1005,10 +1022,10 @@ p_regime <- ggplot(d7_plot, aes(x = prompt_iv, y = regime_label)) +
   geom_point(size = 2.2, colour = "#0072B2") +
   scale_x_continuous(labels = label_number(accuracy = 0.01)) +
   labs(x = "Prompt-IV sensitivity (percentage points per tone point)", y = NULL) +
-  theme_journal()
+  labs(caption = sample_caption) + theme_journal()
 ggsave(file.path(figure_dir, "rr_regime_promptiv.pdf"), p_regime, device = cairo_pdf, width = 7.1, height = 4.2, units = "in", bg = "white")
 
-d7_rolling <- read_result("referee_d7_rolling_24_meetings_20260715.csv")
+d7_rolling <- read_result(paste0("referee_d7_rolling_24_meetings_", result_stamp, ".csv"))
 d7_rolling[, window_end := as.Date(window_end)]
 d7_weights <- melt(
   d7_rolling,
@@ -1022,18 +1039,29 @@ d7_weights[, profile := factor(
   levels = c("anchored_weight", "unanchored_weight"),
   labels = c("Anchored", "Unanchored")
 )]
+d7_weights[, after_knowledge_cutoff := window_end > cutoff_date]
+d7_weights[, model := spec$model]
+canonical_dates <- fread(spec$sample$dates_csv)
+d7_weights[, meeting_number := canonical_dates$meeting_number[match(window_end, as.Date(canonical_dates$meeting_date))]]
+d7_weights[, date_daily := window_end]
+d7_weights[, calibration_type := "rolling_24_meetings"]
+if (anyNA(d7_weights$meeting_number)) stop("Rolling figure dates lack canonical meeting keys")
+fwrite(d7_weights, run_path("outputs/tables/rolling_calibration_figure_data.csv"))
 p_rolling_weights <- ggplot(d7_weights, aes(x = window_end, y = weight, colour = profile)) +
+  annotate("rect", xmin = cutoff_date, xmax = as.Date(Inf, origin = "1970-01-01"), ymin = -Inf, ymax = Inf, fill = "grey75", alpha = 0.22) +
+  geom_vline(xintercept = cutoff_date, linetype = "dashed", colour = "grey45", linewidth = 0.4) +
   geom_hline(yintercept = 0, colour = "#777777", linewidth = 0.4) +
   geom_vline(xintercept = as.Date(c("2020-03-18", "2024-01-01")), colour = "#C5C5C5", linewidth = 0.4) +
   geom_line(linewidth = 0.75) +
   geom_point(size = 1.2) +
   scale_colour_manual(values = c("Anchored" = "#D55E00", "Unanchored" = "#0072B2")) +
   scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  labs(x = "End of 24-meeting rolling window", y = "Unrestricted calibration coefficient") +
-  theme_journal()
+  labs(x = "End of 24-meeting rolling window", y = "Unrestricted calibration coefficient",
+       subtitle = "After model knowledge cutoff (2026-02-16)") +
+  labs(caption = sample_caption) + theme_journal()
 ggsave(file.path(figure_dir, "rr_rolling_calibration_weights.pdf"), p_rolling_weights, device = cairo_pdf, width = 7.1, height = 4.0, units = "in", bg = "white")
 
-scatter <- read_result("referee_d16_tone_scatter_data_20260715.csv")
+scatter <- read_result(paste0("referee_d16_tone_scatter_data_", result_stamp, ".csv"))
 scatter[, role := factor(source_role, levels = topic_roles, labels = role_labels)]
 arm_colors <- c("High dove" = "#D55E00", "Low dove" = "#E69F00", "Neutral" = "#777777", "Low hawk" = "#56B4E9", "High hawk" = "#0072B2")
 p_scatter <- ggplot(scatter[source_role != "original"], aes(x = lexicon_tone_pp, y = semantic_score, colour = role)) +
@@ -1041,11 +1069,11 @@ p_scatter <- ggplot(scatter[source_role != "original"], aes(x = lexicon_tone_pp,
   geom_smooth(aes(group = 1), method = "lm", formula = y ~ x, se = TRUE, colour = "#222222", fill = "#BDBDBD", linewidth = 0.65) +
   scale_colour_manual(values = arm_colors) +
   labs(x = "Lexicon tone (percentage points)", y = "Direct rating") +
-  theme_journal()
+  labs(caption = sample_caption) + theme_journal()
 ggsave(file.path(figure_dir, "rr_tone_measure_validation.pdf"), p_scatter, device = cairo_pdf, width = 7.1, height = 4.3, units = "in", bg = "white")
 
 pres_plot <- d16_pres[
-  run_id == "v10_referee_step3_neutral_dose_5draws_20260627" &
+  run_id == spec$run_ids$dose_text &
     source_role %in% topic_roles &
     metric %in% c("document_cosine_similarity", "symmetric_sentence_similarity")
 ]
@@ -1063,7 +1091,62 @@ p_pres <- ggplot(pres_plot, aes(x = estimate, y = role, colour = measure)) +
   scale_colour_manual(values = c("Document cosine" = "#0072B2", "Sentence alignment" = "#D55E00")) +
   scale_x_continuous(limits = c(0.80, 1.005), breaks = seq(0.80, 1.00, 0.05), labels = label_number(accuracy = 0.01)) +
   labs(x = "Similarity to the original minute", y = NULL) +
-  theme_journal()
+  labs(caption = sample_caption) + theme_journal()
 ggsave(file.path(figure_dir, "rr_embedding_preservation.pdf"), p_pres, device = cairo_pdf, width = 7.1, height = 3.9, units = "in", bg = "white")
 
-cat("Referee integration tables and figures rebuilt from July 15 R outputs.\n")
+# Frozen-calibration diagnostics use meetings as the statistical observations.
+cutoff_metrics <- read_result(paste0("knowledge_cutoff_metrics_", result_stamp, ".csv"))
+if (nrow(cutoff_metrics) != 8L || any(cutoff_metrics$n != 5L) ||
+    anyDuplicated(cutoff_metrics[, .(window, series)])) stop("Incomplete cutoff metrics")
+agreement_lines <- c(
+  table_header("Focus agreement with a frozen 69-meeting calibration", "tab:knowledge-cutoff-agreement"),
+  "\\begin{tabular}{llrrrrr}", "\\toprule",
+  paste0("Window & Forecast & Meetings & RMSE & MAE & Mean error & RMSE ratio ", strrep("\\", 2L)),
+  "\\midrule"
+)
+series_labels <- c(frozen_calibrated_composite = "Frozen composite", raw_anchored = "Raw anchored",
+                   raw_unanchored = "Raw unanchored", focus_persistence = "Focus persistence")
+for (index in seq_len(nrow(cutoff_metrics))) {
+  row <- cutoff_metrics[index]
+  agreement_lines <- c(agreement_lines, paste0(
+    if (row$window == "pre") "Before" else "After", " & ", series_labels[[row$series]], " & ", row$n,
+    " & ", fmt(row$rmse), " & ", fmt(row$mae), " & ", fmt(row$mean_signed_error),
+    " & ", if (row$series != "frozen_calibrated_composite") "--" else if (is.finite(row$benchmark_rmse_ratio)) fmt(row$benchmark_rmse_ratio, 3) else "Undefined", " \\\\"))
+}
+agreement_lines <- c(agreement_lines, "\\bottomrule", "\\end{tabular}", table_footer(paste(
+  "The unrestricted calibration is estimated once on meetings 203--271 and held fixed for meetings 272--281.",
+  "The two windows contain five meetings each, 272--276 before and 277--281 after February 16, 2026.",
+  "The target is the same-date median Focus twelve-month-ahead IPCA expectation.",
+  "Errors are prediction minus Focus, in percentage points. Only the composite reports an RMSE ratio, relative to previous-meeting Focus persistence.",
+  "A zero denominator is undefined. Results are descriptive. No five-meeting significance test is used.",
+  "Release alignment alone does not remove pretrained-knowledge or historical-vintage limitations."
+)))
+write_tex("rr_knowledge_cutoff_agreement.tex", agreement_lines)
+
+cutoff_framing <- read_result(paste0("knowledge_cutoff_framing_summary_", result_stamp, ".csv"))
+if (nrow(cutoff_framing) != 24L || any(cutoff_framing$n_meetings != 5L) ||
+    anyDuplicated(cutoff_framing[, .(window, contrast, forecaster_type)])) stop("Incomplete cutoff framing summary")
+framing_lines <- c(
+  table_header("Framing contrasts before and after the model knowledge cutoff", "tab:knowledge-cutoff-framing"),
+  "\\begin{tabular}{llrrr}", "\\toprule",
+  paste0("Profile & Arm minus neutral & Before & After & Change ", strrep("\\", 2L)), "\\midrule"
+)
+for (profile in c("anchored", "unanchored", "composite")) {
+  for (contrast_name in c("dove_high", "dove_low", "hawk_low", "hawk_high")) {
+    before <- cutoff_framing[window == "pre" & forecaster_type == profile & contrast == contrast_name]
+    after <- cutoff_framing[window == "post" & forecaster_type == profile & contrast == contrast_name]
+    if (nrow(before) != 1L || nrow(after) != 1L) stop("Missing framing counterpart")
+    framing_lines <- c(framing_lines, paste0(profile, " & ", gsub("_", " ", contrast_name),
+      " & ", fmt(before$mean_contrast_pp), " & ", fmt(after$mean_contrast_pp),
+      " & ", fmt(after$mean_contrast_pp - before$mean_contrast_pp), " \\\\"))
+  }
+}
+framing_lines <- c(framing_lines, "\\bottomrule", "\\end{tabular}", table_footer(paste(
+  "Each arm is compared with its neutral counterpart within meeting, profile and regeneration using the same original prior.",
+  "Draw contrasts are averaged within meetings before the equal-weight average across five meetings per window.",
+  "The composite uses only the anchored and unanchored slopes of the frozen 69-meeting calibration.",
+  "Units are percentage points. Changes are after minus before. These common-prior contrasts are descriptive."
+)))
+write_tex("rr_knowledge_cutoff_framing.tex", framing_lines)
+
+cat("Referee integration tables and figures rebuilt for ", result_stamp, ".\n", sep = "")

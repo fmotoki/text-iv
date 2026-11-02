@@ -9,3 +9,7 @@ logs/steps/
 .RData
 __pycache__/
 *.pyc
+
+# Recovery copies and obsolete empty run reservations are never source history.
+/archives/
+/runs/

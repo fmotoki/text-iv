@@ -37,6 +37,17 @@ release_metadata <- function(payload, root, analysis_version) {
   if (!is.list(payload) || is.data.frame(payload)) {
     stop("Release metadata payload must be a named list")
   }
+  # Retain actual execution time separately from the prospective result stamp.
+  payload$generated_at_utc <- format(Sys.time(), tz = "UTC", usetz = TRUE)
+  payload$model <- spec$model
+  payload$reasoning_effort <- spec$reasoning_effort
+  payload$release_id <- spec$release_id
+  payload$fingerprint <- spec$fingerprint
+  payload$spec_sha256 <- spec_sha256
+  payload$raw_snapshot <- spec$raw_snapshot
+  payload$run_ids <- spec$run_ids
+  payload$meeting_numbers <- spec$sample$meeting_numbers
+  payload$evaluation <- spec$evaluation
   payload$generated_at <- NULL
   payload$analysis_version <- as.character(analysis_version)
   sanitize_release_metadata(payload, root)

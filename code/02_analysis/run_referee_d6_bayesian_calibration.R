@@ -1,3 +1,25 @@
+# Read the explicit run authority before opening any artifact.
+source_root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+source(file.path(source_root, "code", "read_run_spec.R"), local = TRUE)
+
+# The neutral dataset name must still identify this exact model and specification.
+calibration_audit_path <- run_path("outputs/work/calibration_audit.json")
+if (!file.exists(spec$paths$calibration_data) || !file.exists(calibration_audit_path)) {
+  stop("Selected Terra calibration is absent. Production collection/calibration has not run")
+}
+calibration_audit <- jsonlite::fromJSON(calibration_audit_path, simplifyVector = TRUE)
+if (!identical(calibration_audit$fingerprint, spec$fingerprint) ||
+    !identical(calibration_audit$spec_sha256,spec_sha256) ||
+    !identical(calibration_audit$original_run,spec$run_ids$original_priors) ||
+    !identical(calibration_audit$main_text_run,spec$run_ids$main_text) ||
+    !identical(calibration_audit$model, spec$model) ||
+    !identical(calibration_audit$reasoning_effort, spec$reasoning_effort) ||
+    !identical(as.integer(calibration_audit$meetings), as.integer(spec$sample$meeting_numbers)) ||
+    !identical(calibration_audit$calibration_sha256,
+      digest::digest(spec$paths$calibration_data, algo = "sha256", file = TRUE, serialize = FALSE))) {
+  stop("Calibration provenance, membership or bytes do not match this run")
+}
+
 suppressPackageStartupMessages({
   library(data.table)
   library(haven)
@@ -10,22 +32,21 @@ suppressPackageStartupMessages({
 })
 
 data.table::setDTthreads(1L)
-rstan::rstan_options(auto_write = TRUE)
+rstan::rstan_options(auto_write = FALSE)
 options(mc.cores = 2L)
 
-root <- normalizePath(".", winslash = "/", mustWork = TRUE)
-source(file.path(root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
-dataset_path <- file.path(root, "outputs", "work", "gpt55_calibration_data.dta")
-table_dir <- file.path(root, "outputs", "tables")
-model_dir <- file.path(root, "outputs", "models")
+source(file.path(source_root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
+dataset_path <- spec$paths$calibration_data
+table_dir <- run_path("outputs/tables")
+model_dir <- run_path("outputs/models")
 dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(model_dir, recursive = TRUE, showWarnings = FALSE)
 
-stamp <- "20260715"
+stamp <- result_stamp
 seed <- 20260715L
 
 variables <- c(
-  "inflacao12m", "forecast_anchored_gpt55", "forecast_unanchored_gpt55",
+  "inflacao12m", "forecast_anchored", "forecast_unanchored",
   "ibcbr_agro", "ibcbr_industry", "ibcbr_service"
 )
 data <- as.data.table(read_dta(dataset_path))[, ..variables]
@@ -38,8 +59,8 @@ stan_data <- list(
   N = nrow(data),
   P = length(controls),
   y = data$inflacao12m - mean(data$inflacao12m),
-  anchored = data$forecast_anchored_gpt55 - mean(data$forecast_anchored_gpt55),
-  unanchored = data$forecast_unanchored_gpt55 - mean(data$forecast_unanchored_gpt55),
+  anchored = data$forecast_anchored - mean(data$forecast_anchored),
+  unanchored = data$forecast_unanchored - mean(data$forecast_unanchored),
   X = do.call(cbind, lapply(data[, ..controls], scale_vector))
 )
 
@@ -143,9 +164,9 @@ bridge_result <- bridge_sampler(fit, silent = TRUE)
 # Empirical-Bayes ridge centered on equal weights. The selected penalty is
 # converted to its Gaussian-prior scale using the glmnet objective.
 ridge_data <- data[, .(
-    y_centered = inflacao12m - forecast_unanchored_gpt55 -
-      0.5 * (forecast_anchored_gpt55 - forecast_unanchored_gpt55),
-    agent_difference = forecast_anchored_gpt55 - forecast_unanchored_gpt55,
+    y_centered = inflacao12m - forecast_unanchored -
+      0.5 * (forecast_anchored - forecast_unanchored),
+    agent_difference = forecast_anchored - forecast_unanchored,
   ibcbr_agro,
   ibcbr_industry,
   ibcbr_service

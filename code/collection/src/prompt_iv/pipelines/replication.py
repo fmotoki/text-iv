@@ -13,6 +13,7 @@ from prompt_iv.econometrics import tsls_just_identified
 from prompt_iv.generation.prompts import normalize_prompt_version
 from prompt_iv.pipelines.empirical import MIXTURE_COLUMNS, estimate_baseline
 from prompt_iv.pipelines.generation import prepare_generation_plan
+from prompt_iv.paths import load_spec, specification_metadata, validate_artifact_path
 
 
 FORECASTER_ALIASES = {
@@ -30,6 +31,7 @@ def _safe_text_filename(meeting_number: int) -> str:
 
 
 def _write_json(path: Path, payload: dict) -> None:
+    path = validate_artifact_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
 
@@ -41,43 +43,68 @@ def prepare_replication_run(
     iterations: int = 5,
     parts: int = 5,
     stances: Iterable[str] = ("hawk", "dove"),
-    model: str = "gpt-5.5",
+    model: str = "gpt-5.6-terra",
     reasoning_effort: str = "high",
     temperature: float = 1.0,
     max_meetings: int | None = None,
     prompt_version: str | None = None,
+    meeting_numbers: Iterable[int] | None = None,
+    run_directory: str | Path | None = None,
 ) -> dict:
-    root = Path(root)
-    run_dir = root / "data" / "interim" / "replications" / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
+    spec = load_spec(source_root=root, require_frozen=True)
+    if run_id not in (spec["run_ids"]["main_text"], spec["run_ids"]["dose_text"]):
+        raise ValueError("Rewrite run ID must be a selected text cohort")
+    if (model, reasoning_effort) != (spec["model"], spec["reasoning_effort"]):
+        raise ValueError("Rewrite model/effort disagree with the specification")
+    selected = list(meeting_numbers or ())
+    if selected != spec["sample"]["meeting_numbers"] or max_meetings is not None:
+        raise ValueError("Provide the exact specification meeting set without --max-meetings")
+    expected_draws = spec["draws"]["main" if run_id == spec["run_ids"]["main_text"] else "dose"]
+    if iterations != expected_draws or parts != spec["blocks"]:
+        raise ValueError("Rewrite draw/block counts disagree with the specification")
+    if run_directory is None:
+        raise ValueError("An explicit --run-directory is required")
+    run_dir = validate_artifact_path(run_directory, spec)
+    if run_dir != (Path(spec["paths"]["collections"]) / run_id).resolve():
+        raise ValueError("Run directory does not match the selected run identity")
     normalized_prompt_version = normalize_prompt_version(prompt_version)
-
+    normalized_stances = _normalize_items(stances)
+    expected_roles = spec["roles"]["main" if run_id == spec["run_ids"]["main_text"] else "dose_generated"]
+    if normalized_prompt_version != spec["prompt_versions"]["rewrite"] or normalized_stances != expected_roles:
+        raise ValueError("Rewrite prompt/roles differ from the selected specification")
+    if spec["design_type"] == "production" and Path(minutes_dir).resolve() != (Path(spec["source_root"]) / "data/raw/copom_minutes").resolve():
+        raise ValueError("Production original texts must use the immutable SOURCE_ROOT minute folder")
+    stances = normalized_stances
     manifest = run_dir / "rewrite_manifest.jsonl"
-    generation = prepare_generation_plan(
-        minutes_dir=minutes_dir,
-        output_jsonl=manifest,
-        stances=stances,
-        iterations=iterations,
-        parts=parts,
-        max_meetings=max_meetings,
-        prompt_version=normalized_prompt_version,
-    )
     config = {
         "run_id": run_id,
         "run_dir": str(run_dir),
         "minutes_dir": str(minutes_dir),
         "iterations": iterations,
         "parts": parts,
-        "stances": list(_normalize_items(stances)),
+        "stances": normalized_stances,
         "model": model,
         "reasoning_effort": reasoning_effort,
         "temperature": temperature,
         "max_meetings": max_meetings,
+        "meeting_numbers": selected,
         "prompt_version": normalized_prompt_version,
         "rewrite_manifest": str(manifest),
         "rewrite_results": str(run_dir / "rewrite_results.jsonl"),
         "counterfactual_corpus": str(run_dir / "counterfactual_corpus.csv"),
+        **specification_metadata(spec),
     }
+    config_path = run_dir / "replication_config.json"
+    if config_path.exists():
+        if json.loads(config_path.read_text(encoding="utf-8")) != config:
+            raise ValueError("Existing replication configuration differs. Use a new release_id.")
+    elif run_dir.exists() and any(run_dir.iterdir()):
+        raise ValueError("Nonempty run directory lacks its immutable configuration")
+    generation = prepare_generation_plan(
+        minutes_dir=minutes_dir, output_jsonl=manifest, stances=stances,
+        iterations=iterations, parts=parts, meeting_numbers=selected,
+        prompt_version=normalized_prompt_version,
+    )
     _write_json(run_dir / "replication_config.json", config)
     return {"config": config, "generation": generation}
 
@@ -132,6 +159,7 @@ def build_counterfactual_agent_manifest(
                             meeting_number = int(getattr(row, "meeting_number"))
                             text = str(getattr(row, text_column))
                             text_path = text_dir / f"iteration-{iteration_int:02d}" / scenario / _safe_text_filename(meeting_number)
+                            text_path = validate_artifact_path(text_path)
                             if not text_path.exists() or text_path.read_text(encoding="utf-8") != text:
                                 text_path.parent.mkdir(parents=True, exist_ok=True)
                                 text_path.write_text(text, encoding="utf-8")

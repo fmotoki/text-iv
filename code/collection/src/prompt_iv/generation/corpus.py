@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+import hashlib
 
 import pandas as pd
 
 from prompt_iv.io.jsonl import read_jsonl
 from prompt_iv.io.minutes import read_text
+from prompt_iv.paths import load_spec, specification_metadata, validate_artifact_path
 
 
 def _complete_stance_text(rows: list[dict], total_blocks: int) -> str | None:
@@ -26,12 +28,27 @@ def assemble_counterfactual_corpus(
     output_csv: str | Path | None = None,
     required_stances: tuple[str, ...] = ("hawk", "dove"),
     require_complete: bool = True,
+    manifest_path: str | Path | None = None,
 ) -> pd.DataFrame:
-    rows = [
-        row
-        for row in read_jsonl(results_jsonl)
-        if row.get("status") == "completed" and row.get("numeric_ok") is True
-    ]
+    spec = load_spec(require_frozen=True)
+    validate_artifact_path(results_jsonl, spec)
+    if output_csv:
+        output_csv = validate_artifact_path(output_csv, spec)
+    latest = {str(row["task_id"]): row for row in read_jsonl(results_jsonl) if row.get("task_id")}
+    if manifest_path is None:
+        raise ValueError("Assembly requires the exact planned rewrite manifest")
+    planned = read_jsonl(validate_artifact_path(manifest_path, spec))
+    if len({row["task_id"] for row in planned}) != len(planned) or set(latest) != {row["task_id"] for row in planned}:
+        raise ValueError("Assembly requires the exact latest planned task keys")
+    for task in planned:
+        row = latest[task["task_id"]]
+        if row.get("status") != "completed" or row.get("runner_dry_run") or row.get("numeric_ok") is not True or not row.get("generated_text"):
+            raise ValueError(f"Incomplete or invalid latest rewrite task: {task['task_id']}")
+        if row.get("manifest_input_hash") != task["input_hash"] or row.get("model") != spec["model"] or row.get("reasoning_effort") != spec["reasoning_effort"] or any(row.get(key) != value for key, value in specification_metadata(spec).items()):
+            raise ValueError("Assembly source/model/specification mismatch")
+        if hashlib.sha256(str(row["generated_text"]).encode("utf-8")).hexdigest() != row.get("output_text_hash"):
+            raise ValueError("Generated text hash changed before assembly")
+    rows = list(latest.values())
 
     groups: dict[tuple[int, int], list[dict]] = {}
     for row in rows:
@@ -71,6 +88,8 @@ def assemble_counterfactual_corpus(
         records.append(record)
 
     df = pd.DataFrame(records)
+    if require_complete and len(df) != len({(int(row["meeting_number"]), int(row["iteration"])) for row in planned}):
+        raise ValueError("Assembly omitted an intended meeting/draw cell")
     if output_csv:
         path = Path(output_csv)
         path.parent.mkdir(parents=True, exist_ok=True)

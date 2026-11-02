@@ -2,6 +2,13 @@
 
 ## Status
 
+The current Terra route is `run_terra56_collection.ps1`, documented in
+[terra56_collection_validation_protocol.md](terra56_collection_validation_protocol.md).
+It explicitly registers original, common-prior, and recursive designs under the
+selected specification and separate artifact root. The historical reconstruction
+below is not the Terra collection recipe. The retained 25-draw wrapper and old
+protocol IDs have not been relabelled as Terra results.
+
 The original base launcher referenced by
 `code/collection/scripts/run_v10_referee_d5_25draws.ps1` was not present in
 replication package 2.0.0. The replacement is a prospective-collection

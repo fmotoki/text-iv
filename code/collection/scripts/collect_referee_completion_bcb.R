@@ -1,241 +1,96 @@
-suppressPackageStartupMessages({
-  library(DBI)
-  library(RSQLite)
-  library(data.table)
-  library(httr2)
-  library(jsonlite)
-})
-
-root <- normalizePath(".", winslash = "/", mustWork = TRUE)
-database_path <- file.path(root, "data", "interim", "prompt_iv.sqlite")
-fetched_at <- format(Sys.time(), tz = "UTC", usetz = TRUE)
-
-sgs_series <- data.table(
-  series_code = c(7478L, 24363L, 24364L, 10813L, 13522L, 433L, 432L),
-  series_name = c(
-    "IPCA-15 monthly change",
-    "IBC-Br",
-    "IBC-Br seasonally adjusted",
-    "BRL per USD buying rate",
-    "IPCA accumulated over 12 months",
-    "IPCA monthly change",
-    "Selic target set by Copom"
-  )
-)
-
-fetch_json <- function(url, attempts = 4L) {
-  for (attempt in seq_len(attempts)) {
-    response <- request(url) |>
-      req_user_agent("Prompt-IV referee replication; academic research") |>
-      req_retry(max_tries = attempts) |>
-      req_timeout(60) |>
-      req_perform()
-    resp_check_status(response)
-    body <- resp_body_string(response)
-    if (grepl("^\\s*[\\[{]", body)) {
-      return(fromJSON(body, simplifyVector = TRUE))
-    }
-    if (attempt < attempts) Sys.sleep(attempt)
+# Import frozen BCB extracts offline. Acquisition belongs to download_minutes.py.
+suppressPackageStartupMessages({library(DBI);library(RSQLite);library(data.table);library(jsonlite);library(digest)})
+spec_path <- Sys.getenv("REPLICATION_SPEC_PATH")
+if (!nzchar(spec_path)) stop("REPLICATION_SPEC_PATH is required")
+source_root <- fromJSON(spec_path)$source_root
+source(file.path(source_root,"code","read_run_spec.R"))
+args <- commandArgs(trailingOnly=TRUE)
+if (length(args) && (length(args) %% 2L || any(!args[seq.int(1L,length(args),by=2L)] %in% c("--database","--snapshot")))) stop("Use --database PATH --snapshot PATH, or specification defaults")
+database_path <- spec$paths$database
+snapshot <- spec$raw_snapshot$path
+if (length(args)) {
+  for (i in seq.int(1L,length(args),by=2L)) {
+    if (args[i]=="--database") database_path <- args[i+1L]
+    if (args[i]=="--snapshot") snapshot <- args[i+1L]
   }
-  stop(sprintf("BCB endpoint did not return JSON after %d attempts: %s", attempts, url))
 }
-
-fetch_sgs <- function(code, name) {
-  url <- sprintf(
-    paste0(
-      "https://api.bcb.gov.br/dados/serie/bcdata.sgs.%s/dados",
-      "?formato=json&dataInicial=01/01/2016&dataFinal=31/12/2025"
-    ),
-    code
-  )
-  payload <- fetch_json(url)
-  out <- as.data.table(payload)
-  setnames(out, c("data", "valor"), c("date", "value"))
-  out[, `:=`(
-    series_code = as.integer(code),
-    series_name = name,
-    date = as.character(as.IDate(date, format = "%d/%m/%Y")),
-    value = as.numeric(value),
-    source_url = url,
-    fetched_at = fetched_at
-  )]
-  out[, .(series_code, series_name, date, value, source_url, fetched_at)]
+# Overrides select only identities already authorized by this specification.
+if (normalizePath(snapshot,winslash="/",mustWork=TRUE)!=normalizePath(spec$raw_snapshot$path,winslash="/",mustWork=TRUE)) stop("Snapshot override disagrees with specification")
+if (normalizePath(database_path,winslash="/",mustWork=FALSE)!=normalizePath(spec$paths$database,winslash="/",mustWork=FALSE)) stop("Database override disagrees with specification")
+database_path <- run_path(substring(spec$paths$database,nchar(root)+2L))
+manifest_path <- file.path(snapshot,"source_manifest.json")
+manifest <- fromJSON(manifest_path,simplifyVector=FALSE)
+if (!identical(manifest$status,"acquired_current_values_vintages_unverified")) stop("Incomplete frozen BCB snapshot")
+manifest_hash <- digest(file=manifest_path,algo="sha256",serialize=FALSE)
+if (is.null(spec$raw_snapshot$manifest_sha256) || manifest_hash!=spec$raw_snapshot$manifest_sha256) stop("Raw snapshot manifest identity is not pinned")
+for (filename in names(manifest$normalized_sha256)) {
+  if (basename(filename)!=filename || !file.exists(file.path(snapshot,filename)) || digest(file=file.path(snapshot,filename),algo="sha256",serialize=FALSE)!=manifest$normalized_sha256[[filename]]) stop("Normalized snapshot checksum mismatch")
 }
-
-odata_url <- "https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata"
-
-fetch_odata <- function(entity, filter) {
-  endpoint <- paste(odata_url, entity, sep = "/")
-  pages <- list()
-  page_size <- 10000L
-  skip <- 0L
-  source_urls <- character()
-  repeat {
-    query <- list(
-      request(endpoint),
-      `$filter` = filter,
-      `$orderby` = "Data asc",
-      `$top` = page_size,
-      `$skip` = skip,
-      `$format` = "json"
-    )
-    response <- do.call(req_url_query, query) |>
-      req_user_agent("Prompt-IV referee replication; academic research") |>
-      req_retry(max_tries = 4L) |>
-      req_timeout(90) |>
-      req_perform()
-    resp_check_status(response)
-    payload <- resp_body_json(response, simplifyVector = TRUE)
-    page <- as.data.table(payload$value)
-    pages[[length(pages) + 1L]] <- page
-    source_urls <- c(source_urls, resp_url(response))
-    if (nrow(page) < page_size) break
-    skip <- skip + page_size
-    if (skip > 1000000L) stop(sprintf("Pagination safety limit reached for %s", entity))
-  }
-  rows <- rbindlist(pages, fill = TRUE)
-  attr(rows, "source_url") <- paste(source_urls, collapse = " | ")
-  rows
-}
-
-pick <- function(data, candidates, default = NA) {
-  name <- candidates[candidates %in% names(data)][1]
-  if (is.na(name)) rep(default, nrow(data)) else data[[name]]
-}
-
-standardize_focus <- function(data, entity) {
-  source_url <- attr(data, "source_url")
-  data.table(
-    source_entity = entity,
-    indicator = as.character(pick(data, c("Indicador", "indicador"))),
-    date = as.character(as.IDate(pick(data, "Data"))),
-    reference_period = as.character(pick(data, "DataReferencia")),
-    meeting = as.character(pick(data, c("Reuniao", "reuniao"))),
-    calculation_type = as.character(pick(data, c("tipoCalculo", "TipoCalculo"))),
-    smoothed = as.character(pick(data, "Suavizada")),
-    mean = as.numeric(pick(data, c("Media", "media"))),
-    median = as.numeric(pick(data, c("Mediana", "mediana"))),
-    sd = as.numeric(pick(data, c("DesvioPadrao", "desvioPadrao"))),
-    min = as.numeric(pick(data, c("Minimo", "minimo"))),
-    max = as.numeric(pick(data, c("Maximo", "maximo"))),
-    respondents = as.integer(pick(data, "numeroRespondentes")),
-    calculation_base = as.integer(pick(data, "baseCalculo")),
-    source_url = source_url,
-    fetched_at = fetched_at
-  )
-}
-
-date_filter <- "Data ge '2016-01-01' and Data le '2025-12-31'"
-focus_queries <- list(
-  ExpectativasMercadoInflacao12Meses = paste(
-    "Indicador eq 'IPCA' and Suavizada eq 'N' and baseCalculo eq 0 and",
-    date_filter
-  ),
-  ExpectativasMercadoTop5Inflacao12Meses = paste(
-    "Indicador eq 'IPCA' and Suavizada eq 'N' and", date_filter
-  ),
-  ExpectativasMercadoSelic = paste("baseCalculo eq 0 and", date_filter),
-  ExpectativasMercadoTop5Selic = date_filter,
-  ExpectativasMercadoAnuais = paste(
-    "Indicador eq 'IPCA' and baseCalculo eq 0 and", date_filter
-  ),
-  ExpectativasMercadoTop5Anuais = paste("Indicador eq 'IPCA' and", date_filter)
-)
-
-cat("Collecting BCB SGS series...\n")
-sgs <- rbindlist(Map(fetch_sgs, sgs_series$series_code, sgs_series$series_name))
-
-cat("Collecting BCB Focus aggregates and Top-5 statistics...\n")
-focus <- rbindlist(lapply(names(focus_queries), function(entity) {
-  standardize_focus(fetch_odata(entity, focus_queries[[entity]]), entity)
-}), fill = TRUE)
-
-manifest <- data.table(
-  source_id = c(
-    paste0("BCB_SGS_", sgs_series$series_code),
-    names(focus_queries),
-    "ExpectativasMercadoInstituicoes"
-  ),
-  source_type = c(
-    rep("BCB_SGS", nrow(sgs_series)),
-    rep("BCB_OLINDA", length(focus_queries)),
-    "BCB_OLINDA_DEACTIVATED"
-  ),
-  status = c(
-    rep("collected", nrow(sgs_series) + length(focus_queries)),
-    "unavailable"
-  ),
-  note = c(
-    sgs_series$series_name,
-    rep("Official Focus aggregate or Top-5 statistics", length(focus_queries)),
-    paste(
-      "Official institution-level endpoint deactivated by BCB because of",
-      "microdata confidentiality risk; aggregate and Top-5 endpoints retained."
-    )
-  ),
-  source_url = c(
-    sprintf(
-      "https://api.bcb.gov.br/dados/serie/bcdata.sgs.%s/dados",
-      sgs_series$series_code
-    ),
-    paste(odata_url, names(focus_queries), sep = "/"),
-    paste(odata_url, "ExpectativasMercadoInstituicoes", sep = "/")
-  ),
-  fetched_at = fetched_at
-)
-
-con <- dbConnect(SQLite(), database_path)
-on.exit(dbDisconnect(con), add = TRUE)
-dbExecute(con, "PRAGMA busy_timeout = 60000")
-
-dbWithTransaction(con, {
-  dbExecute(con, paste(
-    "CREATE TABLE IF NOT EXISTS external_bcb_sgs (",
-    "series_code INTEGER NOT NULL, series_name TEXT NOT NULL, date TEXT NOT NULL,",
-    "value REAL, source_url TEXT NOT NULL, fetched_at TEXT NOT NULL,",
-    "PRIMARY KEY (series_code, date))"
-  ))
-  dbExecute(con, paste(
-    "CREATE TABLE IF NOT EXISTS external_focus_statistics (",
-    "source_entity TEXT NOT NULL, indicator TEXT, date TEXT NOT NULL,",
-    "reference_period TEXT, meeting TEXT, calculation_type TEXT, smoothed TEXT,",
-    "mean REAL, median REAL, sd REAL, min REAL, max REAL, respondents INTEGER,",
-    "calculation_base INTEGER, source_url TEXT NOT NULL, fetched_at TEXT NOT NULL)"
-  ))
-  dbExecute(con, paste(
-    "CREATE INDEX IF NOT EXISTS idx_external_focus_source_date",
-    "ON external_focus_statistics(source_entity, date)"
-  ))
-  dbExecute(con, paste(
-    "CREATE TABLE IF NOT EXISTS external_source_manifest (",
-    "source_id TEXT PRIMARY KEY, source_type TEXT NOT NULL, status TEXT NOT NULL,",
-    "note TEXT, source_url TEXT NOT NULL, fetched_at TEXT NOT NULL)"
-  ))
-
-  dbExecute(con, "DELETE FROM external_bcb_sgs WHERE series_code IN (7478,24363,24364,10813,13522,433,432)")
-  dbWriteTable(con, "external_bcb_sgs", as.data.frame(sgs), append = TRUE)
-
-  placeholders <- paste(rep("?", length(focus_queries)), collapse = ",")
-  dbExecute(
-    con,
-    sprintf("DELETE FROM external_focus_statistics WHERE source_entity IN (%s)", placeholders),
-    params = as.list(unname(names(focus_queries)))
-  )
-  dbWriteTable(con, "external_focus_statistics", as.data.frame(focus), append = TRUE)
-
-  for (source_id in manifest$source_id) {
-    dbExecute(
-      con,
-      "DELETE FROM external_source_manifest WHERE source_id = ?",
-      params = list(source_id)
-    )
-  }
-  dbWriteTable(con, "external_source_manifest", as.data.frame(manifest), append = TRUE)
-})
-
-cat(sprintf(
-  "Stored %s SGS rows and %s Focus rows directly in %s.\n",
-  format(nrow(sgs), big.mark = ","),
-  format(nrow(focus), big.mark = ","),
-  database_path
+sgs <- fread(file.path(snapshot,"sgs.csv"),colClasses="character",encoding="UTF-8")
+focus <- fread(file.path(snapshot,"focus.csv"),colClasses="character",encoding="UTF-8")
+sgs$series_code <- as.integer(sgs$series_code)
+sgs$value <- as.numeric(sgs$value)
+for (column in c("mean","median","sd","min","max")) set(focus,j=column,value=as.numeric(focus[[column]]))
+for (column in c("respondents","calculation_base")) set(focus,j=column,value=as.integer(focus[[column]]))
+sgs_columns <- c("series_code","series_name","date","value","source_url","fetched_at")
+focus_columns <- c("source_entity","indicator","date","reference_period","meeting","calculation_type","smoothed","mean","median","sd","min","max","respondents","calculation_base","source_url","fetched_at")
+if (!identical(names(sgs),sgs_columns) || !identical(names(focus),focus_columns)) stop("Frozen BCB schema differs from database contract")
+if (anyDuplicated(sgs[,.(series_code,date)]) || any(!is.finite(sgs$value))) stop("Invalid SGS keys/values")
+if (anyDuplicated(focus[,.(source_entity,indicator,date,reference_period,meeting,calculation_type,smoothed,calculation_base)])) stop("Duplicate Focus selector/date key")
+required_sgs <- c(7478L,24364L,10813L,432L,13522L,24363L,433L,29602L,29604L,29606L)
+required_focus <- c("ExpectativasMercadoInflacao12Meses","ExpectativasMercadoTop5Inflacao12Meses","ExpectativasMercadoSelic")
+if (!setequal(unique(sgs$series_code),required_sgs) || !setequal(unique(focus$source_entity),required_focus)) stop("Supporting-source inventory is incomplete")
+if (any(!is.finite(focus$median)) || any(focus$indicator[focus$source_entity!="ExpectativasMercadoSelic"]!="IPCA")) stop("Invalid Focus statistics/indicator")
+target <- focus[source_entity=="ExpectativasMercadoInflacao12Meses"]
+if (any(target$smoothed!="N" | target$calculation_base!=0L) || anyDuplicated(target$date)) stop("Ambiguous same-date Focus target")
+dates <- fread(spec$sample$dates_csv)[meeting_number %in% as.integer(spec$sample$meeting_numbers)]
+if (!setequal(dates$meeting_number,as.integer(spec$sample$meeting_numbers)) || anyDuplicated(dates$meeting_number)) stop("Canonical meeting support is incomplete")
+dates$meeting_date <- as.character(dates$meeting_date)
+focus_audit <- merge(dates,target,by.x="meeting_date",by.y="date",all.x=TRUE,sort=FALSE)
+if (nrow(focus_audit)!=nrow(dates) || anyNA(focus_audit$median)) stop("Missing same-date unsmoothed base-zero Focus target")
+dir.create(run_path("data/analysis"),recursive=TRUE,showWarnings=FALSE)
+fwrite(focus_audit,run_path("data/analysis/meeting_focus_target_audit.csv"))
+source_manifest <- rbindlist(list(
+  data.table(source_id=paste0("BCB_SGS_",required_sgs),source_type="BCB_SGS",status="imported_frozen",note="Current retrieval vintage. Reference date is not publication date.",source_url=paste0("https://api.bcb.gov.br/dados/serie/bcdata.sgs.",required_sgs,"/dados"),fetched_at=manifest$retrieved_at),
+  data.table(source_id=required_focus,source_type="BCB_OLINDA",status="imported_frozen",note="Frozen official Focus statistics",source_url=paste0("https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/",required_focus),fetched_at=manifest$retrieved_at)
 ))
+if (!file.exists(database_path)) stop("Initialize the selected minutes-only warehouse before offline BCB import")
+con <- dbConnect(SQLite(),database_path)
+tryCatch({
+  dbExecute(con,"PRAGMA busy_timeout = 60000")
+  if (!dbExistsTable(con,"metadata")) stop("Selected warehouse lacks immutable specification metadata")
+  warehouse_identity <- dbGetQuery(con,"SELECT value FROM metadata WHERE key='replication_specification'")
+  if (nrow(warehouse_identity)!=1L) stop("Selected warehouse has no unique specification identity")
+  warehouse_spec <- fromJSON(warehouse_identity$value)
+  expected_identity <- list(spec_sha256=spec_sha256,fingerprint=spec$fingerprint,release_id=spec$release_id,design_type=spec$design_type)
+  for (field in names(expected_identity)) if (!identical(warehouse_spec[[field]],expected_identity[[field]])) stop("Warehouse/specification mismatch: ",field)
+  dbWithTransaction(con,{
+    dbExecute(con,"CREATE TABLE IF NOT EXISTS external_bcb_sgs (series_code INTEGER NOT NULL, series_name TEXT NOT NULL, date TEXT NOT NULL,value REAL,source_url TEXT NOT NULL,fetched_at TEXT NOT NULL,PRIMARY KEY(series_code,date))")
+    dbExecute(con,"CREATE TABLE IF NOT EXISTS external_focus_statistics (source_entity TEXT NOT NULL,indicator TEXT,date TEXT NOT NULL,reference_period TEXT,meeting TEXT,calculation_type TEXT,smoothed TEXT,mean REAL,median REAL,sd REAL,min REAL,max REAL,respondents INTEGER,calculation_base INTEGER,source_url TEXT NOT NULL,fetched_at TEXT NOT NULL)")
+    dbExecute(con,"CREATE INDEX IF NOT EXISTS idx_external_focus_source_date ON external_focus_statistics(source_entity,date)")
+    dbExecute(con,"CREATE TABLE IF NOT EXISTS external_source_manifest (source_id TEXT PRIMARY KEY,source_type TEXT NOT NULL,status TEXT NOT NULL,note TEXT,source_url TEXT NOT NULL,fetched_at TEXT NOT NULL)")
+    dbExecute(con,"CREATE TABLE IF NOT EXISTS external_bcb_snapshot (manifest_sha256 TEXT PRIMARY KEY,snapshot_path TEXT NOT NULL,imported_at TEXT NOT NULL)")
+    existing <- dbReadTable(con,"external_bcb_snapshot")
+    if (nrow(existing) && !identical(existing$manifest_sha256,manifest_hash)) stop("Warehouse already pins a different BCB snapshot")
+    if (!nrow(existing)) {
+      for (code in required_sgs) if (dbGetQuery(con,"SELECT count(*) n FROM external_bcb_sgs WHERE series_code=?",params=list(code))$n>0) stop("Unidentified existing SGS vintage cannot be replaced")
+      for (entity in required_focus) if (dbGetQuery(con,"SELECT count(*) n FROM external_focus_statistics WHERE source_entity=?",params=list(entity))$n>0) stop("Unidentified existing Focus snapshot cannot be replaced")
+      dbWriteTable(con,"external_bcb_sgs",as.data.frame(sgs),append=TRUE)
+      dbWriteTable(con,"external_focus_statistics",as.data.frame(focus),append=TRUE)
+      for (source_id in source_manifest$source_id) if (dbGetQuery(con,"SELECT count(*) n FROM external_source_manifest WHERE source_id=?",params=list(source_id))$n>0) stop("Existing source manifest cannot be replaced")
+      dbWriteTable(con,"external_source_manifest",as.data.frame(source_manifest),append=TRUE)
+      dbExecute(con,"INSERT INTO external_bcb_snapshot VALUES(?,?,?)",params=list(manifest_hash,snapshot,format(Sys.time(),tz="UTC",usetz=TRUE)))
+    } else {
+      # A matching marker alone is insufficient after an interrupted/manual change.
+      stored_sgs <- as.data.table(dbReadTable(con,"external_bcb_sgs"))[series_code %in% required_sgs]
+      stored_focus <- as.data.table(dbReadTable(con,"external_focus_statistics"))[source_entity %in% required_focus]
+      setorderv(stored_sgs,c("series_code","date"))
+      setorderv(sgs,c("series_code","date"))
+      focus_keys <- c("source_entity","indicator","date","meeting","calculation_type","smoothed","calculation_base")
+      setorderv(stored_focus,focus_keys)
+      setorderv(focus,focus_keys)
+      if (!isTRUE(all.equal(as.data.frame(stored_sgs),as.data.frame(sgs),check.attributes=FALSE)) || !isTRUE(all.equal(as.data.frame(stored_focus),as.data.frame(focus),check.attributes=FALSE))) stop("Pinned snapshot contents changed after import. SGS=",paste(all.equal(as.data.frame(stored_sgs),as.data.frame(sgs),check.attributes=FALSE),collapse=" / ")," Focus=",paste(all.equal(as.data.frame(stored_focus),as.data.frame(focus),check.attributes=FALSE),collapse=" / "))
+    }
+  })
+},finally=dbDisconnect(con))
+cat(sprintf("Offline BCB import verified. SGS=%d, Focus=%d, snapshot=%s\n",nrow(sgs),nrow(focus),manifest_hash))

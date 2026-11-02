@@ -1,3 +1,25 @@
+# Read the explicit run authority before opening any artifact.
+source_root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+source(file.path(source_root, "code", "read_run_spec.R"), local = TRUE)
+
+# The neutral dataset name must still identify this exact model and specification.
+calibration_audit_path <- run_path("outputs/work/calibration_audit.json")
+if (!file.exists(spec$paths$calibration_data) || !file.exists(calibration_audit_path)) {
+  stop("Selected Terra calibration is absent. Production collection/calibration has not run")
+}
+calibration_audit <- jsonlite::fromJSON(calibration_audit_path, simplifyVector = TRUE)
+if (!identical(calibration_audit$fingerprint, spec$fingerprint) ||
+    !identical(calibration_audit$spec_sha256,spec_sha256) ||
+    !identical(calibration_audit$original_run,spec$run_ids$original_priors) ||
+    !identical(calibration_audit$main_text_run,spec$run_ids$main_text) ||
+    !identical(calibration_audit$model, spec$model) ||
+    !identical(calibration_audit$reasoning_effort, spec$reasoning_effort) ||
+    !identical(as.integer(calibration_audit$meetings), as.integer(spec$sample$meeting_numbers)) ||
+    !identical(calibration_audit$calibration_sha256,
+      digest::digest(spec$paths$calibration_data, algo = "sha256", file = TRUE, serialize = FALSE))) {
+  stop("Calibration provenance, membership or bytes do not match this run")
+}
+
 suppressPackageStartupMessages({
   library(data.table)
   library(DBI)
@@ -27,18 +49,34 @@ parse_cli_args <- function(defaults) {
 
 args <- parse_cli_args(list(
   database = "outputs/work/prompt_iv_replication.sqlite",
-  run_id = "arm_specific_prior_dose_6arm_5draws_v1_20260714",
-  dataset = "outputs/work/gpt55_calibration_data.dta",
-  stamp = "20260714",
+  run_id = spec$run_ids$recursive_dose,
+  dataset = "outputs/work/calibration_data.dta",
+  stamp = result_stamp,
   output_dir = "outputs/tables",
   figure_dir = "results/figures",
   qa_figure_dir = "results/qa",
   paper_table_dir = "results/tables",
   figure_stem = "rr_arm_specific_prior_dose_gradient",
   publish_paper = "true",
-  expected_meetings = "71",
+  expected_meetings = as.character(length(spec$sample$meeting_numbers)),
   expected_draws = "5"
 ))
+
+# Artifact CLI defaults cannot override the selected run authority.
+args$database <- spec$paths$work_database
+args$dataset <- spec$paths$calibration_data
+args$run_id <- spec$run_ids$recursive_dose
+args$stamp <- result_stamp
+args$output_dir <- run_path("outputs/tables")
+args$figure_dir <- run_path("results/figures")
+args$qa_figure_dir <- run_path("results/qa")
+args$paper_table_dir <- run_path("results/tables")
+args$expected_meetings <- length(spec$sample$meeting_numbers)
+args$expected_draws <- spec$draws$dose
+if (!grepl("^[A-Za-z0-9_]+$",args$figure_stem)) {
+  stop("Figure stem must be a basename without path components")
+}
+source(file.path(source_root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
 
 publish_paper <- tolower(args$publish_paper) %in% c("true", "1", "yes")
 expected_meetings <- as.integer(args$expected_meetings)
@@ -108,13 +146,29 @@ agent <- as.data.table(dbGetQuery(
     " AND ts.meeting_number = t.meeting_number",
     " AND ts.iteration = t.corpus_iteration",
     " AND ts.role = t.source_role",
+    "JOIN corpus_texts AS c ON c.run_id = t.source_run_id",
+    " AND c.meeting_number = t.meeting_number AND c.iteration = t.corpus_iteration",
+    " AND c.role = t.source_role AND c.text_hash = t.source_text_hash AND c.complete = 1",
     "WHERE t.run_id = ? AND r.status = 'completed'",
+    " AND r.model = 'gpt-5.6-terra' AND r.reasoning_effort = 'high'",
     "ORDER BY t.state_group, t.forecaster_type, t.sequence_index",
     sep = "\n"
   ),
   params = list(args$run_id)
 ))
 
+expected_keys <- CJ(meeting_number = as.integer(spec$sample$meeting_numbers),
+  corpus_iteration = seq_len(spec$draws$dose), source_role = as.character(spec$roles$dose),
+  forecaster_type = as.character(spec$profiles))
+key_columns <- names(expected_keys)
+if (nrow(agent) != nrow(expected_keys) || anyNA(agent[, ..key_columns]) ||
+    anyDuplicated(agent[, ..key_columns]) ||
+    nrow(fsetdiff(expected_keys, agent[, ..key_columns])) ||
+    nrow(fsetdiff(agent[, ..key_columns], expected_keys)) ||
+    any(agent$source_run_id != spec$run_ids$dose_text) ||
+    any(agent$initial_expectation != spec$initial_expectation)) {
+  stop("Recursive dose identities, source cohort or exact keys failed")
+}
 expected_roles <- c(
   "dove_high", "dove_low", "original", "neutral", "hawk_low", "hawk_high"
 )
@@ -158,8 +212,8 @@ agent[, assigned_dose := fifelse(
 )]
 
 mixture_columns <- c(
-  "forecast_anchored_gpt55",
-  "forecast_unanchored_gpt55",
+  "forecast_anchored",
+  "forecast_unanchored",
   "wc_orig",
   "ibcbr_agro",
   "ibcbr_service",
@@ -170,13 +224,13 @@ working <- baseline[
   complete.cases(baseline[, c("inflacao12m", mixture_columns), with = FALSE])
 ]
 mixture_model <- lm(
-  inflacao12m ~ forecast_anchored_gpt55 + forecast_unanchored_gpt55 + wc_orig +
+  inflacao12m ~ forecast_anchored + forecast_unanchored + wc_orig +
     ibcbr_agro + ibcbr_service + ibcbr_industry,
   data = working
 )
 weights <- coef(mixture_model)
-anchored_weight <- unname(weights[["forecast_anchored_gpt55"]])
-unanchored_weight <- unname(weights[["forecast_unanchored_gpt55"]])
+anchored_weight <- unname(weights[["forecast_anchored"]])
+unanchored_weight <- unname(weights[["forecast_unanchored"]])
 
 wide <- dcast(
   agent,

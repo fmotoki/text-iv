@@ -17,6 +17,7 @@ from prompt_iv.agents.prompts import (
 from prompt_iv.agents.targets import inflation_target_for_meeting
 from prompt_iv.io.minutes import list_minutes
 from prompt_iv.llm.runner import LLMRequest
+from prompt_iv.paths import validate_artifact_path
 
 
 FORECASTER_TYPES = {"anchored", "unanchored"}
@@ -69,7 +70,7 @@ def build_agent_request(
     inflation_target: float,
     seed: int,
     meeting_number: int,
-    model: str = "gpt-5.5",
+    model: str = "gpt-5.6-terra",
     reasoning_effort: str = "high",
     temperature: float = 1.0,
     prompt_version: str = DEFAULT_FORECASTER_PROMPT_VERSION,
@@ -118,6 +119,7 @@ def build_agent_plan(
     initial_expectation: float = 3.80,
     random_seed: int = 123,
     max_meetings: int | None = None,
+    meeting_numbers: Iterable[int] | None = None,
 ) -> list[AgentPlanTask]:
     if num_agents < 1:
         raise ValueError("num_agents must be at least 1")
@@ -130,6 +132,13 @@ def build_agent_plan(
         raise ValueError(f"unknown forecaster type(s): {unknown}")
 
     minutes = list_minutes(minutes_dir)
+    if meeting_numbers is not None:
+        selected = [int(value) for value in meeting_numbers]
+        if not selected or selected != list(range(203, selected[-1] + 1)):
+            raise ValueError("Recursive agent plans must start at 203 without gaps")
+        minutes = [minute for minute in minutes if minute.meeting_number in selected]
+        if [minute.meeting_number for minute in minutes] != selected:
+            raise ValueError("Selected original minutes are incomplete")
     if max_meetings is not None:
         minutes = minutes[:max_meetings]
 
@@ -185,7 +194,7 @@ def parse_agent_decision(
 
 
 def write_agent_plan_manifest(tasks: Iterable[AgentPlanTask], output_path: str | Path) -> int:
-    path = Path(output_path)
+    path = validate_artifact_path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     count = 0
     with path.open("w", encoding="utf-8") as f:

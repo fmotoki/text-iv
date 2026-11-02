@@ -1,3 +1,7 @@
+# Read the explicit run authority before opening any artifact.
+source_root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+source(file.path(source_root, "code", "read_run_spec.R"), local = TRUE)
+
 suppressPackageStartupMessages({
   library(DBI)
   library(RSQLite)
@@ -14,16 +18,15 @@ options(warn = 1)
 data.table::setDTthreads(1L)
 quanteda_options(threads = 1L)
 
-root <- normalizePath(".", winslash = "/", mustWork = TRUE)
-source(file.path(root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
-database_path <- file.path(root, "outputs", "work", "prompt_iv_replication.sqlite")
-table_dir <- file.path(root, "outputs", "tables")
-model_dir <- file.path(root, "outputs", "models")
+source(file.path(source_root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
+database_path <- spec$paths$work_database
+table_dir <- run_path("outputs/tables")
+model_dir <- run_path("outputs/models")
 dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(model_dir, recursive = TRUE, showWarnings = FALSE)
 
-stamp <- "20260715"
-run_id <- "v10_referee_step3_neutral_dose_5draws_20260627"
+stamp <- result_stamp
+run_id <- spec$run_ids$dose_text
 topic_count <- 8L
 seed <- 20260715L
 
@@ -41,10 +44,20 @@ texts <- as.data.table(dbGetQuery(
     "AND complete = 1"
   )
 ))
-if (nrow(texts) != 2130L) {
-  stop(sprintf("Expected 2,130 corpus rows, found %d", nrow(texts)))
+if (nrow(texts) != 2370L) {
+  stop(sprintf("Expected 2,370 corpus rows, found %d", nrow(texts)))
 }
 
+expected_texts <- CJ(meeting_number = as.integer(spec$sample$meeting_numbers),
+  iteration = seq_len(spec$draws$dose), source_role = as.character(spec$roles$dose))
+text_keys <- names(expected_texts)
+if (anyDuplicated(texts[, ..text_keys]) || nrow(fsetdiff(expected_texts, texts[, ..text_keys])) ||
+    anyNA(texts) || any(!nzchar(texts$text_hash))) stop("Dose corpus exact support failed")
+original_hashes <- texts[source_role == "original", .(hashes = uniqueN(text_hash)), by = meeting_number]
+if (any(original_hashes$hashes != 1L)) stop("Original texts vary across dose regenerations")
+verified_hashes <- vapply(enc2utf8(texts$text),digest::digest,character(1L),
+                          algo="sha256",serialize=FALSE)
+if (any(verified_hashes!=texts$text_hash)) stop("Stored topic corpus hashes do not match text")
 # The original is identical across the five draw indices. Retain it once per
 # meeting so it does not receive five times the weight of a unique document.
 texts <- rbindlist(list(
@@ -59,6 +72,9 @@ texts[, document_id := sprintf(
 )]
 setorder(texts, meeting_number, source_role, iteration)
 
+if (nrow(texts) != length(spec$sample$meeting_numbers) * (1L + 5L * spec$draws$dose)) {
+  stop("Topic original deduplication did not yield 2,054 documents")
+}
 tone <- as.data.table(dbGetQuery(
   con,
   paste(

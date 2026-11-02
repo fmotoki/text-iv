@@ -12,6 +12,7 @@ from prompt_iv.agents.prompts import COMMON_PRIOR_PROMPT_VERSION, build_forecast
 from prompt_iv.agents.simulation import build_agent_request, parse_agent_decision
 from prompt_iv.agents.targets import inflation_target_for_meeting
 from prompt_iv.llm.runner import LLMRunner
+from prompt_iv.paths import load_spec, specification_metadata
 from prompt_iv.storage import (
     append_agent_result_event,
     connect_database,
@@ -76,12 +77,25 @@ def prepare_original_prior_run(
     forecaster_types: Iterable[str] = FORECASTER_TYPES,
     initial_expectation: float = 3.80,
     random_seed: int = 20260712,
-    model: str = "gpt-5.5",
+    model: str = "gpt-5.6-terra",
     reasoning_effort: str = "high",
     requested_temperature: float = 1.0,
 ) -> dict[str, Any]:
+    spec = load_spec(require_frozen=True)
+    selected = [int(value) for value in meeting_numbers]
+    if not selected or selected != list(range(203, selected[-1] + 1)):
+        raise ValueError("Original trajectories must start at 203 without gaps or duplicates")
+    if spec["design_type"] == "production" and selected != spec["sample"]["meeting_numbers"]:
+        raise ValueError("Production original trajectories must include all 79 meetings")
+    if run_id != spec["run_ids"]["original_priors"] or (model, reasoning_effort) != (spec["model"], spec["reasoning_effort"]):
+        raise ValueError("Original prior identity/model does not match the specification")
+    if float(initial_expectation) != float(spec["initial_expectation"]):
+        raise ValueError("Initial prior must equal the specified 3.80")
+    meeting_numbers = selected
     meetings = tuple(sorted(set(int(value) for value in meeting_numbers)))
     forecasters = _normalize_forecasters(forecaster_types)
+    if list(forecasters) != spec["profiles"] or not set(meetings).issubset(spec["sample"]["meeting_numbers"]):
+        raise ValueError("Original profile/meeting selection differs from the specification")
     if not meetings:
         raise ValueError("At least one meeting number is required")
 
@@ -207,16 +221,37 @@ def prepare_common_prior_run(
     roles: Iterable[str] = ("hawk", "dove"),
     forecaster_types: Iterable[str] = FORECASTER_TYPES,
     random_seed: int = 20260712,
-    model: str = "gpt-5.5",
+    model: str = "gpt-5.6-terra",
     reasoning_effort: str = "high",
     requested_temperature: float = 1.0,
 ) -> dict[str, Any]:
+    spec = load_spec(require_frozen=True)
+    selected = [int(value) for value in meeting_numbers]
+    if not selected or selected != list(range(203, selected[-1] + 1)):
+        raise ValueError("Common-prior selection must be a consecutive prefix starting at 203")
+    if spec["design_type"] == "production" and selected != spec["sample"]["meeting_numbers"]:
+        raise ValueError("Production treatments must include all 79 meetings")
+    main = run_id == spec["run_ids"]["common_prior_main"]
+    expected_source = spec["run_ids"]["main_text" if main else "dose_text"]
+    if run_id not in (spec["run_ids"]["common_prior_main"], spec["run_ids"]["common_prior_dose"]) or source_run_id != expected_source or prior_run_id != spec["run_ids"]["original_priors"]:
+        raise ValueError("Common-prior source/prior links do not match the selected design")
+    if (model, reasoning_effort) != (spec["model"], spec["reasoning_effort"]):
+        raise ValueError("Common-prior model/effort mismatch")
+    if not audit_original_prior_run(database_path, prior_run_id)["ready"]:
+        raise ValueError("The original prior audit must pass before treatment registration")
+    meeting_numbers = selected
     meetings = tuple(sorted(set(int(value) for value in meeting_numbers)))
     draws = tuple(sorted(set(int(value) for value in iterations)))
     role_values = tuple(dict.fromkeys(str(value).strip().lower() for value in roles if str(value).strip()))
     forecasters = _normalize_forecasters(forecaster_types)
     if not meetings or not draws or not role_values:
         raise ValueError("Meetings, iterations, and roles must all be non-empty")
+    expected_roles = ("hawk", "dove") if main else ARM_SPECIFIC_PRIOR_ROLES
+    if set(role_values) != set(expected_roles) or list(forecasters) != spec["profiles"]:
+        raise ValueError("Common-prior arms/profiles differ from the specification")
+    expected_draws = tuple(range(1, spec["draws"]["main" if main else "dose"] + 1))
+    if draws != expected_draws or not set(meetings).issubset(spec["sample"]["meeting_numbers"]):
+        raise ValueError("Common-prior draw/meeting selection differs from the specification")
 
     conn = connect_database(database_path)
     try:
@@ -325,11 +360,22 @@ def prepare_arm_specific_prior_run(
     forecaster_types: Iterable[str] = FORECASTER_TYPES,
     initial_expectation: float = 3.80,
     random_seed: int = 20260714,
-    model: str = "gpt-5.5",
+    model: str = "gpt-5.6-terra",
     reasoning_effort: str = "high",
     requested_temperature: float = 1.0,
 ) -> dict[str, Any]:
     """Register recursive paths in which each textual arm carries its own prior."""
+    spec = load_spec(require_frozen=True)
+    selected = [int(value) for value in meeting_numbers]
+    if not selected or selected != list(range(203, selected[-1] + 1)):
+        raise ValueError("Recursive trajectories must start at 203 without gaps or duplicates")
+    if spec["design_type"] == "production" and selected != spec["sample"]["meeting_numbers"]:
+        raise ValueError("Production recursive paths must include all 79 meetings")
+    if run_id != spec["run_ids"]["recursive_dose"] or source_run_id != spec["run_ids"]["dose_text"]:
+        raise ValueError("Recursive run/source identity mismatch")
+    if (model, reasoning_effort) != (spec["model"], spec["reasoning_effort"]) or float(initial_expectation) != float(spec["initial_expectation"]):
+        raise ValueError("Recursive model/effort/initial prior mismatch")
+    meeting_numbers = selected
     meetings = tuple(sorted(set(int(value) for value in meeting_numbers)))
     draws = tuple(sorted(set(int(value) for value in iterations)))
     role_values = tuple(
@@ -339,6 +385,10 @@ def prepare_arm_specific_prior_run(
     if not meetings or not draws or not role_values:
         raise ValueError("Meetings, iterations, and roles must all be non-empty")
     unknown_roles = sorted(set(role_values) - set(ARM_SPECIFIC_PRIOR_ROLES))
+    if set(role_values) != set(ARM_SPECIFIC_PRIOR_ROLES) or list(forecasters) != spec["profiles"]:
+        raise ValueError("Recursive arms/profiles differ from the specification")
+    if draws != tuple(range(1, spec["draws"]["dose"] + 1)) or not set(meetings).issubset(spec["sample"]["meeting_numbers"]):
+        raise ValueError("Recursive draw/meeting selection differs from the specification")
     if unknown_roles:
         raise ValueError(f"Unknown arm-specific prior role(s): {unknown_roles}")
 
@@ -555,6 +605,7 @@ def _execute_task(task: dict[str, Any], text: str, runner: LLMRunner) -> dict[st
         response = runner.generate(request)
         record = _record_from_response(task, response, float(task["requested_temperature"]))
         record.update(_request_provenance(request))
+        record.update(specification_metadata())
         return record
     except Exception as exc:
         record = {
@@ -623,10 +674,10 @@ def _execute_recursive_prior_run(
             grouped.setdefault(key, []).append(task)
 
         existing_rows = conn.execute(
-            "SELECT task_id, status, previous_expectation, new_expectation FROM agent_results_latest WHERE run_id = ?",
+            "SELECT task_id, raw_json FROM agent_results_latest WHERE run_id = ?",
             (run_id,),
         ).fetchall()
-        existing = {str(row[0]): row[1:] for row in existing_rows}
+        existing = {str(row[0]): json.loads(row[1]) for row in existing_rows}
         sequences: list[dict[str, Any]] = []
         skipped = 0
         for group_tasks in grouped.values():
@@ -636,11 +687,20 @@ def _execute_recursive_prior_run(
             for index, task in enumerate(ordered):
                 row = existing.get(task["task_id"])
                 expected = float(current) if current is not None else float(task["initial_expectation"])
-                if row and row[0] == "completed" and row[1] is not None and row[2] is not None:
-                    if math.isclose(float(row[1]), expected, rel_tol=0.0, abs_tol=1e-9):
-                        current = float(row[2])
-                        skipped += 1
-                        continue
+                if row and row.get("status") == "completed":
+                    text = load_agent_task_text(conn, task)
+                    request = build_agent_request(text=text, forecaster_type=task["forecaster_type"],
+                        previous_expectation=expected, inflation_target=float(task["inflation_target"]),
+                        seed=int(task["agent_seed"]), meeting_number=int(task["meeting_number"]),
+                        model=task["requested_model"], reasoning_effort=task["requested_reasoning_effort"],
+                        temperature=float(task["requested_temperature"]), prompt_version=task["prompt_version"])
+                    if row.get("runner_dry_run") or row.get("request_input_hash") != request.input_hash or any(row.get(key) != value for key, value in specification_metadata().items()):
+                        raise ValueError(f"Completed recursive task has incompatible source/prompt/prior/configuration: {task['task_id']}")
+                    if row.get("previous_expectation") is None or row.get("new_expectation") is None or not math.isclose(float(row["previous_expectation"]), expected, rel_tol=0.0, abs_tol=1e-12):
+                        raise ValueError("Completed recursive task has incompatible chronological prior")
+                    current = float(row["new_expectation"])
+                    skipped += 1
+                    continue
                 first_pending = index
                 break
             if first_pending < len(ordered):
@@ -754,6 +814,22 @@ def execute_common_prior_run(
     iteration_values = tuple(sorted(set(int(value) for value in (iterations or ()))))
     conn = connect_database(database_path)
     try:
+        # Validate completed cells before the standard pending-task query skips
+        # them. The request hash includes source, prompt, prior and configuration.
+        existing = {str(row[0]): json.loads(row[1]) for row in conn.execute(
+            "SELECT task_id, raw_json FROM agent_results_latest WHERE run_id=? AND status='completed'", (run_id,))}
+        for task in _load_all_tasks(conn, run_id):
+            if task["task_id"] not in existing:
+                continue
+            row = existing[task["task_id"]]
+            request = build_agent_request(text=load_agent_task_text(conn, task),
+                forecaster_type=task["forecaster_type"], previous_expectation=float(task["fixed_prior"]),
+                inflation_target=float(task["inflation_target"]), seed=int(task["agent_seed"]),
+                meeting_number=int(task["meeting_number"]), model=task["requested_model"],
+                reasoning_effort=task["requested_reasoning_effort"], temperature=float(task["requested_temperature"]),
+                prompt_version=task["prompt_version"])
+            if row.get("runner_dry_run") or row.get("request_input_hash") != request.input_hash or any(row.get(key) != value for key, value in specification_metadata().items()):
+                raise ValueError(f"Completed common-prior task has incompatible source/prompt/prior/configuration: {task['task_id']}")
         tasks, total, completed = load_pending_agent_tasks(
             conn,
             run_id,

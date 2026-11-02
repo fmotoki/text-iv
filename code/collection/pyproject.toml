@@ -16,6 +16,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+budget = [
+  "tiktoken>=0.14",
+]
 embeddings = [
   "fastembed>=0.7",
   "tokenizers>=0.22",

@@ -1,3 +1,7 @@
+# Read the explicit run authority before opening any artifact.
+source_root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+source(file.path(source_root, "code", "read_run_spec.R"), local = TRUE)
+
 suppressPackageStartupMessages({
   library(DBI)
   library(RSQLite)
@@ -9,13 +13,12 @@ suppressPackageStartupMessages({
 
 data.table::setDTthreads(1L)
 
-root <- normalizePath(".", winslash = "/", mustWork = TRUE)
-source(file.path(root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
-database_path <- file.path(root, "outputs", "work", "prompt_iv_replication.sqlite")
-table_dir <- file.path(root, "outputs", "tables")
+source(file.path(source_root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
+database_path <- spec$paths$work_database
+table_dir <- run_path("outputs/tables")
 dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
 
-stamp <- "20260715"
+stamp <- result_stamp
 seed <- 20260715L
 bootstrap_draws <- 1999L
 
@@ -47,13 +50,31 @@ dose <- as.data.table(dbGetQuery(
     "SELECT meeting_number, corpus_iteration, source_role, forecaster_type,",
     "forecast_revision",
     "FROM agent_results_latest",
-    "WHERE run_id = 'common_prior_dose_6arm_5draws_v1_20260713'",
-    "AND status = 'completed'"
+    sprintf("WHERE run_id = '%s'", spec$run_ids$common_prior_dose),
+    "AND status = 'completed' AND model = 'gpt-5.6-terra' AND reasoning_effort = 'high'"
   )
 ))
-if (nrow(dose) != 4260L) {
-  stop(sprintf("Expected 4,260 dose-agent rows, found %d", nrow(dose)))
+if (nrow(dose) != 4740L) {
+  stop(sprintf("Expected 4,740 dose-agent rows, found %d", nrow(dose)))
 }
+
+dose_keys <- CJ(meeting_number=as.integer(spec$sample$meeting_numbers),
+  corpus_iteration=seq_len(spec$draws$dose), source_role=as.character(spec$roles$dose),
+  forecaster_type=as.character(spec$profiles))
+key_columns <- names(dose_keys)
+if (anyDuplicated(dose[,..key_columns]) || nrow(fsetdiff(dose_keys,dose[,..key_columns]))) {
+  stop("Sunspot comparisons require the exact dose key product")
+}
+source_support <- as.data.table(dbGetQuery(con,paste(
+  "SELECT t.run_id,t.task_id,t.source_text_hash,c.text_hash",
+  "FROM agent_tasks t JOIN corpus_texts c ON c.run_id=t.source_run_id",
+  "AND c.meeting_number=t.meeting_number AND c.iteration=t.corpus_iteration",
+  "AND c.role=t.source_role AND c.complete=1",
+  "WHERE t.run_id IN (?,?) AND t.source_run_id=?"
+),params=list(spec$run_ids$common_prior_dose,spec$run_ids$recursive_dose,spec$run_ids$dose_text)))
+if (nrow(source_support)!=2L*nrow(dose_keys) || anyNA(source_support) ||
+    any(source_support$source_text_hash!=source_support$text_hash) ||
+    anyDuplicated(source_support[,.(run_id,task_id)])) stop("Dose source cohorts or text hashes differ")
 
 dose_wide <- dcast(
   dose,
@@ -203,7 +224,7 @@ tone <- as.data.table(dbGetQuery(
   paste(
     "SELECT meeting_number, iteration, role, 100.0 * score AS tone_pp",
     "FROM tone_scores",
-    "WHERE run_id = 'v10_referee_d5_25draws_20260620'",
+    sprintf("WHERE run_id = '%s'", spec$run_ids$main_text),
     "AND role IN ('hawk_text', 'dove_text')"
   )
 ))
@@ -219,13 +240,15 @@ phi_gap_se <- sqrt(diag(tone_ar_vcov))[[2L]]
 recursive <- as.data.table(dbGetQuery(
   con,
   paste(
-    "SELECT meeting_number, source_role, forecaster_type,",
+    "SELECT meeting_number, corpus_iteration, source_role, forecaster_type,",
     "previous_expectation, new_expectation",
     "FROM agent_results_latest",
-    "WHERE run_id = 'arm_specific_prior_dose_6arm_5draws_v1_20260714'",
-    "AND status = 'completed'"
+    sprintf("WHERE run_id = '%s'", spec$run_ids$recursive_dose),
+    "AND status = 'completed' AND model = 'gpt-5.6-terra' AND reasoning_effort = 'high'"
   )
 ))
+if (nrow(recursive)!=nrow(dose_keys) || anyDuplicated(recursive[,..key_columns]) ||
+    nrow(fsetdiff(dose_keys,recursive[,..key_columns]))) stop("Recursive dose comparison is incomplete")
 alpha_rows <- rbindlist(lapply(unique(recursive$forecaster_type), function(agent) {
   agent_data <- recursive[forecaster_type == agent]
   model <- lm(
@@ -245,6 +268,10 @@ alpha_proxy <- mean(alpha_rows$alpha_proxy)
 
 macro <- as.data.table(dbReadTable(con, "referee_meeting_macro_controls"))
 setorder(macro, meeting_number)
+if (anyDuplicated(macro$meeting_number) ||
+    !identical(as.integer(macro$meeting_number),as.integer(spec$sample$meeting_numbers))) {
+  stop("Macro-control rows do not match the intended meeting sample")
+}
 macro_variables <- c(
   "ipca15_change_pre", "ibc_change_pre", "brl_return_5d_pre",
   "focus_drift_7d_pre", "selic_surprise"

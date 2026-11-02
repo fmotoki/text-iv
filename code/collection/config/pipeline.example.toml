@@ -1,16 +1,18 @@
 [llm]
 runner = "dry-run"
-model = "gpt-5.5"
+model = "gpt-5.6-terra"
 reasoning_effort = "high"
 temperature = 1.0
 allow_real_llm = false
-log_jsonl = "outputs/logs/llm_requests.jsonl"
+# Supply an absolute RUN_ROOT path. An empty path is not a legacy fallback.
+log_jsonl = ""
 
 [generation]
-minutes_dir = "texto/atas"
-output_csv = "data/interim/counterfactual_minutes.csv"
+minutes_dir = "data/raw/copom_minutes"
+output_csv = ""
 stances = ["hawk", "dove"]
-draws_per_meeting_stance = 1
+draws_per_meeting_stance = 25
+parts = 5
 max_workers = 1
 numeric_preservation_required = true
 
@@ -20,8 +22,13 @@ scale = 100
 [agents]
 initial_expectation = 3.80
 num_agents = 1
-output_csv = "data/interim/synthetic_forecasters.csv"
+output_csv = ""
 
 [safety]
 never_call_real_llm_without_flag = true
 raw_data_read_only = true
+[replication]
+# The JSON specification supplies run identities and resolved artifact paths.
+specification = "code/replication_spec.json"
+first_meeting = 203
+last_meeting = 281

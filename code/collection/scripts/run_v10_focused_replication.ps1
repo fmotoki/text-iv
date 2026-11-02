@@ -24,7 +24,9 @@ param(
   [ValidateRange(1, 128)] [int]$RewriteWorkers = 2,
   [ValidateRange(1, 1000000)] [int]$AgentChunkSize = 40,
   [ValidateRange(1, 128)] [int]$AgentWorkers = 2,
-  [ValidateNotNullOrEmpty()] [string]$Model = "gpt-5.5",
+  [ValidateNotNullOrEmpty()] [string]$Model = "gpt-5.6-terra",
+  [string]$SpecificationPath = $env:REPLICATION_SPEC_PATH,
+  [ValidateSet('common_prior', 'legacy_recursive')] [string]$Design = 'common_prior',
   [ValidateNotNullOrEmpty()] [string]$ReasoningEffort = "high",
   [ValidateNotNullOrEmpty()] [string]$PromptVersion = "calibrated_symmetric_rebalance_v10",
   [double]$RewriteTemperature = 1.0,
@@ -39,11 +41,23 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+if ([string]::IsNullOrWhiteSpace($SpecificationPath)) {
+  throw 'Supply -SpecificationPath. Legacy artifact defaults are disabled.'
+}
+$Spec = Get-Content -LiteralPath $SpecificationPath -Raw | ConvertFrom-Json
+if ($Design -eq 'common_prior') {
+  if ($RunId -ne $Spec.run_ids.main_text) { throw 'RunId must equal the selected main text identity.' }
+  $Forward = @{ SpecificationPath = $SpecificationPath; AllowRemoteCalls = $AllowRemoteCalls }
+  if (-not [string]::IsNullOrWhiteSpace($PythonExecutable)) { $Forward.PythonExecutable = $PythonExecutable }
+  & (Join-Path $PSScriptRoot 'run_terra56_collection.ps1') @Forward
+  return
+}
+$env:REPLICATION_SPEC_PATH = $SpecificationPath
 
 $FrozenRunId = "v10_referee_d5_25draws_20260620"
 $PackageRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\.."))
 $SourceRoot = Join-Path $PackageRoot "code\collection\src"
-$RunBase = [System.IO.Path]::GetFullPath((Join-Path $PackageRoot "data\interim\replications"))
+$RunBase = [System.IO.Path]::GetFullPath((Join-Path $Spec.run_root $Spec.paths.collections))
 $RunDir = [System.IO.Path]::GetFullPath((Join-Path $RunBase $RunId))
 $RunBasePrefix = $RunBase.TrimEnd('\') + '\'
 
@@ -93,6 +107,8 @@ function Assert-ExistingConfigMatches {
     reasoning_effort = $ReasoningEffort
     prompt_version = $PromptVersion
     temperature = $RewriteTemperature
+    fingerprint = $Spec.fingerprint
+    spec_sha256 = (Get-FileHash -LiteralPath $SpecificationPath -Algorithm SHA256).Hash.ToLowerInvariant()
   }
   foreach ($entry in $checks.GetEnumerator()) {
     $actual = $config.($entry.Key)
@@ -105,6 +121,10 @@ function Assert-ExistingConfigMatches {
 function Assert-ExistingPlanMatches {
   param([Parameter(Mandatory = $true)] [pscustomobject]$ExistingPlan)
   $checks = [ordered]@{
+    design = $Design
+    fingerprint = $Spec.fingerprint
+    first_meeting = $Spec.sample.first_meeting
+    last_meeting = $Spec.sample.last_meeting
     model = $Model
     reasoning_effort = $ReasoningEffort
     prompt_version = $PromptVersion
@@ -170,6 +190,8 @@ function Write-PlanFile {
   )
   $temporaryPath = "$Path.$([guid]::NewGuid().ToString('N')).tmp"
   try {
+    & $PythonExecutable -c 'import sys; from prompt_iv.paths import validate_artifact_path; validate_artifact_path(sys.argv[1]); validate_artifact_path(sys.argv[2])' $Path $temporaryPath
+    if ($LASTEXITCODE -ne 0) { throw 'Plan writer path validation failed.' }
     [System.IO.File]::WriteAllText($temporaryPath, $Content, [System.Text.UTF8Encoding]::new($false))
     for ($attempt = 1; $attempt -le 5; $attempt += 1) {
       try {
@@ -218,6 +240,8 @@ $PlanPath = Join-Path $RunDir "collection_plan.json"
 $PriorPythonPath = $env:PYTHONPATH
 $env:PYTHONPATH = $SourceRoot
 try {
+  & $PythonExecutable -c 'import sys; from prompt_iv.paths import load_spec,validate_artifact_path; s=load_spec(source_root=sys.argv[1],require_frozen=True); validate_artifact_path(sys.argv[2],s)' $PackageRoot $RunDir
+  if ($LASTEXITCODE -ne 0) { throw 'Legacy route specification/path validation failed.' }
   if (Test-Path -LiteralPath $ConfigPath -PathType Leaf) {
     Assert-ExistingConfigMatches -ConfigPath $ConfigPath
     if (-not (Test-Path -LiteralPath $RewriteManifest -PathType Leaf)) {
@@ -231,6 +255,7 @@ try {
     }
     Invoke-PromptIv -Arguments @(
       "prepare-replication", "--run-id", $RunId,
+      "--run-directory", $RunDir, "--meeting-numbers", ($Spec.sample.meeting_numbers -join ','),
       "--iterations", [string]$Iterations, "--parts", [string]$Parts,
       "--model", $Model, "--reasoning-effort", $ReasoningEffort,
       "--temperature", [string]$RewriteTemperature,
@@ -262,8 +287,8 @@ try {
     [ordered]@{ name = "prepare rewrites"; command = @("prepare-replication"); output = $RewriteManifest },
     [ordered]@{ name = "execute rewrites with numeric retries"; command = $RewriteCommand; output = $RewriteResults },
     [ordered]@{ name = "require complete valid rewrite results"; command = @("launcher completion gate"); output = $RewriteResults },
-    [ordered]@{ name = "assemble rewrites"; command = @("assemble-counterfactuals", "--results", $RewriteResults, "--output", $CounterfactualCorpus); output = $CounterfactualCorpus },
-    [ordered]@{ name = "audit rewrite quality"; command = @("evaluate-counterfactuals", "--results", $RewriteResults, "--output", $QualityReport, "--details-output", $QualityDetails); output = $QualityReport },
+    [ordered]@{ name = "assemble rewrites"; command = @("assemble-counterfactuals", "--manifest", $RewriteManifest, "--results", $RewriteResults, "--output", $CounterfactualCorpus); output = $CounterfactualCorpus },
+    [ordered]@{ name = "audit rewrite quality"; command = @("evaluate-counterfactuals", "--manifest", $RewriteManifest, "--results", $RewriteResults, "--output", $QualityReport, "--details-output", $QualityDetails); output = $QualityReport },
     [ordered]@{ name = "score rewrite tone"; command = @("score-counterfactuals", "--input", $CounterfactualCorpus, "--output", $ToneScores); output = $ToneScores }
   )
   $ForecasterStages = @(
@@ -285,6 +310,8 @@ try {
     frozen_database_is_output = $false
     run_directory = $RunDir
     parameters = [ordered]@{
+      design = $Design; fingerprint = $Spec.fingerprint
+      first_meeting = $Spec.sample.first_meeting; last_meeting = $Spec.sample.last_meeting
       iterations = $Iterations; parts = $Parts
       rewrite_chunk_size = $RewriteChunkSize; rewrite_workers = $RewriteWorkers
       agent_chunk_size = $AgentChunkSize; agent_workers = $AgentWorkers
@@ -335,8 +362,8 @@ try {
     }
     throw "Rewrite completion gate failed: $($RewriteState.missing) of $($RewriteState.total) task(s) have no completed result."
   }
-  Invoke-PromptIv -Arguments @("assemble-counterfactuals", "--results", $RewriteResults, "--output", $CounterfactualCorpus)
-  Invoke-PromptIv -Arguments @("evaluate-counterfactuals", "--results", $RewriteResults, "--output", $QualityReport, "--details-output", $QualityDetails)
+  Invoke-PromptIv -Arguments @("assemble-counterfactuals", "--manifest", $RewriteManifest, "--results", $RewriteResults, "--output", $CounterfactualCorpus)
+  Invoke-PromptIv -Arguments @("evaluate-counterfactuals", "--manifest", $RewriteManifest, "--results", $RewriteResults, "--output", $QualityReport, "--details-output", $QualityDetails)
   Invoke-PromptIv -Arguments @("score-counterfactuals", "--input", $CounterfactualCorpus, "--output", $ToneScores)
 
   if ($StopAfterGeneration) {

@@ -3,11 +3,12 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import os
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
-SRC = ROOT / "src"
+ROOT = Path(__file__).resolve().parents[3]
+SRC = ROOT / "code" / "collection" / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
@@ -20,6 +21,7 @@ from prompt_iv.agents.common_prior import (
     prepare_original_prior_run,
 )
 from prompt_iv.llm.runner import CodexCliRunner
+from prompt_iv.paths import load_spec, validate_artifact_path
 
 
 def _csv_ints(value: str) -> list[int]:
@@ -32,14 +34,15 @@ def _csv_text(value: str) -> list[str]:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the bounded common-prior collection smoke test.")
-    parser.add_argument("--database", default=str(ROOT / "data" / "interim" / "prompt_iv.sqlite"))
-    parser.add_argument("--source-run-id", default="v10_referee_d5_25draws_20260620")
-    parser.add_argument("--prior-run-id", default="common_prior_original_smoke_20260712")
-    parser.add_argument("--run-id", default="common_prior_treatment_smoke_20260712")
+    parser.add_argument("--spec", required=True)
+    parser.add_argument("--database", required=True)
+    parser.add_argument("--source-run-id", required=True)
+    parser.add_argument("--prior-run-id", required=True)
+    parser.add_argument("--run-id", required=True)
     parser.add_argument("--meetings", default="203,204")
-    parser.add_argument("--iterations", default="1,6")
-    parser.add_argument("--roles", default="original,hawk,dove")
-    parser.add_argument("--model", default="gpt-5.5")
+    parser.add_argument("--iterations", default="1")
+    parser.add_argument("--roles", default="hawk,dove")
+    parser.add_argument("--model", default="gpt-5.6-terra")
     parser.add_argument("--reasoning-effort", default="high")
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--timeout-seconds", type=int, default=600)
@@ -49,7 +52,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    database = Path(args.database).resolve()
+    os.environ["REPLICATION_SPEC_PATH"] = str(Path(args.spec).resolve(strict=True))
+    spec = load_spec(source_root=ROOT, require_frozen=True)
+    if spec["design_type"] != "qa_smoke":
+        raise ValueError("Smoke requires an explicit qa_smoke specification")
+    database = validate_artifact_path(args.database, spec)
     meetings = _csv_ints(args.meetings)
     iterations = _csv_ints(args.iterations)
     roles = _csv_text(args.roles)

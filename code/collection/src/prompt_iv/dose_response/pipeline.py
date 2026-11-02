@@ -5,12 +5,14 @@ from pathlib import Path
 from typing import Any
 import hashlib
 import json
+import math
 import random
 import re
 
 import numpy as np
 import pandas as pd
 
+from prompt_iv.paths import load_spec, validate_artifact_path
 from prompt_iv.econometrics import add_constant, ols, tsls_just_identified
 from prompt_iv.io.jsonl import append_jsonl, read_jsonl, write_jsonl
 from prompt_iv.llm.runner import LLMRequest, LLMRunner
@@ -97,13 +99,36 @@ def _clean_pairwise(value: Any) -> str:
 
 def _clean_score(value: Any, lower: float, upper: float, name: str) -> float:
     number = float(value)
-    if number < lower or number > upper:
+    if not math.isfinite(number) or number < lower or number > upper:
         raise ValueError(f"{name}={number} outside [{lower}, {upper}]")
     return number
 
 
+# This alternate API retains its three-role prompt protocol. It cannot populate
+# the selected six-arm scorer directory or stand in for six-arm dose evidence.
+def _three_role_context(corpus_csv: str | Path, output_path: str | Path) -> tuple[dict, pd.DataFrame]:
+    spec=load_spec(require_frozen=True)
+    if spec["prompt_versions"]["alternate_three_role_semantic"]!=SEMANTIC_PROMPT_VERSION or spec["prompt_versions"]["alternate_three_role_pairwise"]!=PAIRWISE_PROMPT_VERSION:
+        raise ValueError("Alternate scorer protocol differs from specification")
+    corpus_path=validate_artifact_path(Path(corpus_csv).resolve(),spec)
+    output=validate_artifact_path(Path(output_path).resolve(),spec)
+    expected_corpus=Path(spec["paths"]["collections"])/spec["run_ids"]["main_text"]/"counterfactual_corpus.csv"
+    six_arm_directory=Path(spec["run_root"])/"data/interim/dose_response"/spec["run_ids"]["blinded_scoring"]
+    if corpus_path!=expected_corpus.resolve() or output.is_relative_to(six_arm_directory):
+        raise ValueError("Three-role validation must use the main source and a separate explicit destination")
+    corpus=pd.read_csv(corpus_path)
+    keys=list(zip(corpus.meeting_number.astype(int),corpus.iteration.astype(int)))
+    expected={(m,i) for m in spec["sample"]["meeting_numbers"] for i in range(1,spec["draws"]["main"]+1)}
+    if len(keys)!=len(set(keys)) or set(keys)!=expected or not corpus["complete"].eq(True).all():
+        raise ValueError("Three-role scoring requires exact complete main cells")
+    for column in TEXT_COLUMNS.values():
+        if column not in corpus or not corpus[column].map(lambda text: isinstance(text,str) and bool(text.strip())).all():
+            raise ValueError("Missing three-role source text")
+    return spec,corpus
+
+
 def build_semantic_manifest(corpus_csv: str | Path, output_jsonl: str | Path, seed: int = 123) -> dict[str, Any]:
-    corpus = pd.read_csv(corpus_csv)
+    spec,corpus = _three_role_context(corpus_csv,output_jsonl)
     records: list[dict[str, Any]] = []
     for _, row in corpus.iterrows():
         for role, column in TEXT_COLUMNS.items():
@@ -113,17 +138,27 @@ def build_semantic_manifest(corpus_csv: str | Path, output_jsonl: str | Path, se
                 {
                     "task_id": f"semantic-{int(row['meeting_number']):03d}-{int(row['iteration']):02d}-{role}-{text_hash[:10]}",
                     "anonymous_id": f"TXT-{text_hash[:12]}",
+                    "run_id": spec["run_ids"]["blinded_scoring"],
+                    "source_run_id": spec["run_ids"]["main_text"],
+                    "model": spec["model"],
+                    "reasoning_effort": spec["reasoning_effort"],
+                    "spec_fingerprint": spec["fingerprint"],
                     "meeting_number": int(row["meeting_number"]),
                     "iteration": int(row["iteration"]),
                     "text_role": role,
                     "source_path": row.get("source_path"),
                     "text_hash": text_hash,
                     "prompt_version": SEMANTIC_PROMPT_VERSION,
+                    "prompt_hash": _sha256_text(SEMANTIC_SYSTEM_PROMPT),
                     "text": text,
                 }
             )
     rng = random.Random(seed)
     rng.shuffle(records)
+    for record in records:
+        record["request_input_hash"]=_semantic_request(record,spec["model"],spec["reasoning_effort"],1.0).input_hash
+    if Path(output_jsonl).exists() and read_jsonl(output_jsonl)!=records:
+        raise ValueError("Existing semantic manifest differs from selected preparation")
     written = write_jsonl(output_jsonl, records)
     return {"records": len(records), "records_written": written, "output": str(output_jsonl), "seed": seed}
 
@@ -150,20 +185,61 @@ def _semantic_request(record: dict[str, Any], model: str, reasoning_effort: str,
     )
 
 
+def _compatible_completed_ids(output_jsonl: Path, tasks: list[dict[str, Any]], request_builder: Any, model: str, reasoning_effort: str, temperature: float, resume: bool = True) -> set[str]:
+    # A task ID alone cannot prove cache compatibility. request_builder is the
+    # existing request-constructor callback, which supplies the canonical hash.
+    spec = load_spec(require_frozen=True)
+    validate_artifact_path(output_jsonl.resolve(), spec)
+    if model != spec["model"] or reasoning_effort != spec["reasoning_effort"]:
+        raise ValueError("Scoring model/effort disagree with the selected specification")
+    by_id = {str(task["task_id"]): task for task in tasks}
+    if len(by_id) != len(tasks):
+        raise ValueError("Duplicate scoring task IDs")
+    for task in tasks:
+        for field, expected in (("run_id",spec["run_ids"]["blinded_scoring"]),("source_run_id",spec["run_ids"]["main_text"]),("spec_fingerprint",spec["fingerprint"]),("model",model),("reasoning_effort",reasoning_effort)):
+            if task.get(field) != expected:
+                raise ValueError(f"Scoring manifest identity mismatch: {field}")
+        hashes = (("text", "text_hash"),) if "text" in task else (("text_a", "text_a_hash"),("text_b", "text_b_hash"))
+        if any(_sha256_text(task[text]) != task[digest] for text,digest in hashes):
+            raise ValueError("Scoring manifest text hash mismatch")
+        if task.get("request_input_hash")!=request_builder(task,model,reasoning_effort,temperature).input_hash:
+            raise ValueError("Prepared scoring request changed")
+        expected_prompt = SEMANTIC_SYSTEM_PROMPT if "text" in task else PAIRWISE_SYSTEM_PROMPT
+        if task.get("prompt_hash") != _sha256_text(expected_prompt):
+            raise ValueError("Scoring prompt changed after preparation")
+    latest = {}
+    for row in read_jsonl(output_jsonl):
+        task_id = str(row.get("task_id"))
+        if task_id not in by_id:
+            raise ValueError("Scoring results contain an unselected task")
+        task = by_id[task_id]
+        if row.get("status") in {"completed","dry_run"}:
+            for field in ("run_id","source_run_id","spec_fingerprint","prompt_version","prompt_hash","model","reasoning_effort","meeting_number","iteration","text_role","pair_type","role_a","role_b","text_hash","text_a_hash","text_b_hash"):
+                if field in task and row.get(field) != task[field]:
+                    raise ValueError(f"Cached scoring provenance changed: {field}")
+            if row.get("request_input_hash") != request_builder(task,model,reasoning_effort,temperature).input_hash:
+                raise ValueError("Cached scoring request changed")
+        if row.get("status")=="completed":
+            if row.get("runner_dry_run") is not False or row.get("response_metadata",{}).get("returncode")!=0 or not re.fullmatch(r"[0-9a-f]{64}",str(row.get("raw_response_hash",""))):
+                raise ValueError("Cached score is not a verified real completed response")
+        latest[task_id] = row
+    if not resume:
+        return set()
+    return {task_id for task_id,row in latest.items() if row.get("status")=="completed" and row.get("runner_dry_run") is False}
+
+
 def execute_semantic_manifest(
     manifest_path: str | Path,
     output_jsonl: str | Path,
     runner: LLMRunner,
-    model: str = "gpt-5.5",
+    model: str = "gpt-5.6-terra",
     reasoning_effort: str = "high",
     temperature: float = 1.0,
     limit: int | None = None,
     resume: bool = True,
 ) -> dict[str, Any]:
     tasks = read_jsonl(manifest_path)
-    existing = read_jsonl(output_jsonl) if resume else []
-    done_statuses = {"completed"} | ({"dry_run"} if runner.name == "dry-run" else set())
-    done_ids = {str(row.get("task_id")) for row in existing if row.get("status") in done_statuses}
+    done_ids = _compatible_completed_ids(Path(output_jsonl),tasks,_semantic_request,model,reasoning_effort,temperature,resume)
     pending = [task for task in tasks if str(task.get("task_id")) not in done_ids]
     if limit is not None:
         pending = pending[:limit]
@@ -175,8 +251,11 @@ def execute_semantic_manifest(
         try:
             request = _semantic_request(task, model, reasoning_effort, temperature)
             response = runner.generate(request)
+            if response.model!=model or response.input_hash!=request.input_hash:
+                raise ValueError("Returned scorer model/request identity mismatch")
             base = {
                 "task_id": task["task_id"],
+                **{field:task[field] for field in ("run_id","source_run_id","spec_fingerprint","prompt_hash")},
                 "created_at": _now(),
                 "meeting_number": task["meeting_number"],
                 "iteration": task["iteration"],
@@ -197,7 +276,7 @@ def execute_semantic_manifest(
                 records.append({**base, "status": "dry_run"})
                 continue
             returncode = (response.metadata or {}).get("returncode")
-            if returncode not in (None, 0):
+            if returncode != 0:
                 raise RuntimeError(f"LLM runner returned nonzero exit code {returncode}: {response.text[:300]}")
             parsed = _extract_json_object(response.text)
             records.append(
@@ -238,7 +317,7 @@ def execute_semantic_manifest(
 
 
 def build_pairwise_manifest(corpus_csv: str | Path, output_jsonl: str | Path, seed: int = 456) -> dict[str, Any]:
-    corpus = pd.read_csv(corpus_csv)
+    spec,corpus = _three_role_context(corpus_csv,output_jsonl)
     rng = random.Random(seed)
     pair_specs = [("original", "hawk"), ("original", "dove"), ("hawk", "dove")]
     records: list[dict[str, Any]] = []
@@ -255,6 +334,11 @@ def build_pairwise_manifest(corpus_csv: str | Path, output_jsonl: str | Path, se
                         f"-{left_role}-vs-{right_role}-{pair_hash[:10]}"
                     ),
                     "anonymous_pair_id": f"PAIR-{pair_hash[:12]}",
+                    "run_id": spec["run_ids"]["blinded_scoring"],
+                    "source_run_id": spec["run_ids"]["main_text"],
+                    "model": spec["model"],
+                    "reasoning_effort": spec["reasoning_effort"],
+                    "spec_fingerprint": spec["fingerprint"],
                     "meeting_number": int(row["meeting_number"]),
                     "iteration": int(row["iteration"]),
                     "pair_type": f"{left_role}_vs_{right_role}",
@@ -263,11 +347,16 @@ def build_pairwise_manifest(corpus_csv: str | Path, output_jsonl: str | Path, se
                     "text_a_hash": _sha256_text(ordered[0][1]),
                     "text_b_hash": _sha256_text(ordered[1][1]),
                     "prompt_version": PAIRWISE_PROMPT_VERSION,
+                    "prompt_hash": _sha256_text(PAIRWISE_SYSTEM_PROMPT),
                     "text_a": ordered[0][1],
                     "text_b": ordered[1][1],
                 }
             )
     rng.shuffle(records)
+    for record in records:
+        record["request_input_hash"]=_pairwise_request(record,spec["model"],spec["reasoning_effort"],1.0).input_hash
+    if Path(output_jsonl).exists() and read_jsonl(output_jsonl)!=records:
+        raise ValueError("Existing pairwise manifest differs from selected preparation")
     written = write_jsonl(output_jsonl, records)
     return {"records": len(records), "records_written": written, "output": str(output_jsonl), "seed": seed}
 
@@ -298,16 +387,14 @@ def execute_pairwise_manifest(
     manifest_path: str | Path,
     output_jsonl: str | Path,
     runner: LLMRunner,
-    model: str = "gpt-5.5",
+    model: str = "gpt-5.6-terra",
     reasoning_effort: str = "high",
     temperature: float = 1.0,
     limit: int | None = None,
     resume: bool = True,
 ) -> dict[str, Any]:
     tasks = read_jsonl(manifest_path)
-    existing = read_jsonl(output_jsonl) if resume else []
-    done_statuses = {"completed"} | ({"dry_run"} if runner.name == "dry-run" else set())
-    done_ids = {str(row.get("task_id")) for row in existing if row.get("status") in done_statuses}
+    done_ids = _compatible_completed_ids(Path(output_jsonl),tasks,_pairwise_request,model,reasoning_effort,temperature,resume)
     pending = [task for task in tasks if str(task.get("task_id")) not in done_ids]
     if limit is not None:
         pending = pending[:limit]
@@ -319,8 +406,11 @@ def execute_pairwise_manifest(
         try:
             request = _pairwise_request(task, model, reasoning_effort, temperature)
             response = runner.generate(request)
+            if response.model!=model or response.input_hash!=request.input_hash:
+                raise ValueError("Returned scorer model/request identity mismatch")
             base = {
                 "task_id": task["task_id"],
+                **{field:task[field] for field in ("run_id","source_run_id","spec_fingerprint","prompt_hash")},
                 "created_at": _now(),
                 "meeting_number": task["meeting_number"],
                 "iteration": task["iteration"],
@@ -344,7 +434,7 @@ def execute_pairwise_manifest(
                 records.append({**base, "status": "dry_run"})
                 continue
             returncode = (response.metadata or {}).get("returncode")
-            if returncode not in (None, 0):
+            if returncode != 0:
                 raise RuntimeError(f"LLM runner returned nonzero exit code {returncode}: {response.text[:300]}")
             parsed = _extract_json_object(response.text)
             answer = _clean_pairwise(parsed.get("more_hawkish"))
@@ -421,13 +511,44 @@ def build_realized_dose_dataset(
     pairwise_results_jsonl: str | Path | None,
     output_csv: str | Path,
 ) -> pd.DataFrame:
-    corpus = pd.read_csv(corpus_csv)
-    semantic_rows = [row for row in read_jsonl(semantic_results_jsonl) if row.get("status") == "completed"]
-    semantic_by_key = {
-        (int(row["meeting_number"]), int(row["iteration"]), str(row["text_role"])): row
-        for row in semantic_rows
-    }
-    pairwise_rows = read_jsonl(pairwise_results_jsonl) if pairwise_results_jsonl else []
+    spec, corpus = _three_role_context(corpus_csv, output_csv)
+    semantic_results=Path(semantic_results_jsonl)
+    if pairwise_results_jsonl is None:
+        raise ValueError("Complete pairwise results are required")
+    pairwise_results=Path(pairwise_results_jsonl)
+    semantic_tasks = read_jsonl(semantic_results.parent / "semantic_tone_manifest.jsonl")
+    pairwise_tasks = read_jsonl(pairwise_results.parent / "pairwise_tone_manifest.jsonl")
+    expected_semantic = {(int(row.meeting_number),int(row.iteration),role) for row in corpus.itertuples() for role in TEXT_COLUMNS}
+    expected_pairs = {(int(row.meeting_number),int(row.iteration),f"{left}_vs_{right}") for row in corpus.itertuples() for left,right in (("original","hawk"),("original","dove"),("hawk","dove"))}
+    semantic_keys = [(int(row["meeting_number"]),int(row["iteration"]),row["text_role"]) for row in semantic_tasks]
+    pair_keys = [(int(row["meeting_number"]),int(row["iteration"]),row["pair_type"]) for row in pairwise_tasks]
+    if len(set(semantic_keys))!=len(semantic_keys) or set(semantic_keys)!=expected_semantic or len(set(pair_keys))!=len(pair_keys) or set(pair_keys)!=expected_pairs:
+        raise ValueError("Scoring manifests do not cover exact semantic/pairwise keys")
+    accepted_semantic = _compatible_completed_ids(semantic_results,semantic_tasks,_semantic_request,spec["model"],spec["reasoning_effort"],1.0)
+    accepted_pairwise = _compatible_completed_ids(pairwise_results,pairwise_tasks,_pairwise_request,spec["model"],spec["reasoning_effort"],1.0)
+    if len(accepted_semantic)!=len(semantic_tasks) or len(accepted_pairwise)!=len(pairwise_tasks):
+        raise ValueError("Realized doses require every selected real completed score")
+    latest_semantic = {row["task_id"]:row for row in read_jsonl(semantic_results)}
+    latest_pairwise = {row["task_id"]:row for row in read_jsonl(pairwise_results)}
+    semantic_by_key = {(int(row["meeting_number"]),int(row["iteration"]),str(row["text_role"])):row for row in latest_semantic.values()}
+    pairwise_rows = list(latest_pairwise.values())
+    source_hashes = {(int(row.meeting_number),int(row.iteration),role):_sha256_text(getattr(row,column)) for row in corpus.itertuples() for role,column in TEXT_COLUMNS.items()}
+    for key,row in semantic_by_key.items():
+        if row["text_hash"]!=source_hashes[key] or not math.isfinite(float(row["stance_score"])) or not -1<=float(row["stance_score"])<=1:
+            raise ValueError("Semantic score/source hash does not match the selected text")
+    for row in pairwise_rows:
+        expected_pair=tuple(row["pair_type"].split("_vs_"))
+        if {row["role_a"],row["role_b"]}!=set(expected_pair):
+            raise ValueError("Pairwise roles differ from the named comparator")
+        winner=row["role_a"] if row["more_hawkish"]=="A" else row["role_b"] if row["more_hawkish"]=="B" else "tie" if row["more_hawkish"]=="tie" else None
+        if winner!=row["more_hawkish_role"]:
+            raise ValueError("Pairwise encoded winner disagrees with its role")
+        for arm in ("a","b"):
+            key=(int(row["meeting_number"]),int(row["iteration"]),row[f"role_{arm}"])
+            if row[f"text_{arm}_hash"]!=source_hashes[key]:
+                raise ValueError("Pairwise score/source hash mismatch")
+        if row["more_hawkish_role"] not in ("tie",row["role_a"],row["role_b"]):
+            raise ValueError("Invalid pairwise winner")
     pairwise_by_key = _pairwise_scores(pairwise_rows)
     analyzer = SentimentAnalyzer()
     records: list[dict[str, Any]] = []
@@ -447,6 +568,16 @@ def build_realized_dose_dataset(
                     "meeting_number": meeting,
                     "iteration": iteration,
                     "text_role": role,
+                    "run_id": spec["run_ids"]["main_text"],
+                    "source_run_id": spec["run_ids"]["main_text"],
+                    "scorer_run_id": spec["run_ids"]["blinded_scoring"],
+                    "scoring_protocol": "three_role_alternate",
+                    "model": spec["model"],
+                    "reasoning_effort": spec["reasoning_effort"],
+                    "spec_fingerprint": spec["fingerprint"],
+                    "status": "completed",
+                    "runner_dry_run": False,
+                    "source_text_hash": _sha256_text(text),
                     "assigned_hawk": 1 if role == "hawk" else 0 if role == "dove" else np.nan,
                     "assigned_dove": 1 if role == "dove" else 0 if role == "hawk" else np.nan,
                     "text_hash": _sha256_text(text),
@@ -481,6 +612,10 @@ def estimate_dose_response(
     outcome_column: str | None = None,
     dose_columns: tuple[str, ...] = ("semantic_score", "lexicon_score", "pairwise_score"),
 ) -> dict[str, Any]:
+    spec=load_spec(require_frozen=True)
+    validate_artifact_path(Path(dose_csv).resolve(),spec)
+    if output_json:
+        validate_artifact_path(Path(output_json).resolve(),spec)
     df = pd.read_csv(dose_csv)
     arms = df[df["text_role"].isin(["hawk", "dove"])].copy()
     report: dict[str, Any] = {

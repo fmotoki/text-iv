@@ -9,6 +9,7 @@ import hashlib
 import json
 import re
 import sqlite3
+from prompt_iv.paths import load_spec, specification_metadata, validate_artifact_path
 
 
 SCHEMA_VERSION = 3
@@ -90,6 +91,21 @@ def _iter_jsonl(path: Path) -> tuple[list[tuple[int, dict[str, Any]]], int]:
 
 
 def _connect(db_path: Path) -> sqlite3.Connection:
+    spec = load_spec(require_frozen=True)
+    db_path = validate_artifact_path(db_path, spec)
+    identity = _json(specification_metadata(spec))
+    # Inspect identity read-only before SQLite can create WAL or alter schema.
+    if db_path.exists():
+        check = sqlite3.connect(db_path.as_uri() + "?mode=ro", uri=True)
+        try:
+            tables = {row[0] for row in check.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            saved = check.execute("SELECT value FROM metadata WHERE key='replication_specification'").fetchone() if "metadata" in tables else None
+            if saved and saved[0] != identity:
+                raise ValueError("Database specification/fingerprint differs. Use a new release_id.")
+            if not saved and tables:
+                raise ValueError("Existing database lacks prospective immutable specification metadata")
+        finally:
+            check.close()
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA foreign_keys = ON")
@@ -104,6 +120,9 @@ def connect_database(db_path: str | Path, root: str | Path | None = None) -> sql
         path = Path(root) / path
     conn = _connect(path)
     initialize_schema(conn)
+    conn.execute("INSERT OR IGNORE INTO metadata(key,value) VALUES ('replication_specification', ?)",
+                 (_json(specification_metadata()),))
+    conn.commit()
     return conn
 
 
@@ -490,6 +509,9 @@ def sync_minutes(conn: sqlite3.Connection, root: Path, minutes_dir: Path) -> int
         if meeting_number is None:
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
+        existing = conn.execute("SELECT text_hash FROM minutes WHERE meeting_number=?", (meeting_number,)).fetchone()
+        if existing and existing[0] != _sha256_text(text):
+            raise ValueError(f"Original minute {meeting_number} changed since ingestion")
         stat = path.stat()
         conn.execute(
             """
@@ -1090,6 +1112,10 @@ def register_sqlite_run(
     prompt_versions: Iterable[str] = (),
     stances: Iterable[str] = (),
 ) -> None:
+    spec = load_spec(require_frozen=True)
+    if run_id not in spec["run_ids"].values():
+        raise ValueError("Run ID is outside the selected specification")
+    metadata = {**metadata, **specification_metadata(spec)}
     existing = conn.execute("SELECT metadata_json FROM runs WHERE run_id = ?", (run_id,)).fetchone()
     metadata_json = _json(metadata)
     if existing is not None:
@@ -1365,6 +1391,23 @@ def _insert_tone_scores(conn: sqlite3.Connection, run_id: str, path: Path) -> in
 
 def sync_run(conn: sqlite3.Connection, root: Path, run_dir: Path) -> dict[str, Any]:
     run_id = run_dir.name
+    spec = load_spec(source_root=root, require_frozen=True)
+    run_dir = validate_artifact_path(run_dir, spec)
+    if run_id not in (spec["run_ids"]["main_text"], spec["run_ids"]["dose_text"]):
+        raise ValueError("File sync is limited to explicitly selected text runs")
+    config_path = run_dir / "replication_config.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    identity = specification_metadata(spec)
+    if config.get("run_id") != run_id or any(config.get(key) != value for key, value in identity.items()):
+        raise ValueError("File run configuration has a different identity")
+    existing = conn.execute("SELECT metadata_json FROM runs WHERE run_id=?", (run_id,)).fetchone()
+    if existing:
+        old_config = json.loads(existing[0]).get("replication_config")
+        if old_config != config:
+            raise ValueError("Cannot resync a run with different configuration")
+        events = conn.execute("SELECT COUNT(*) FROM rewrite_result_events WHERE run_id=?", (run_id,)).fetchone()[0]
+        if events:
+            raise ValueError("Executed run cannot be file-resynced. Resume its selected executor.")
     _delete_run_payload(conn, run_id)
     conn.execute(
         """
@@ -1404,6 +1447,8 @@ def sync_run(conn: sqlite3.Connection, root: Path, run_dir: Path) -> dict[str, A
     tone_rows = _insert_tone_scores(conn, run_id, tone_path)
 
     metadata = {
+        **identity,
+        "replication_config": config,
         "rewrite_manifest_bad_json_lines": rewrite_bad_json_manifest,
         "agent_manifest_bad_json_lines": agent_bad_json_manifest,
         "active_snapshot": results_path.exists(),
@@ -1490,19 +1535,15 @@ def sync_project_database(
     minutes_path = Path(minutes_dir)
     if not minutes_path.is_absolute():
         minutes_path = root_path / minutes_path
+    if not run_dirs:
+        raise ValueError("Automatic all-directory sync is disabled. Select --run-dir explicitly.")
     selected_runs = discover_run_dirs(root_path, run_dirs)
 
-    if replace and database_path.exists():
-        database_path.unlink()
-        wal = database_path.with_suffix(database_path.suffix + "-wal")
-        shm = database_path.with_suffix(database_path.suffix + "-shm")
-        for sidecar in [wal, shm]:
-            if sidecar.exists():
-                sidecar.unlink()
+    if replace:
+        raise ValueError("Prospective collection cannot replace a database")
 
-    conn = _connect(database_path)
+    conn = connect_database(database_path)
     try:
-        initialize_schema(conn)
         with conn:
             minutes_count = sync_minutes(conn, root_path, minutes_path)
             run_summaries = [sync_run(conn, root_path, run_dir) for run_dir in selected_runs]

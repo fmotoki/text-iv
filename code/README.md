@@ -1,11 +1,16 @@
 # Code map
 
-Run `00_setup.R` once and `00_master.R` for the complete replication. The numbered folders follow execution order.
+Use an explicit frozen `REPLICATION_SPEC_PATH`. The current Terra code and its
+limited-QA boundary are documented in `../documentation/terra56_collection_validation_protocol.md`.
+Code is versioned in Git. New artifacts are written to the selected run in the
+sibling artifact directory. The full collector and master remain unrun.
 
-- `01_data_preparation/` constructs the run-time GPT-5.5 calibration panel and contains author-side packaging utilities. The frozen SQLite database itself is immutable.
+- `01_data_preparation/` acquires/imports frozen inputs and constructs the model-neutral calibration panel. Candidate export is exclusive and the warehouse is read-only during export.
 - `02_analysis/` contains all econometric work reported in the paper, including the forecast-only leave-one-meeting-out and expanding-window validation in `run_referee_d8_oos_validation.R`. These programs are R scripts and use standard packages such as `fixest`, `ivreg`, `sandwich`, `clusterSEs`, `boot`, `glmnet`, `rstan`, `stm`, and `quanteda`.
 - `03_reporting/` converts machine-readable estimates to the submitted LaTeX tables and PDF figures.
-- `04_verification/` verifies frozen inputs, headline numerical results, exact normalized-text matches for active tables, and exhibit completeness.
+- `04_verification/` checks exact selected cohorts, frozen69 calculations, plotting metadata, accepted numerical baselines, and exhibit completeness. Missing or unaccepted Terra references are NOT RUN.
 - `collection/` documents the LLM collection layer and is not called by the exact analysis replication.
 
-Every script resolves paths from the replication root. No script requires the original parent project or a user-specific path.
+Source lookup uses `source_root`. Artifact writes and cleanup use `run_root`.
+Shared immutable inputs have explicit paths and hashes. The effective specification
+and source snapshot record the selected machine paths and code identity.

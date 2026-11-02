@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import csv
 import json
 import math
@@ -20,6 +21,8 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
+from prompt_iv.paths import load_spec, specification_metadata, validate_artifact_path
+from prompt_iv.storage.sqlite import connect_database
 from prompt_iv.econometrics import residualize_by_group
 from prompt_iv.generation.numeric import check_numeric_multiset
 from prompt_iv.io.minutes import read_text, segment_text
@@ -27,7 +30,7 @@ from prompt_iv.pipelines.tone import score_text_columns
 from prompt_iv.tone import SentimentAnalyzer
 
 
-RUN_ID = "v10_referee_step3_neutral_dose_5draws_20260627"
+RUN_ID = None
 REQUIRED_STANCES = ("neutral", "dove_low", "dove_high", "hawk_low", "hawk_high")
 TEXT_COLUMNS = (
     "original_text",
@@ -78,12 +81,6 @@ def table_lines(text: str) -> list[str]:
 
 def bool_from_db(value: Any) -> bool:
     return bool(int(value or 0))
-
-
-def connect(db_path: Path) -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 
 def load_run_status(conn: sqlite3.Connection, run_id: str) -> dict[str, Any]:
@@ -522,7 +519,7 @@ def update_corpus_texts(conn: sqlite3.Connection, run_id: str, corpus: pd.DataFr
                     row.get("source_path"),
                     1 if bool(row.get("complete")) else 0,
                     text,
-                    __import__("hashlib").sha256(text.encode("utf-8")).hexdigest(),
+                    hashlib.sha256(text.encode("utf-8")).hexdigest(),
                     len(text),
                     word_count(text),
                 ),
@@ -620,18 +617,20 @@ def assert_complete(status: dict[str, Any]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Postprocess V10 referee step-3 DB-first collection.")
     parser.add_argument("--root", type=Path, default=ROOT)
-    parser.add_argument("--database", default="data/interim/prompt_iv.sqlite")
-    parser.add_argument("--run-id", default=RUN_ID)
-    parser.add_argument("--allow-incomplete", action="store_true")
+    parser.add_argument("--database", type=Path, required=True)
+    parser.add_argument("--run-id", required=True)
     args = parser.parse_args()
 
-    root = args.root.resolve()
-    db_path = Path(args.database)
-    if not db_path.is_absolute():
-        db_path = root / db_path
-    run_dir = root / "data" / "interim" / "replications" / args.run_id
-    out_dir = root / "outputs" / "tables"
-    run_dir.mkdir(parents=True, exist_ok=True)
+    source_root = args.root.resolve()
+    spec = load_spec(source_root=source_root,require_frozen=True)
+    if args.run_id!=spec["run_ids"]["dose_text"]:
+        raise ValueError("Postprocessing requires the selected dose text run")
+    db_path = validate_artifact_path(args.database,spec)
+    if db_path != Path(spec["paths"]["database"]):
+        raise ValueError("Postprocessing database differs from selected warehouse")
+    run_dir = validate_artifact_path(Path(spec["paths"]["collections"]) / args.run_id,spec)
+    out_dir = validate_artifact_path(Path(spec["paths"]["tables"]),spec)
+    run_dir.mkdir(parents=True,exist_ok=True)
 
     quality_report_path = run_dir / "counterfactual_quality_report.json"
     quality_details_path = run_dir / "counterfactual_quality_details.csv"
@@ -639,23 +638,49 @@ def main() -> int:
     tone_path = run_dir / "counterfactual_tone_scores.csv"
     status_path = run_dir / "db_postprocess_status.json"
 
-    conn = connect(db_path)
+    conn = connect_database(db_path)
     try:
         status = load_run_status(conn, args.run_id)
-        if not args.allow_incomplete:
-            assert_complete(status)
-        rows = load_latest_rows(conn, args.run_id)
+        assert_complete(status)
+        metadata = json.loads(conn.execute("SELECT metadata_json FROM runs WHERE run_id=?",(args.run_id,)).fetchone()[0] or "{}")
+        if metadata.get("replication_config",{}).get("fingerprint")!=spec["fingerprint"]:
+            raise ValueError("Dose source run specification mismatch")
+        rows = load_latest_rows(conn,args.run_id)
+        expected_keys={(m,i,block,stance) for m in spec["sample"]["meeting_numbers"] for i in range(1,spec["draws"]["dose"]+1) for block in range(1,spec["blocks"]+1) for stance in REQUIRED_STANCES}
+        actual_keys=[(int(row["meeting_number"]),int(row["iteration"]),int(row["block_index"]),row["stance"]) for row in rows]
+        if len(actual_keys)!=len(set(actual_keys)) or set(actual_keys)!=expected_keys:
+            raise ValueError("Latest rewrite rows do not cover the exact selected Cartesian product")
+        tasks={row["task_id"]:dict(row) for row in conn.execute("SELECT task_id,input_hash,original_text_hash FROM rewrite_tasks WHERE run_id=?",(args.run_id,))}
+        if set(tasks)!={row["task_id"] for row in rows}:
+            raise ValueError("Rewrite task/result identities differ")
+        for row in rows:
+            raw=json.loads(row["raw_json"])
+            task=tasks[row["task_id"]]
+            if row["model"]!=spec["model"] or row["reasoning_effort"]!=spec["reasoning_effort"] or raw.get("runner_dry_run") is not False or raw.get("fingerprint")!=spec["fingerprint"]:
+                raise ValueError("Rewrite result is not a real completed selected-model result")
+            if raw.get("response_metadata",{}).get("returncode",0)!=0:
+                raise ValueError("Rewrite runner rejected the result")
+            expected_path=source_root / "data/raw/copom_minutes" / f"ata{row['meeting_number']}.txt"
+            if Path(row["source_path"]).resolve()!=expected_path.resolve():
+                raise ValueError("Rewrite original path differs from selected immutable minute")
+            if row["manifest_input_hash"]!=task["input_hash"] or hashlib.sha256(original_block(row).encode("utf-8")).hexdigest()!=task["original_text_hash"]:
+                raise ValueError("Rewrite task/source hash mismatch")
+            if not row.get("generated_text") or hashlib.sha256(row["generated_text"].encode("utf-8")).hexdigest()!=row["output_text_hash"]:
+                raise ValueError("Rewrite output hash mismatch")
         quality = evaluate_rows(rows, quality_report_path, quality_details_path)
+        if quality["numeric_ok_recomputed"]!=len(rows):
+            raise ValueError("Recomputed numeric-preservation gate failed")
         corpus = assemble_corpus(rows, corpus_path)
-        expected_corpus_rows = 71 * 5
-        if not args.allow_incomplete and len(corpus) != expected_corpus_rows:
-            raise RuntimeError(f"counterfactual_corpus rows={len(corpus)} expected={expected_corpus_rows}")
+        expected_cells={(m,i) for m in spec["sample"]["meeting_numbers"] for i in range(1,spec["draws"]["dose"]+1)}
+        cells=list(zip(corpus["meeting_number"].astype(int),corpus["iteration"].astype(int)))
+        if len(cells)!=len(set(cells)) or set(cells)!=expected_cells:
+            raise ValueError("Assembled corpus is missing selected meeting/draw cells")
         tone = score_text_columns(corpus_path, TEXT_COLUMNS, tone_path, drop_text=True)
-        step3_report = run_audit(args.run_id, run_dir, rows, out_dir)
+        step3_report = {"status":"deferred_to_analysis","fingerprint":spec["fingerprint"]}
         with conn:
             corpus_text_rows = update_corpus_texts(conn, args.run_id, corpus)
             tone_score_rows = update_tone_scores(conn, args.run_id, tone)
-        integration = write_integration_summary(args.run_id, step3_report, out_dir)
+        integration = {"status":"deferred_to_analysis"}
         result = {
             "run_id": args.run_id,
             "database": str(db_path),

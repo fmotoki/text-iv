@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 import json
 import re
+import hashlib
 
 import pandas as pd
 
@@ -11,6 +12,7 @@ from prompt_iv.generation.numeric import check_numeric_multiset
 from prompt_iv.io.jsonl import read_jsonl
 from prompt_iv.io.minutes import read_text, segment_text
 from prompt_iv.tone import SentimentAnalyzer
+from prompt_iv.paths import load_spec, specification_metadata, validate_artifact_path
 
 
 WRAPPER_RE = re.compile(
@@ -48,8 +50,32 @@ def evaluate_counterfactual_results(
     results_jsonl: str | Path,
     output_json: str | Path | None = None,
     details_csv: str | Path | None = None,
+    manifest_path: str | Path | None = None,
 ) -> dict[str, Any]:
+    spec = load_spec(require_frozen=True)
+    validate_artifact_path(results_jsonl, spec)
+    if output_json:
+        output_json = validate_artifact_path(output_json, spec)
+    if details_csv:
+        details_csv = validate_artifact_path(details_csv, spec)
+    if manifest_path is None:
+        raise ValueError("Quality acceptance requires the exact planned rewrite manifest")
+    manifest = read_jsonl(validate_artifact_path(manifest_path, spec))
     rows = read_jsonl(results_jsonl)
+    event_count = len(rows)
+    latest = {str(row["task_id"]): row for row in rows if row.get("task_id")}
+    expected = {str(row["task_id"]): row for row in manifest}
+    if len(expected) != len(manifest) or set(latest) != set(expected):
+        raise ValueError("Latest rewrite task keys do not equal the planned Cartesian product")
+    for task_id, task in expected.items():
+        row = latest[task_id]
+        if row.get("status") != "completed" or row.get("runner_dry_run") or row.get("numeric_ok") is not True or not row.get("generated_text"):
+            raise ValueError(f"Rewrite task is incomplete or not numeric-valid: {task_id}")
+        if row.get("manifest_input_hash") != task["input_hash"] or row.get("model") != spec["model"] or row.get("reasoning_effort") != spec["reasoning_effort"] or any(row.get(key) != value for key, value in specification_metadata(spec).items()):
+            raise ValueError(f"Rewrite source/model/specification mismatch: {task_id}")
+        if hashlib.sha256(_original_block(task).encode("utf-8")).hexdigest() != task["original_text_hash"]:
+            raise ValueError(f"Original source hash changed for {task_id}")
+    rows = list(latest.values())
     analyzer = SentimentAnalyzer()
     details: list[dict[str, Any]] = []
     status_counts: dict[str, int] = {}
@@ -131,6 +157,9 @@ def evaluate_counterfactual_results(
 
     summary: dict[str, Any] = {
         "results": str(results_jsonl),
+        "event_records_retained": event_count,
+        "planned_tasks": len(expected),
+        "acceptance_passed": all(row.get("numeric_ok_recomputed") is True for row in details),
         "records": int(len(detail_df)),
         "status_counts": status_counts,
         "completed": int(len(completed)),

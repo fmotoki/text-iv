@@ -1,274 +1,47 @@
-# Replication package
+# Replication code
 
 ## Can Words Move Inflation Expectations? A Counterfactual-Text Laboratory
 
-**Authors:** Fernando Barros Jr., Fabio Y. S. Motoki, Valdemar Pinho Neto, and Victor Rangel  
-**Package version:** 2.0.0  
-**Prepared:** 2026-08-16  
-**Repository identifier:** assigned by the repository at deposit  
-**Contact:** victorrsr@al.insper.edu.br
+Authors are Fernando Barros Jr., Fabio Y. S. Motoki, Valdemar Pinho Neto, and Victor Rangel. Contact is victorrsr@al.insper.edu.br.
 
-This is the isolated replication package for the current paper. The complete
-reported specification uses GPT-5.5 for the original-minute calibration paths,
-counterfactual rewrites, and synthetic-forecaster experiments. It does not read
-from the parent research workspace, require a provider credential, or invoke a
-remote model during exact replication.
+The current branch implements a prospective GPT-5.6 Terra migration and a frozen-calibration Focus agreement diagnostic. It has limited QA, not a new production result release. Full recollection, statistical regeneration, reference acceptance, and clean-room validation have not run.
 
-The package follows the AEA Data and Code Availability guidance: a single
-master script runs the reported analysis; every frozen input has a SHA-256
-checksum; every active exhibit is mapped to its producing program; public and
-author-generated data are documented separately; R dependencies are locked;
-and automatic gates check the paper's main numerical claims.
+The inherited GPT-5.5 inputs, results, metadata, references, and historical clean-room record remain in their existing locations. A verified recovery copy was created before source edits. Current code requires a new selected Terra run and cannot silently treat older outputs as new-model evidence.
 
-## One-command reproduction
+## Code and data versions
 
-Start in the package root, the directory containing this README.
+Git versions source, prompts, configuration, and documentation in this directory. Pre-task downloader edits have a separate baseline commit. Run manifests identify the exact source commit and file hashes used by each data/result version.
 
-```powershell
-Rscript code/00_setup.R
-Rscript code/00_master.R
-```
+New data, results, models, logs, and manifests live beside the Git repository in `../replication_artifacts/`. A run uses `artifact_root/runs/terra56/<release_id>/`. Supporting BCB snapshots use `artifact_root/data/raw/bcb/<download_stamp>/`. Existing minute texts remain read-only under `data/raw/copom_minutes/`. Recovery archives remain under `archives/`, excluded from Git.
 
-`00_setup.R` restores the versions in `renv.lock`, tests the installed `rstan`
-stack, and recompiles the locked Stan stack only if the compatibility test
-fails. `00_master.R` verifies the frozen inputs, creates an expendable working
-copy of the SQLite database, constructs the GPT-5.5 calibration dataset, runs
-all analysis and reporting stages, and applies the final verification gates.
-It never alters `data/generated/prompt_iv_replication_source.sqlite`.
+`code/replication_spec.json` is the cross-language specification. It identifies both roots, model/effort, sample, run IDs, raw snapshot, source/input hashes, and release status. Runtime scripts require an explicit specification through `REPLICATION_SPEC_PATH` or the documented CLI argument. Each run keeps a matching `effective_spec.json`. Missing or changed identities fail before collection, output writes, or master cleanup.
 
-After an interrupted run, resume completed stages with:
+## Fixed research design
 
-```powershell
-Rscript code/00_master.R --resume=true
-```
+The model is exactly `gpt-5.6-terra` at high reasoning. Meetings 203 through 281 form the 79-meeting sample. There are 25 main draws, five six-arm dose draws, five rewrite blocks, two forecaster profiles, and separate common-prior and arm-specific recursive designs. Planned LLM work totals 51,508 first attempts before retries. These dimensions are not completion counts.
 
-A successful run leaves `status = pass` in all 86 rows of
-`results/verification_report.csv`. Step logs and elapsed times are written
-under `logs/`.
+`code/01_data_preparation/build_calibration_data.R` writes the model-neutral `outputs/work/calibration_data.dta` inside the selected run. The main unrestricted calibration uses all 79 meetings. The separate diagnostic fits once on 203 through 271 and evaluates 272 through 276 and 277 through 281, five meetings per window. It measures agreement with same-date median Focus IPCA twelve-month-ahead expectations. Only the composite reports an RMSE ratio, divided by previous-meeting Focus persistence RMSE. No five-meeting significance test is used. Framing draws are averaged within meetings before equal meeting weights. See the [protocol](documentation/terra56_collection_validation_protocol.md).
 
-## Scope of reproducibility
+## Execution boundary
 
-The default reproduction begins from frozen generated texts, blinded scores,
-embeddings, and synthetic-forecaster responses. This is the correct starting
-point for exact replication because a future remote-model response is not
-guaranteed to be byte-identical after provider updates.
+The active launcher is `code/collection/scripts/run_terra56_collection.ps1 -SpecificationPath <spec>`. It defaults to preparation. Remote calls require `-AllowRemoteCalls` and explicit authorization in a frozen specification. The analysis master is offline. It refuses incomplete inputs, mixed cohorts, and incompatible resume markers. Candidate export refuses an existing target.
 
-The package has two reproducibility layers:
+The handoff is under `../quality_reports/qa/out-of-sample_add-on/20261101T225332Z_g0_5b2042/`. It records actual checks, independent reviews, source identities, a path map, recovery evidence, the token/weekly-allowance estimate, and disabled future commands. The user replaced the planned 92-request smoke with a smaller representative test. Its actual request count and coverage are recorded there. No full production collector or master is launched by this task.
 
-1. **Exact analysis reproduction.** `code/00_master.R` produces all 28 active
-   LaTeX tables and 10 active PDF figures in
-   `data/metadata/exhibit_manifest.csv`, plus their machine-readable inputs.
-2. **Collection transparency.** `code/collection/` contains the versioned
-   prompts, task constructors, quality gates, database schema, and runner code.
-   Collection is not called by the master; its example configuration is a
-   dry-run and needs explicit opt-in before any remote request.
+Strict input readiness is separate from code QA. The three sector activity series were not public before April 11, 2025. Current revised values do not establish historical release vintages. Missing disclosure, vintage, same-day cutoff, or public-availability evidence blocks the strict full-sample panel. The audit keeps every intended meeting/series key. Replacing controls, shortening the sample, or using current-vintage sensitivities requires an author decision. Fiscal and mature-horizon checks retain their documented available support.
 
-The package does not claim byte-exact recollection from a future model
-endpoint. The published results are exactly reproducible from the distributed
-frozen data.
+Terra numerical references are unaccepted. Missing production outcomes or a baseline yield NOT RUN or an input failure. Historical successful gate counts and GPT-5.5 coefficients are not Terra acceptance rules.
 
-### Priors, arms, and regenerations
+## Source map and dependencies
 
-Use meeting index $t$, forecaster profile $i\in\{A,U\}$, textual arm $j$, and
-regeneration index $s$. For each meeting and profile, the original-minute run
-constructs a profile-specific pre-treatment prior $P_t^i$ along the
-chronological path of published, unmodified minutes. Meeting 203 begins at
-3.8 percent; thereafter the prior for profile $i$ is that profile's forecast
-after the preceding original minute.
+- `code/00_master.R` validates selected inputs and runs offline stages.
+- `code/01_data_preparation/` acquires or imports frozen public inputs, constructs calibration data, and builds metadata/candidate exports.
+- `code/02_analysis/` preserves existing estimators and adds the frozen69 diagnostic.
+- `code/03_reporting/` writes tables, figures, and plotting data inside the run.
+- `code/04_verification/` checks identities, metrics, references, and manifests.
+- `code/collection/` contains prompt families and guarded collection commands.
+- `documentation/` contains the current protocol and labelled historical records.
 
-Before any counterfactual at meeting $t$ is evaluated, $P_t^i$ is frozen. The
-same value is supplied to every arm $j$ and every regeneration $s$ in the
-meeting-profile cell. The experimental revision is
+R dependencies remain locked in `renv.lock`. The new figures use `cowplot`, already in that lockfile. Collection uses the declared Python dependencies and existing Codex CLI. Lexicon scoring and the separately identified MiniLM embeddings remain distinct from LLM requests. Requested temperature and seed are recorded without claiming unsupported sampling controls were applied. A response model echo is not independent backend verification. Future remote responses need not be byte-identical.
 
-$$
-\Delta E_{tjs}^{i}=E_{tjs}^{i}-P_t^i.
-$$
-
-“Common prior” therefore means common across arms and regenerations within a
-meeting and profile. It does not mean $P_t^A=P_t^U$. Nor does a shared value of
-$s$ connect two meetings: regeneration 1 at meeting $t$ is not compared with
-regeneration 1 at meeting $t-1$. The two profile revisions are combined with
-estimated predictive calibration coefficients, not averaged. Intercept and
-meeting controls are fixed within counterfactual comparisons and cancel.
-
-The separately labelled arm-specific recursive exercise answers a different
-question. In that exercise, each arm-regeneration-profile combination is a
-trajectory, and its forecast at meeting $t-1$ is supplied as its prior at
-meeting $t$. The analysis scripts verify both the common-prior invariant and
-the recursive transitions before estimation. See the two collection protocols
-under `documentation/`.
-
-### GPT-5.5 calibration
-
-At run time, `code/01_data_preparation/build_gpt55_calibration_data.R`
-constructs `outputs/work/gpt55_calibration_data.dta`. It reads the complete
-142-observation original-minute panel (71 meetings by two profiles) from run
-`common_prior_original_v1_20260712`, requires model `gpt-5.5`, reasoning effort
-`high`, completed status, and the expected prompt/version fields, and verifies
-the forecast-revision identity and profile-specific chronological continuity.
-
-Those original-minute forecast levels are joined to the public aggregate Focus
-twelve-month-ahead IPCA median, original-minute tone and word count, and the
-frozen meeting-level activity controls. The calibration coefficients are then
-estimated once on the 71 meetings and held fixed in the text experiment. Thus
-calibration and experimental outcomes use the same model vintage and profile
-definitions while remaining separate statistical stages.
-
-## Computational requirements
-
-The validated environment is Windows 11 (64 bit), R 4.5.2, 32 GB RAM, a C++
-toolchain compatible with R 4.5 and `rstan`, a Cairo-capable graphics device,
-and at least 5 GB free disk space. No GPU is required. Internet access is needed
-only for the first dependency restore.
-
-The scripts request single-threaded build, Stan, data-table, and text-analysis
-behavior where supported to bound memory use. Reserve about 90 minutes for a
-first setup without a compatible package cache; later analysis-only runs are
-substantially faster. Exact accepted timings are recorded in
-`logs/master_run_times.csv` and summarized in
-`documentation/CLEAN_ROOM_VALIDATION.md`.
-
-**Last clean-room validation (2026-08-16): PASS.** The accepted run passed all
-76 frozen-input checks and completed all 15 master stages. The current manifest
-contains 28 tables, 10 figures, and 86 artifact and numerical gates. Run the
-clean-room validation again before deposit.
-
-## Directory map
-
-| Path | Role |
-|---|---|
-| `code/00_setup.R` | Restores the locked R environment. |
-| `code/00_master.R` | Runs the complete exact replication. |
-| `code/01_data_preparation/` | Constructs the run-time GPT-5.5 calibration input and package metadata. |
-| `code/02_analysis/` | Reported econometric and validation analysis. |
-| `code/03_reporting/` | Publication-table and figure construction. |
-| `code/04_verification/` | Input, result, and package-manifest checks. |
-| `code/collection/` | Auditable LLM collection layer; excluded from the master. |
-| `data/raw/` | Public Copom minutes and frozen non-LLM calibration controls. |
-| `data/analysis/` | Meeting/cell-level analysis inputs. |
-| `data/generated/` | Immutable SQLite database of frozen generated data. |
-| `data/metadata/` | Provenance, dictionaries, checksums, inventories, and exhibit map. |
-| `outputs/` | Machine-readable intermediate estimates and temporary work files. |
-| `results/` | Reproduced exhibits, numerical macros, and QA reports. |
-| `reference/` | Frozen author-side copies of the current exhibits. |
-| `documentation/` | Public protocols, data statement, and validation records. |
-| `logs/` | Per-step logs, timings, and session information. |
-
-## Primary analysis inputs
-
-- `data/generated/prompt_iv_replication_source.sqlite` (about 200 MB): frozen
-  generated texts, 15,762 completed selected synthetic-forecaster results,
-  scores, embeddings, public external-series extracts, run metadata, and audit
-  inventories.
-- `data/raw/calibration_controls/copom_meeting_activity_controls.csv`
-  (71 meetings by five fields): meeting/date keys and frozen agriculture,
-  industry, and services activity-index levels used only as calibration
-  controls.
-- `data/analysis/fiscal_sample_flags_by_meeting_20260630.csv` (71 meetings by
-  three fields): RTN-window and CDS-series-availability flags; no CDS level is
-  redistributed.
-- `data/analysis/realized_dose_dataset.csv` (2,130 text cells by 29 fields):
-  lexicon, blinded-semantic, and pairwise dose measures.
-- `data/raw/copom_minutes/` (71 files): public minutes for meetings 203--273.
-
-The calibration `.dta` is a generated work file, not a distributed input.
-Detailed field definitions are in the metadata dictionaries. The database
-table `referee_human_audit_ratings` has zero rows by design: a blinded packet
-was prepared, but no human ratings were collected, and no human-audit estimate
-is imputed.
-
-## Data provenance and access
-
-Only public data and author-generated synthetic data are used; there is no
-confidential institution-level Focus microdata. Source URLs, retrieval fields,
-coverage, redistribution status, citations, and included-file mappings are in
-`data/metadata/data_sources.csv` and
-`data/metadata/external_source_manifest.csv`.
-
-Distributed third-party data come from Banco Central do Brasil Copom minutes,
-Focus/Olinda aggregate and Top-5 statistics, BCB SGS series, and Tesouro
-Nacional RTN publication dates. Historical World Government Bonds CDS values
-and the Ipeadata/J.P. Morgan EMBI series are not redistributed because clear
-redistribution permission was not identified. The active fiscal table uses
-only a binary CDS-coverage flag; EMBI values are not read by the master.
-
-The three activity-control columns were extracted without transformation from
-an author-maintained workbook. The retained workbook metadata identifies
-BCB/Depec and monthly index levels but does not preserve SGS identifiers,
-seasonal-adjustment flags, or the original download date. The public package
-therefore freezes and checksums the exact 71-row extract and discloses this
-provenance limit instead of asserting an unrecoverable series vintage. Details
-and hashes are in `data/raw/calibration_controls/README.md`.
-
-The main frozen GPT-5.5 run identifiers are:
-
-| Purpose | Run ID | Tasks/results |
-|---|---|---:|
-| 25-regeneration rewrite corpus | `v10_referee_d5_25draws_20260620` | 17,750 rewrites |
-| Original path and calibration forecasts | `common_prior_original_v1_20260712` | 142 forecasts |
-| Common-prior binary Prompt-IV | `common_prior_main_25draws_v1_20260712` | 7,100 forecasts |
-| Common-prior six-arm dose response | `common_prior_dose_6arm_5draws_v1_20260713` | 4,260 forecasts |
-| Arm-specific recursive paths | `arm_specific_prior_dose_6arm_5draws_v1_20260714` | 4,260 forecasts |
-
-## Analysis workflow
-
-The 15 master stages are:
-
-1. verify the 76 frozen inputs;
-2. construct and validate the GPT-5.5 calibration dataset;
-3. estimate the common-prior Prompt-IV and dose/holdout/fiscal checks;
-4. run forecast-only out-of-sample validation;
-5. estimate arm-specific recursive paths;
-6. run identification, placebo, regime, and wild-cluster checks;
-7. estimate Bayesian and empirical-Bayes calibration alternatives;
-8. run external, Top-5, dispersion, moment, and orthogonality checks;
-9. run the sunspot/perceived-law diagnostic;
-10. estimate the proper-prior posterior model tournaments;
-11. evaluate structural-topic preservation;
-12. evaluate embeddings and alternative tone instruments;
-13. build integrated tables and figures;
-14. build baseline figures; and
-15. verify all results and exhibits.
-
-The exact exhibit-to-program map is
-`data/metadata/exhibit_manifest.csv`. Intermediate estimates remain under
-`outputs/tables/`, so each publication entry can be traced to a
-machine-readable result.
-
-## Randomness and verification
-
-All local simulation, bootstrap, topic-model, and Bayesian steps set explicit
-seeds. The main seed is `20260715`; the common-prior bootstrap seed is
-`20260714`. Deterministic targets use tight tolerances; stochastic posterior
-summaries use documented MCMC tolerances.
-
-The final gate verifies the headline Prompt-IV estimate and standard error,
-reduced form and first stage, regeneration-specific signs, ordered dose means,
-strict held-out estimate, calibration and forecast diagnostics, placebos,
-wild-cluster inference, regime/sunspot/embedding results, exact normalized text
-for all 28 tables, and existence/nonzero size for all 10 figures. It also writes
-`results/intext_results.csv` and `results/intext_numbers.tex` as the prose-value
-source of truth.
-
-## Collection-code boundary and security
-
-Exact reproduction needs neither Python nor provider access after the R
-environment is restored. Collection code is retained only to audit the frozen
-inputs. Remote calls cost money, can change over time, and are never made by
-the master. No credential is stored in the package; the example configuration
-uses `runner = "dry-run"`, `allow_real_llm = false`, and one worker. Any new
-collection must receive a new run ID and must not overwrite the frozen database.
-
-## Licenses and deposit checklist
-
-Code is BSD 3-Clause (`LICENSE`). Author-generated data are CC BY 4.0
-(`LICENSE_DATA`). Third-party documents/data remain subject to provider rights
-and are not relicensed by the authors.
-
-Before deposit, the corresponding author should upload this directory rather
-than its parent workspace, rerun the master in the uploaded copy, confirm all
-verification rows pass, add the assigned repository identifier and final
-article citation, and retain the top-level README files, licenses, lockfile,
-and checksum manifests. For GitHub, the SQLite database must use Git LFS as
-specified in `.gitattributes`; the repository mirror is not a substitute for a
-durable archive DOI.
+Code is BSD 3-Clause (`LICENSE`). Author-generated data are CC BY 4.0 (`LICENSE_DATA`). Third-party material remains subject to provider rights. No confidential institution-level Focus records or fabricated human ratings are used. A final deposit requires reviewed new results, accepted references and numerical baselines, complete provenance, and a new clean-room validation. `documentation/CLEAN_ROOM_VALIDATION.md` describes the inherited release only.

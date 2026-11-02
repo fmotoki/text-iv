@@ -1,3 +1,25 @@
+# Read the explicit run authority before opening any artifact.
+source_root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+source(file.path(source_root, "code", "read_run_spec.R"), local = TRUE)
+
+# The neutral dataset name must still identify this exact model and specification.
+calibration_audit_path <- run_path("outputs/work/calibration_audit.json")
+if (!file.exists(spec$paths$calibration_data) || !file.exists(calibration_audit_path)) {
+  stop("Selected Terra calibration is absent. Production collection/calibration has not run")
+}
+calibration_audit <- jsonlite::fromJSON(calibration_audit_path, simplifyVector = TRUE)
+if (!identical(calibration_audit$fingerprint, spec$fingerprint) ||
+    !identical(calibration_audit$spec_sha256,spec_sha256) ||
+    !identical(calibration_audit$original_run,spec$run_ids$original_priors) ||
+    !identical(calibration_audit$main_text_run,spec$run_ids$main_text) ||
+    !identical(calibration_audit$model, spec$model) ||
+    !identical(calibration_audit$reasoning_effort, spec$reasoning_effort) ||
+    !identical(as.integer(calibration_audit$meetings), as.integer(spec$sample$meeting_numbers)) ||
+    !identical(calibration_audit$calibration_sha256,
+      digest::digest(spec$paths$calibration_data, algo = "sha256", file = TRUE, serialize = FALSE))) {
+  stop("Calibration provenance, membership or bytes do not match this run")
+}
+
 suppressPackageStartupMessages({
   library(DBI)
   library(RSQLite)
@@ -44,35 +66,44 @@ parse_args <- function(defaults) {
 args <- parse_args(list(
   root = getwd(),
   database = file.path("outputs", "work", "prompt_iv_replication.sqlite"),
-  main_run_id = "common_prior_main_25draws_v1_20260712",
-  dose_run_id = "common_prior_dose_6arm_5draws_v1_20260713",
-  main_source_run_id = "v10_referee_d5_25draws_20260620",
-  dose_source_run_id = "v10_referee_step3_neutral_dose_5draws_20260627",
-  dataset = file.path("outputs", "work", "gpt55_calibration_data.dta"),
+  main_run_id = spec$run_ids$common_prior_main,
+  dose_run_id = spec$run_ids$common_prior_dose,
+  main_source_run_id = spec$run_ids$main_text,
+  dose_source_run_id = spec$run_ids$dose_text,
+  dataset = file.path("outputs", "work", "calibration_data.dta"),
   external_controls = file.path(
     "data", "analysis", "fiscal_sample_flags_by_meeting_20260630.csv"
   ),
   dose_slope_only = "false",
   bootstrap_reps = "999",
   bootstrap_seed = "20260714",
-  stamp = "20260714"
+  stamp = result_stamp
 ))
 
-root <- normalizePath(args$root, winslash = "/", mustWork = TRUE)
-source(file.path(root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
-database_path <- normalizePath(file.path(root, args$database), winslash = "/", mustWork = TRUE)
-dataset_path <- normalizePath(file.path(root, args$dataset), winslash = "/", mustWork = TRUE)
+# The specification owns cohort identities and every artifact destination.
+args$root <- source_root
+args$database <- spec$paths$work_database
+args$dataset <- spec$paths$calibration_data
+args$external_controls <- spec$legacy_reference_inputs$fiscal_flags
+args$main_run_id <- spec$run_ids$common_prior_main
+args$dose_run_id <- spec$run_ids$common_prior_dose
+args$main_source_run_id <- spec$run_ids$main_text
+args$dose_source_run_id <- spec$run_ids$dose_text
+args$stamp <- result_stamp
+source(file.path(source_root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
+database_path <- normalizePath(args$database, winslash = "/", mustWork = TRUE)
+dataset_path <- normalizePath(args$dataset, winslash = "/", mustWork = TRUE)
 external_controls_path <- normalizePath(
-  file.path(root, args$external_controls),
+  args$external_controls,
   winslash = "/",
   mustWork = TRUE
 )
 bootstrap_reps <- as.integer(args$bootstrap_reps)
 bootstrap_seed <- as.integer(args$bootstrap_seed)
-table_dir <- file.path(root, "outputs", "tables")
-figure_dir <- file.path(root, "results", "figures")
-qa_figure_dir <- file.path(root, "results", "qa")
-paper_table_dir <- file.path(root, "results", "tables")
+table_dir <- run_path("outputs/tables")
+figure_dir <- run_path("results/figures")
+qa_figure_dir <- run_path("results/qa")
+paper_table_dir <- run_path("results/tables")
 dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(qa_figure_dir, recursive = TRUE, showWarnings = FALSE)
@@ -99,7 +130,10 @@ read_agent_run <- function(run_id, source_run_id, tone_suffix = "") {
     " AND ts.meeting_number = r.meeting_number",
     " AND ts.iteration = r.corpus_iteration",
     " AND ts.role = r.source_role || ?",
-    "WHERE r.run_id = ?",
+    "JOIN corpus_texts AS c ON c.run_id = ts.run_id",
+    " AND c.meeting_number = ts.meeting_number AND c.iteration = ts.iteration",
+    " AND c.role = a.source_role AND c.text_hash = a.source_text_hash AND c.complete = 1",
+    "WHERE r.run_id = ? AND r.model = 'gpt-5.6-terra' AND r.reasoning_effort = 'high'",
     "  AND r.status = 'completed'",
     "  AND a.source_run_id = ?"
   )
@@ -121,14 +155,25 @@ validate_agent_panel <- function(data, expected_rows, expected_pairs, expected_r
       panel_name, expected_pairs, uniqueN(data$pair_id)
     ))
   }
-  if (uniqueN(data$meeting_number) != 71L) {
-    stop(sprintf("%s: expected 71 meetings", panel_name))
+  if (!setequal(as.integer(data$meeting_number), as.integer(spec$sample$meeting_numbers))) {
+    stop(sprintf("%s: expected 79 meetings", panel_name))
   }
   if (!identical(sort(unique(data$corpus_iteration)), as.integer(expected_draws))) {
     stop(sprintf("%s: regeneration indices do not match the expected set", panel_name))
   }
   if (!setequal(unique(data$source_role), expected_roles)) {
     stop(sprintf("%s: source roles do not match the design", panel_name))
+  }
+  expected_keys <- CJ(
+    meeting_number = as.integer(spec$sample$meeting_numbers),
+    corpus_iteration = as.integer(expected_draws),
+    forecaster_type = as.character(spec$profiles), source_role = expected_roles
+  )
+  keys <- names(expected_keys)
+  if (uniqueN(data[, ..keys]) != nrow(data) ||
+      nrow(fsetdiff(expected_keys, data[, ..keys])) ||
+      nrow(fsetdiff(data[, ..keys], expected_keys))) {
+    stop(panel_name, ": exact meeting/draw/profile/role support failed")
   }
   required <- c(
     "forecast_revision", "new_expectation", "previous_expectation",
@@ -171,8 +216,8 @@ main <- read_agent_run(
 )
 validate_agent_panel(
   main,
-  expected_rows = 7100L,
-  expected_pairs = 3550L,
+  expected_rows = 7900L,
+  expected_pairs = 3950L,
   expected_roles = c("dove", "hawk"),
   expected_draws = 1:25,
   panel_name = "25-regeneration common-prior panel"
@@ -187,8 +232,8 @@ dose <- read_agent_run(
 )
 validate_agent_panel(
   dose,
-  expected_rows = 4260L,
-  expected_pairs = 710L,
+  expected_rows = 4740L,
+  expected_pairs = 790L,
   expected_roles = c(
     "dove_high", "dove_low", "original", "neutral", "hawk_low", "hawk_high"
   ),
@@ -197,12 +242,81 @@ validate_agent_panel(
 )
 dose[, pair_id := factor(pair_id)]
 
+# Blinded scores must come from the selected real scorer and exact text family.
+semantic_support <- as.data.table(dbGetQuery(connection, paste(
+  "SELECT t.task_id,t.meeting_number,t.iteration,t.text_role,t.text_hash,c.text_hash AS corpus_hash,",
+  "s.status,s.model,s.reasoning_effort,s.source_run_id,t.source_run_id AS task_source,",
+  "t.model AS task_model,t.reasoning_effort AS task_effort,",
+  "t.prompt_version AS task_prompt,s.prompt_version AS score_prompt",
+  "FROM blinded_semantic_tasks t JOIN blinded_semantic_scores s",
+  "ON s.run_id=t.run_id AND s.task_id=t.task_id AND s.meeting_number=t.meeting_number",
+  "AND s.iteration=t.iteration AND s.text_role=t.text_role AND s.text_hash=t.text_hash",
+  "JOIN corpus_texts c ON c.run_id=t.source_run_id AND c.meeting_number=t.meeting_number",
+  "AND c.iteration=t.iteration AND c.role=t.text_role AND c.complete=1 WHERE t.run_id=?"
+),params=list(spec$run_ids$blinded_scoring)))
+semantic_keys <- CJ(meeting_number=as.integer(spec$sample$meeting_numbers),
+  iteration=seq_len(spec$draws$dose),text_role=as.character(spec$roles$dose))
+key_columns <- names(semantic_keys)
+if (nrow(semantic_support)!=nrow(semantic_keys) || anyNA(semantic_support) ||
+    anyDuplicated(semantic_support[,..key_columns]) ||
+    nrow(fsetdiff(semantic_keys,semantic_support[,..key_columns])) ||
+    nrow(fsetdiff(semantic_support[,..key_columns],semantic_keys)) ||
+    any(semantic_support$status!="completed") || any(semantic_support$model!=spec$model) ||
+    any(semantic_support$reasoning_effort!=spec$reasoning_effort) ||
+    any(semantic_support$task_model!=spec$model) ||
+    any(semantic_support$task_effort!=spec$reasoning_effort) ||
+    any(semantic_support$task_prompt!=spec$prompt_versions$semantic) ||
+    any(semantic_support$score_prompt!=spec$prompt_versions$semantic) ||
+    any(semantic_support$source_run_id!=spec$run_ids$dose_text) ||
+    any(semantic_support$task_source!=spec$run_ids$dose_text) ||
+    any(semantic_support$text_hash!=semantic_support$corpus_hash)) stop("Blinded semantic source/scorer/support failed")
+pairwise_support <- as.data.table(dbGetQuery(connection, paste(
+  "SELECT t.task_id,t.meeting_number,t.iteration,t.pair_type,t.role_a,t.role_b,",
+  "s.status,s.model,s.reasoning_effort,s.source_run_id,t.source_run_id AS task_source,",
+  "t.model AS task_model,t.reasoning_effort AS task_effort,",
+  "t.prompt_version AS task_prompt,s.prompt_version AS score_prompt,",
+  "t.text_a_hash,t.text_b_hash,a.text_hash AS corpus_a_hash,b.text_hash AS corpus_b_hash",
+  "FROM blinded_pairwise_tasks t JOIN blinded_pairwise_scores s ON s.run_id=t.run_id AND s.task_id=t.task_id",
+  "AND s.meeting_number=t.meeting_number AND s.iteration=t.iteration AND s.pair_type=t.pair_type",
+  "AND s.role_a=t.role_a AND s.role_b=t.role_b AND s.text_a_hash=t.text_a_hash AND s.text_b_hash=t.text_b_hash",
+  "JOIN corpus_texts a ON a.run_id=t.source_run_id AND a.meeting_number=t.meeting_number",
+  "AND a.iteration=t.iteration AND a.role=t.role_a AND a.complete=1",
+  "JOIN corpus_texts b ON b.run_id=t.source_run_id AND b.meeting_number=t.meeting_number",
+  "AND b.iteration=t.iteration AND b.role=t.role_b AND b.complete=1 WHERE t.run_id=?"
+),params=list(spec$run_ids$blinded_scoring)))
+pairwise_keys <- CJ(meeting_number=as.integer(spec$sample$meeting_numbers),
+  iteration=seq_len(spec$draws$dose),pair_type=names(spec$pairwise_pairs))
+key_columns <- names(pairwise_keys)
+pairwise_roles <- data.table(pair_type=names(spec$pairwise_pairs),
+  expected_a=vapply(spec$pairwise_pairs, `[`, character(1), 1L),
+  expected_b=vapply(spec$pairwise_pairs, `[`, character(1), 2L))
+pairwise_support <- merge(pairwise_support,pairwise_roles,by="pair_type",all.x=TRUE,sort=FALSE)
+if (nrow(pairwise_support)!=nrow(pairwise_keys) ||
+    anyNA(pairwise_support) || anyDuplicated(pairwise_support$task_id) ||
+    anyDuplicated(pairwise_support[,..key_columns]) ||
+    nrow(fsetdiff(pairwise_keys,pairwise_support[,..key_columns])) ||
+    nrow(fsetdiff(pairwise_support[,..key_columns],pairwise_keys)) ||
+    any(!((pairwise_support$role_a==pairwise_support$expected_a & pairwise_support$role_b==pairwise_support$expected_b) |
+      (pairwise_support$role_a==pairwise_support$expected_b & pairwise_support$role_b==pairwise_support$expected_a))) ||
+    any(pairwise_support$status!="completed") || any(pairwise_support$model!=spec$model) ||
+    any(pairwise_support$reasoning_effort!=spec$reasoning_effort) ||
+    any(pairwise_support$task_model!=spec$model) ||
+    any(pairwise_support$task_effort!=spec$reasoning_effort) ||
+    any(pairwise_support$task_prompt!=spec$prompt_versions$pairwise) ||
+    any(pairwise_support$score_prompt!=spec$prompt_versions$pairwise) ||
+    any(pairwise_support$source_run_id!=spec$run_ids$dose_text) ||
+    any(pairwise_support$task_source!=spec$run_ids$dose_text) ||
+    any(pairwise_support$text_a_hash!=pairwise_support$corpus_a_hash) ||
+    any(pairwise_support$text_b_hash!=pairwise_support$corpus_b_hash)) stop("Blinded pairwise source/scorer/support failed")
+
 dose_score_path <- file.path(root, "data", "analysis", "realized_dose_dataset.csv")
 dose_scores <- fread(dose_score_path, encoding = "UTF-8", showProgress = FALSE)
+if (!"scorer_run_id" %in% names(dose_scores) || anyNA(dose_scores$scorer_run_id) ||
+    any(dose_scores$scorer_run_id != spec$run_ids$blinded_scoring)) stop("Wrong realized-dose scorer cohort")
 setnames(dose_scores, "text_role", "source_role")
-if (nrow(dose_scores) != 2130L ||
-    uniqueN(dose_scores[, .(meeting_number, iteration, source_role)]) != 2130L) {
-  stop("Realized-dose score file is not a complete 71 x 5 x 6 panel")
+if (nrow(dose_scores) != 2370L ||
+    uniqueN(dose_scores[, .(meeting_number, iteration, source_role)]) != 2370L) {
+  stop("Realized-dose score file is not a complete 79 x 5 x 6 panel")
 }
 
 source_cells <- unique(dose[, .(
@@ -227,7 +341,7 @@ score_check <- merge(
   all = TRUE,
   sort = FALSE
 )
-if (nrow(score_check) != 2130L || anyNA(score_check$source_text_hash) ||
+if (nrow(score_check) != 2370L || anyNA(score_check$source_text_hash) ||
     anyNA(score_check$text_hash)) {
   stop("Dose-score merge is incomplete")
 }
@@ -257,8 +371,8 @@ if (anyNA(dose[source_role != "original", assigned_dose]) ||
 }
 
 mixture_columns <- c(
-  "forecast_anchored_gpt55",
-  "forecast_unanchored_gpt55",
+  "forecast_anchored",
+  "forecast_unanchored",
   "wc_orig",
   "ibcbr_agro",
   "ibcbr_service",
@@ -270,13 +384,13 @@ baseline_working <- baseline_data[
   complete.cases(baseline_data[, c("inflacao12m", mixture_columns), with = FALSE])
 ]
 mixture_model <- lm(
-  inflacao12m ~ forecast_anchored_gpt55 + forecast_unanchored_gpt55 + wc_orig +
+  inflacao12m ~ forecast_anchored + forecast_unanchored + wc_orig +
     ibcbr_agro + ibcbr_service + ibcbr_industry,
   data = baseline_working
 )
 mixture_weights <- coef(mixture_model)
-anchored_weight <- unname(mixture_weights[["forecast_anchored_gpt55"]])
-unanchored_weight <- unname(mixture_weights[["forecast_unanchored_gpt55"]])
+anchored_weight <- unname(mixture_weights[["forecast_anchored"]])
+unanchored_weight <- unname(mixture_weights[["forecast_unanchored"]])
 
 pre_2024_meetings <- baseline_data[
   date_daily < as.Date("2024-01-01"),
@@ -286,11 +400,11 @@ heldout_meetings <- baseline_data[
   date_daily >= as.Date("2024-01-01"),
   as.integer(reuniao)
 ]
-if (length(pre_2024_meetings) != 57L || length(heldout_meetings) != 14L) {
-  stop("The expected 57/14 pre-2024 and held-out meeting split was not recovered")
+if (length(pre_2024_meetings) != 57L || length(heldout_meetings) != 22L) {
+  stop("The expected 57/22 pre-2024 and held-out meeting split was not recovered")
 }
 mixture_model_pre_2024 <- lm(
-  inflacao12m ~ forecast_anchored_gpt55 + forecast_unanchored_gpt55 + wc_orig +
+  inflacao12m ~ forecast_anchored + forecast_unanchored + wc_orig +
     ibcbr_agro + ibcbr_service + ibcbr_industry,
   data = baseline_working[reuniao %in% pre_2024_meetings]
 )
@@ -306,6 +420,14 @@ if (!all(c(
 ) %in% names(external_controls))) {
   stop("Fiscal-sample file lacks RTN-window or CDS-availability fields")
 }
+if (anyDuplicated(external_controls$reuniao) ||
+    any(!external_controls$reuniao %in% 203:273)) {
+  stop("Fiscal flags must remain on their documented 203:273 support")
+}
+fwrite(data.table(
+  meeting_number = as.integer(spec$sample$meeting_numbers),
+  fiscal_flags_available = as.integer(spec$sample$meeting_numbers) %in% external_controls$reuniao
+), run_path(file.path("outputs", "tables", paste0("fiscal_flag_support_", result_stamp, ".csv"))))
 no_rtn_meetings <- external_controls[
   rtn_pub_window_5d == 0,
   as.integer(reuniao)
@@ -315,7 +437,7 @@ cds_covered_meetings <- external_controls[
   as.integer(reuniao)
 ]
 if (length(no_rtn_meetings) != 66L || length(cds_covered_meetings) != 67L) {
-  stop("The expected 66-meeting no-RTN and 67-meeting CDS samples were not recovered")
+  stop("The documented legacy fiscal-flag support changed")
 }
 
 build_composite_panel <- function(data, id_columns, weights = mixture_weights) {
@@ -332,8 +454,8 @@ build_composite_panel <- function(data, id_columns, weights = mixture_weights) {
     stop("Composite panel is missing an anchored or unanchored response")
   }
   wide[, forecast_revision :=
-         unname(weights[["forecast_anchored_gpt55"]]) * anchored +
-         unname(weights[["forecast_unanchored_gpt55"]]) * unanchored]
+         unname(weights[["forecast_anchored"]]) * anchored +
+         unname(weights[["forecast_unanchored"]]) * unanchored]
   wide[, pair_id := factor(paste(meeting_number, corpus_iteration, sep = "::"))]
   wide[, forecaster_type := "composite"]
   wide
@@ -355,20 +477,20 @@ dose_composite <- build_composite_panel(
     "tone_pp", "semantic_score"
   )
 )
-if (nrow(main_composite) != 3550L || uniqueN(main_composite$pair_id) != 1775L) {
+if (nrow(main_composite) != 3950L || uniqueN(main_composite$pair_id) != 1975L) {
   stop("Main composite is not a complete 25-regeneration two-arm panel")
 }
-if (nrow(main_composite_pre_2024) != 3550L ||
-    uniqueN(main_composite_pre_2024$pair_id) != 1775L) {
+if (nrow(main_composite_pre_2024) != 3950L ||
+    uniqueN(main_composite_pre_2024$pair_id) != 1975L) {
   stop("Pre-2024 calibrated composite is not a complete main panel")
 }
-if (nrow(dose_composite) != 2130L || uniqueN(dose_composite$pair_id) != 355L) {
+if (nrow(dose_composite) != 2370L || uniqueN(dose_composite$pair_id) != 395L) {
   stop("Dose composite is not a complete five-regeneration six-arm panel")
 }
 
 rm(source_cells, score_check)
 print(gc())
-cat("Validated 7,100 main rows and 4,260 dose-response rows.\n")
+cat("Validated 7,900 main rows and 4,740 dose-response rows.\n")
 
 coefficient_row <- function(model, term) {
   table <- coeftable(model)
@@ -452,17 +574,17 @@ heldout_systems <- list(
     "tone_pp",
     "Pre-2024, pre-2024 calibration"
   ),
-  "Held-out 2024-2025, pre-2024 calibration" = estimate_iv_system(
+  "Held-out 2024-2026, pre-2024 calibration" = estimate_iv_system(
     main_composite_pre_2024[meeting_number %in% heldout_meetings],
     "hawk",
     "tone_pp",
-    "Held-out 2024-2025, pre-2024 calibration"
+    "Held-out 2024-2026, pre-2024 calibration"
   ),
-  "Held-out 2024-2025, full calibration" = estimate_iv_system(
+  "Held-out 2024-2026, full calibration" = estimate_iv_system(
     main_composite[meeting_number %in% heldout_meetings],
     "hawk",
     "tone_pp",
-    "Held-out 2024-2025, full calibration"
+    "Held-out 2024-2026, full calibration"
   )
 )
 heldout_results <- rbindlist(lapply(
@@ -594,7 +716,7 @@ main_forecaster_wide <- dcast(
   meeting_number + corpus_iteration + source_role + hawk + tone_pp ~ forecaster_type,
   value.var = "forecast_revision"
 )
-if (nrow(main_forecaster_wide) != 3550L ||
+if (nrow(main_forecaster_wide) != 3950L ||
     anyNA(main_forecaster_wide$anchored) || anyNA(main_forecaster_wide$unanchored)) {
   stop("Main forecaster-heterogeneity panel is incomplete")
 }
@@ -925,8 +1047,8 @@ text_cells <- unique(dose[, .(
   tone_pp,
   semantic_score
 )])
-if (nrow(text_cells) != 2130L) {
-  stop("Expected 2,130 unique dose-response text cells")
+if (nrow(text_cells) != 2370L) {
+  stop("Expected 2,370 unique dose-response text cells")
 }
 
 tone_cells <- rbindlist(lapply(
@@ -1279,7 +1401,7 @@ write_main_table <- function(path) {
                                      collapse = " & "), " \\\\"),
     paste0("Fixed-effect groups & ", paste(vapply(rows, function(x) paste0("\\mc{", format(x$pair_fe_groups, big.mark = ","), "}"), ""),
                                            collapse = " & "), " \\\\"),
-    "Meeting clusters & \\mc{71} & \\mc{71} & \\mc{71} \\\\",
+    "Meeting clusters & \\mc{79} & \\mc{79} & \\mc{79} \\\\",
     "Regeneration replicates & \\mc{25} & \\mc{25} & \\mc{25} \\\\",
     "\\bottomrule",
     "\\end{tabular}",
@@ -1288,7 +1410,7 @@ write_main_table <- function(path) {
     paste(
       "\\item \\textit{Notes:} The dependent variable is the revision in the synthetic",
       "twelve-month-ahead inflation forecast, in percentage points. Column (1) applies",
-      "the coefficients estimated from all 71 meetings to the two profile revisions.",
+      "the coefficients estimated from all 79 meetings to the two profile revisions.",
       "Columns (2) and (3) report the profile components. Meeting controls and original",
       "minute length cancel within each meeting and regeneration pair. At meeting $t$,",
       "the anchored profile starts from $P_t^A$ and the unanchored profile starts from",
@@ -1362,7 +1484,7 @@ write_arm_table <- function(path) {
     paste0("Pair fixed-effect groups & ",
            paste(vapply(sample_rows, function(x) mc(format(x$pair_fe_groups, big.mark = ",")), ""),
                  collapse = " & "), " \\\\"),
-    "Meeting clusters & \\mc{71} & \\mc{71} & \\mc{71} \\\\",
+    "Meeting clusters & \\mc{79} & \\mc{79} & \\mc{79} \\\\",
     "Regeneration replicates & \\mc{5} & \\mc{5} & \\mc{5} \\\\",
     "\\bottomrule",
     "\\end{tabular}",
@@ -1452,7 +1574,7 @@ write_iv_sensitivity_table <- function(path) {
     paste0("Regeneration replicates & ",
            paste(vapply(rows, function(x) mc(as.character(x$draws)), ""), collapse = " & "),
            " \\\\"),
-    "Meeting clusters & \\mc{71} & \\mc{71} & \\mc{71} & \\mc{71} \\\\",
+    "Meeting clusters & \\mc{79} & \\mc{79} & \\mc{79} & \\mc{79} \\\\",
     "\\bottomrule",
     "\\end{tabular}",
     "\\begin{tablenotes}[flushleft]",
@@ -1496,8 +1618,8 @@ write_heldout_table <- function(path) {
   specs <- c(
     "Full sample, full calibration",
     "Pre-2024, pre-2024 calibration",
-    "Held-out 2024-2025, pre-2024 calibration",
-    "Held-out 2024-2025, full calibration"
+    "Held-out 2024-2026, pre-2024 calibration",
+    "Held-out 2024-2026, full calibration"
   )
   rows <- lapply(specs, function(spec) get_row(
     heldout_results,
@@ -1509,7 +1631,7 @@ write_heldout_table <- function(path) {
     "\\color{revisionred}",
     "\\centering",
     "\\begin{threeparttable}",
-    "\\caption{Temporal-calibration holdout for common-prior Prompt-IV, 2024--2025}",
+    "\\caption{Temporal-calibration holdout for common-prior Prompt-IV, 2024--2026}",
     "\\label{tab:heldout-iv}",
     "\\begin{scriptsize}",
     "\\setlength{\\tabcolsep}{4.2pt}",
@@ -1532,7 +1654,7 @@ write_heldout_table <- function(path) {
     ),
     "\\midrule",
     "Two-profile calibration & \\mc{Full} & \\mc{Pre-2024} & \\mc{Pre-2024} & \\mc{Full} \\\\",
-    "Evaluation meetings & \\mc{All} & \\mc{Pre-2024} & \\mc{2024--2025} & \\mc{2024--2025} \\\\",
+    "Evaluation meetings & \\mc{All} & \\mc{Pre-2024} & \\mc{2024--2026} & \\mc{2024--2026} \\\\",
     paste0(
       "Meetings & ",
       paste(vapply(rows, function(x) mc(as.character(x$meeting_clusters)), ""), collapse = " & "),
@@ -1566,7 +1688,7 @@ write_heldout_table <- function(path) {
       "\\item \\textit{Notes:} The dependent variable is the calibrated composite",
       "forecast revision under the common-prior design. Column (3) is the temporal-calibration",
       "holdout: the two-profile coefficients are estimated only on pre-2024",
-      "meetings and then applied to the 14 meetings in 2024--2025. Column (4) uses",
+      "meetings and then applied to the 22 meetings in 2024--2026. Column (4) uses",
       "the full-sample calibration on the same held-out meetings. Every model absorbs",
       "meeting-by-regeneration fixed effects and clusters standard errors by meeting.",
       "In every specification, $P_t^i$ is profile-specific and common only across arms",
@@ -1759,7 +1881,7 @@ write_inference_table <- function(path) {
     "\\scriptsize",
     paste(
       "\\item \\textit{Notes:} The first row is pair-fixed-effect 2SLS with standard",
-      "errors clustered over 71 meetings. Anderson--Rubin and conditional likelihood-",
+      "errors clustered over 79 meetings. Anderson--Rubin and conditional likelihood-",
       "ratio intervals use \\texttt{ivmodel} after residualizing meeting-by-regeneration fixed",
       "effects. The ordinary cluster bootstrap resamples meetings with replacement",
       sprintf("%s times and treats repeated meeting copies as distinct bootstrap clusters.", bootstrap_reps),
@@ -2315,7 +2437,7 @@ analysis_report <- list(
     dose_composite_rows = nrow(dose_composite),
     dose_composite_pairs = uniqueN(dose_composite$pair_id),
     dose_draws = uniqueN(dose$corpus_iteration),
-    meetings = 71L
+    meetings = 79L
   ),
   main_results = main_results,
   main_two_way_clustered = main_two_way,

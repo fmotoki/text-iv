@@ -1,3 +1,25 @@
+# Read the explicit run authority before opening any artifact.
+source_root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+source(file.path(source_root, "code", "read_run_spec.R"), local = TRUE)
+
+# The neutral dataset name must still identify this exact model and specification.
+calibration_audit_path <- run_path("outputs/work/calibration_audit.json")
+if (!file.exists(spec$paths$calibration_data) || !file.exists(calibration_audit_path)) {
+  stop("Selected Terra calibration is absent. Production collection/calibration has not run")
+}
+calibration_audit <- jsonlite::fromJSON(calibration_audit_path, simplifyVector = TRUE)
+if (!identical(calibration_audit$fingerprint, spec$fingerprint) ||
+    !identical(calibration_audit$spec_sha256,spec_sha256) ||
+    !identical(calibration_audit$original_run,spec$run_ids$original_priors) ||
+    !identical(calibration_audit$main_text_run,spec$run_ids$main_text) ||
+    !identical(calibration_audit$model, spec$model) ||
+    !identical(calibration_audit$reasoning_effort, spec$reasoning_effort) ||
+    !identical(as.integer(calibration_audit$meetings), as.integer(spec$sample$meeting_numbers)) ||
+    !identical(calibration_audit$calibration_sha256,
+      digest::digest(spec$paths$calibration_data, algo = "sha256", file = TRUE, serialize = FALSE))) {
+  stop("Calibration provenance, membership or bytes do not match this run")
+}
+
 suppressPackageStartupMessages({
   library(data.table)
   library(haven)
@@ -8,22 +30,21 @@ suppressPackageStartupMessages({
 
 data.table::setDTthreads(1L)
 
-root <- normalizePath(".", winslash = "/", mustWork = TRUE)
-source(file.path(root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
+source(file.path(source_root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
 
-dataset_path <- file.path(root, "outputs", "work", "gpt55_calibration_data.dta")
-table_dir <- file.path(root, "outputs", "tables")
-result_table_dir <- file.path(root, "results", "tables")
+dataset_path <- spec$paths$calibration_data
+table_dir <- run_path("outputs/tables")
+result_table_dir <- run_path("results/tables")
 dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(result_table_dir, recursive = TRUE, showWarnings = FALSE)
 
-stamp <- "20260715"
+stamp <- result_stamp
 min_train <- 24L
 hac_lags <- 4L
 
 mixture_columns <- c(
-  "forecast_anchored_gpt55",
-  "forecast_unanchored_gpt55",
+  "forecast_anchored",
+  "forecast_unanchored",
   "wc_orig",
   "ibcbr_agro",
   "ibcbr_service",
@@ -34,25 +55,25 @@ data <- as.data.table(read_dta(dataset_path))
 data[, date_daily := as.Date(date_daily)]
 setorder(data, date_daily, reuniao)
 
-if (nrow(data) != 71L || uniqueN(data$reuniao) != 71L) {
-  stop("D8 requires exactly one observation for each of 71 Copom meetings")
+if (nrow(data) != 79L || uniqueN(data$reuniao) != 79L) {
+  stop("D8 requires exactly one observation for each of 79 Copom meetings")
 }
-if (uniqueN(data$date_daily) != 71L) {
+if (uniqueN(data$date_daily) != 79L) {
   stop("D8 requires a unique date for each meeting")
 }
-if (!identical(range(as.integer(data$reuniao)), c(203L, 273L))) {
-  stop("D8 expected Copom meetings 203 through 273")
+if (!identical(range(as.integer(data$reuniao)), c(203L, 281L))) {
+  stop("D8 expected Copom meetings 203 through 281")
 }
 if (!identical(
   as.character(range(data$date_daily)),
-  c("2016-11-30", "2025-09-17")
+  c("2016-11-30", "2026-09-16")
 )) {
   stop("D8 recovered an unexpected meeting-date range")
 }
 
 model_columns <- c("inflacao12m", mixture_columns)
-if (sum(complete.cases(data[, ..model_columns])) != 71L) {
-  stop("D8 mixture variables must be complete for all 71 meetings")
+if (sum(complete.cases(data[, ..model_columns])) != 79L) {
+  stop("D8 mixture variables must be complete for all 79 meetings")
 }
 
 chronological_lag <- shift(data$inflacao12m)
@@ -60,8 +81,8 @@ if (!identical(as.numeric(data$l_inflacao12m), as.numeric(chronological_lag))) {
   stop("Stored Focus lag does not equal the chronological lag")
 }
 data[, lag_focus := chronological_lag]
-if (sum(complete.cases(data[, .(inflacao12m, lag_focus)])) != 70L) {
-  stop("D8 expected 70 usable Focus AR(1) pairs")
+if (sum(complete.cases(data[, .(inflacao12m, lag_focus)])) != 78L) {
+  stop("D8 expected 78 usable Focus AR(1) pairs")
 }
 if (min_train <= length(mixture_columns) + 1L || min_train >= nrow(data)) {
   stop("D8 initial window is not compatible with the calibration dimension")
@@ -104,7 +125,7 @@ loo <- rbindlist(lapply(seq_len(nrow(data)), function(index) {
   )
 }))
 
-if (nrow(loo) != 71L || any(!is.finite(loo$error_composite_loo))) {
+if (nrow(loo) != 79L || any(!is.finite(loo$error_composite_loo))) {
   stop("D8 leave-one-meeting-out predictions are incomplete")
 }
 loo_sse <- sum(loo$error_composite_loo^2)
@@ -137,21 +158,21 @@ for (index in seq.int(min_train + 1L, nrow(data))) {
     "lag_focus"
   )
 
-  anchored <- test$forecast_anchored_gpt55
-  unanchored <- test$forecast_unanchored_gpt55
+  anchored <- test$forecast_anchored
+  unanchored <- test$forecast_unanchored
   equal_weight <- 0.5 * anchored + 0.5 * unanchored
 
   history <- train[, .(
     inflacao12m,
-      forecast_anchored_gpt55,
-      forecast_unanchored_gpt55
+      forecast_anchored,
+      forecast_unanchored
   )]
   history <- history[complete.cases(history)]
   anchored_mse <- mean(
-      (history$inflacao12m - history$forecast_anchored_gpt55)^2
+      (history$inflacao12m - history$forecast_anchored)^2
   )
   unanchored_mse <- mean(
-      (history$inflacao12m - history$forecast_unanchored_gpt55)^2
+      (history$inflacao12m - history$forecast_unanchored)^2
   )
   anchored_inverse_mse <- 1 / max(anchored_mse, 1e-12)
   unanchored_inverse_mse <- 1 / max(unanchored_mse, 1e-12)
@@ -182,11 +203,11 @@ for (index in seq.int(min_train + 1L, nrow(data))) {
 }
 expanding <- rbindlist(expanding_rows)
 
-if (nrow(expanding) != 47L ||
+if (nrow(expanding) != 55L ||
     expanding$reuniao[[1L]] != 227L ||
-    expanding$reuniao[[47L]] != 273L ||
+    expanding$reuniao[[55L]] != 281L ||
     as.character(expanding$date_daily[[1L]]) != "2019-12-11" ||
-    as.character(expanding$date_daily[[47L]]) != "2025-09-17") {
+    as.character(expanding$date_daily[[55L]]) != "2026-09-16") {
   stop("D8 expanding-window forecast range is incomplete")
 }
 

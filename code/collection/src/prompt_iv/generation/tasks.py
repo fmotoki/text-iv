@@ -133,20 +133,31 @@ def build_rewrite_tasks(
     normalized_stances = [stance.strip().lower() for stance in stances if stance.strip()]
     if not normalized_stances:
         raise ValueError("at least one stance is required")
+    if len(normalized_stances) != len(set(normalized_stances)):
+        raise ValueError("Duplicate rewrite stances are not allowed")
     normalized_prompt_version = normalize_prompt_version(prompt_version)
 
     minute_files = list_minutes(minutes_dir)
     if meeting_numbers is not None:
-        selected = {int(number) for number in meeting_numbers}
+        selected_list = [int(number) for number in meeting_numbers]
+        selected = set(selected_list)
+        if len(selected) != len(selected_list):
+            raise ValueError("Duplicate meeting selectors are not allowed")
         minute_files = [minute for minute in minute_files if minute.meeting_number in selected]
+        if {minute.meeting_number for minute in minute_files} != selected:
+            raise ValueError("A selected original minute is missing")
     if max_meetings is not None:
         minute_files = minute_files[:max_meetings]
+    if len({minute.meeting_number for minute in minute_files}) != len(minute_files):
+        raise ValueError("Multiple source files identify the same selected meeting")
 
     tasks: list[RewriteTask] = []
     for minute in minute_files:
         full_text = read_text(minute.path)
         blocks = segment_text(full_text, parts=parts)
         total_blocks = len(blocks)
+        if total_blocks != parts:
+            raise ValueError(f"Meeting {minute.meeting_number} did not produce the intended {parts} blocks")
         for iteration in range(1, iterations + 1):
             for block_index, block in enumerate(blocks, start=1):
                 for stance in normalized_stances:

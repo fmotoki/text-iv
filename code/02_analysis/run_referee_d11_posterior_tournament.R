@@ -1,3 +1,25 @@
+# Read the explicit run authority before opening any artifact.
+source_root <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
+source(file.path(source_root, "code", "read_run_spec.R"), local = TRUE)
+
+# The neutral dataset name must still identify this exact model and specification.
+calibration_audit_path <- run_path("outputs/work/calibration_audit.json")
+if (!file.exists(spec$paths$calibration_data) || !file.exists(calibration_audit_path)) {
+  stop("Selected Terra calibration is absent. Production collection/calibration has not run")
+}
+calibration_audit <- jsonlite::fromJSON(calibration_audit_path, simplifyVector = TRUE)
+if (!identical(calibration_audit$fingerprint, spec$fingerprint) ||
+    !identical(calibration_audit$spec_sha256,spec_sha256) ||
+    !identical(calibration_audit$original_run,spec$run_ids$original_priors) ||
+    !identical(calibration_audit$main_text_run,spec$run_ids$main_text) ||
+    !identical(calibration_audit$model, spec$model) ||
+    !identical(calibration_audit$reasoning_effort, spec$reasoning_effort) ||
+    !identical(as.integer(calibration_audit$meetings), as.integer(spec$sample$meeting_numbers)) ||
+    !identical(calibration_audit$calibration_sha256,
+      digest::digest(spec$paths$calibration_data, algo = "sha256", file = TRUE, serialize = FALSE))) {
+  stop("Calibration provenance, membership or bytes do not match this run")
+}
+
 suppressPackageStartupMessages({
   library(data.table)
   library(haven)
@@ -7,18 +29,17 @@ suppressPackageStartupMessages({
 })
 
 data.table::setDTthreads(1L)
-rstan::rstan_options(auto_write = TRUE)
+rstan::rstan_options(auto_write = FALSE)
 options(mc.cores = 2L)
 
-root <- normalizePath(".", winslash = "/", mustWork = TRUE)
-source(file.path(root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
-dataset_path <- file.path(root, "outputs", "work", "gpt55_calibration_data.dta")
-table_dir <- file.path(root, "outputs", "tables")
-model_dir <- file.path(root, "outputs", "models")
+source(file.path(source_root, "code", "02_analysis", "reproducibility_helpers.R"), local = TRUE)
+dataset_path <- spec$paths$calibration_data
+table_dir <- run_path("outputs/tables")
+model_dir <- run_path("outputs/models")
 dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(model_dir, recursive = TRUE, showWarnings = FALSE)
 
-stamp <- "20260715"
+stamp <- result_stamp
 seed <- 20260715L
 
 data <- as.data.table(read_dta(dataset_path))
@@ -107,7 +128,7 @@ fit_candidate <- function(panel, name, frame, response, predictors, model_seed) 
   )
 }
 
-# Every Focus candidate uses the same 69-meeting support so that marginal
+# Every Focus candidate uses the same 77-meeting support so that marginal
 # likelihoods are comparable when the AR(2) model enters the tournament.
 focus <- copy(data[complete.cases(
   inflacao12m,
@@ -119,6 +140,7 @@ focus <- copy(data[complete.cases(
   ibcbr_service
 )])
 focus_specs <- list(
+  # All candidates below retain the same complete two-lag support.
   list("No tone, AR(1)", c("l_inflacao12m")),
   list("Tone, no persistence", c("score_orig")),
   list("Tone and AR(1)", c("score_orig", "l_inflacao12m")),
@@ -129,6 +151,9 @@ focus_specs <- list(
   )
 )
 
+if (nrow(focus)!=length(spec$sample$meeting_numbers)-2L) {
+  stop("Posterior Focus tournament must retain the common 77-meeting support")
+}
 focus_results <- lapply(seq_along(focus_specs), function(i) {
   fit_candidate(
     "Focus projection",
@@ -142,17 +167,17 @@ focus_results <- lapply(seq_along(focus_specs), function(i) {
 
 mixture <- copy(data[complete.cases(
   inflacao12m,
-  forecast_anchored_gpt55,
-  forecast_unanchored_gpt55,
+  forecast_anchored,
+  forecast_unanchored,
   ibcbr_agro,
   ibcbr_industry,
   ibcbr_service
 )])
 mixture[, `:=`(
-  anchored_centered = forecast_anchored_gpt55 - mean(forecast_anchored_gpt55),
-  unanchored_centered = forecast_unanchored_gpt55 - mean(forecast_unanchored_gpt55),
+  anchored_centered = forecast_anchored - mean(forecast_anchored),
+  unanchored_centered = forecast_unanchored - mean(forecast_unanchored),
   equal_weight_offset = inflacao12m -
-    0.5 * (forecast_anchored_gpt55 + forecast_unanchored_gpt55)
+    0.5 * (forecast_anchored + forecast_unanchored)
 )]
 
 control_names <- c("ibcbr_agro", "ibcbr_industry", "ibcbr_service")
@@ -205,7 +230,7 @@ tournament <- rbind(
   data.table(
     panel = "Synthetic calibration",
     model = "Hierarchical Dirichlet constrained projection",
-    observations = 71L,
+    observations = 79L,
     predictors = "simplex(anchored, unanchored) + activity controls",
     log_marginal_likelihood = d6_summary$hierarchical_dirichlet$log_marginal_likelihood,
     max_rhat = max(d6_summary$hierarchical_dirichlet$summary$max_rhat),

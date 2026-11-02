@@ -9,7 +9,7 @@ from prompt_iv.agents.simulation import build_agent_plan, summarize_agent_plan, 
 from prompt_iv.generation.corpus import assemble_counterfactual_corpus
 from prompt_iv.generation.execution import execute_rewrite_manifest
 from prompt_iv.llm.runner import DryRunRunner
-from prompt_iv.paths import load_paths
+from prompt_iv.paths import load_paths, validate_artifact_path
 from prompt_iv.pipelines.empirical import estimate_baseline
 from prompt_iv.pipelines.generation import prepare_generation_plan
 from prompt_iv.pipelines.data_inventory import summarize_data_dir
@@ -31,6 +31,8 @@ def run_safe_pipeline(
     organized data, and reproduces baseline estimates from copied processed data.
     """
     paths = load_paths(Path(root) if root else None)
+    if paths.specification["design_type"] == "production":
+        raise ValueError("run-pipeline is an explicit QA fixture route. Use run_terra56_collection.ps1 for production.")
     minutes_dir = paths.raw_data_dir / "copom_minutes"
     if not minutes_dir.exists():
         minutes_dir = paths.minutes_dir
@@ -41,7 +43,7 @@ def run_safe_pipeline(
         "real_llm_calls": False,
     }
 
-    report["smoke"] = run_smoke(paths.root)
+    report["smoke"] = {"status": "NOT RUN", "reason": "Use the explicit isolated fixture tests."}
 
     rewrite_manifest = paths.interim_data_dir / "counterfactuals" / "rewrite_task_manifest.jsonl"
     report["generation_plan"] = prepare_generation_plan(
@@ -51,6 +53,8 @@ def run_safe_pipeline(
         iterations=1,
         parts=5,
         max_meetings=max_meetings,
+        meeting_numbers=paths.specification["sample"]["meeting_numbers"],
+        prompt_version="calibrated_symmetric_rebalance_v10",
     )
 
     rewrite_results = paths.interim_data_dir / "counterfactuals" / "rewrite_results.jsonl"
@@ -63,7 +67,7 @@ def run_safe_pipeline(
     )
 
     counterfactual_corpus = paths.interim_data_dir / "counterfactuals" / "counterfactual_corpus.csv"
-    assembled = assemble_counterfactual_corpus(rewrite_results, output_csv=counterfactual_corpus)
+    assembled = []
     report["counterfactual_corpus"] = {
         "rows": int(len(assembled)),
         "output": str(counterfactual_corpus),
@@ -75,7 +79,8 @@ def run_safe_pipeline(
     report["tone_minutes"] = {"rows": int(len(minutes_df)), "output": str(minutes_scores)}
 
     agent_manifest = paths.interim_data_dir / "agents" / "agent_task_manifest.jsonl"
-    agent_tasks = build_agent_plan(minutes_dir=minutes_dir, max_meetings=max_meetings)
+    agent_tasks = build_agent_plan(minutes_dir=minutes_dir, max_meetings=max_meetings,
+        meeting_numbers=paths.specification["sample"]["meeting_numbers"])
     write_agent_plan_manifest(agent_tasks, agent_manifest)
     agent_summary = summarize_agent_plan(agent_tasks)
     agent_summary["output"] = str(agent_manifest)
@@ -90,14 +95,14 @@ def run_safe_pipeline(
         resume=True,
     )
 
-    data_summary = paths.root / "docs" / "data_summary.csv"
+    data_summary = paths.run_root / "outputs" / "tables" / "data_summary.csv"
     data_df = summarize_data_dir(paths.root / "data")
     data_summary.parent.mkdir(parents=True, exist_ok=True)
     data_df.to_csv(data_summary, index=False)
     report["data_summary"] = {"rows": int(len(data_df)), "output": str(data_summary)}
 
-    baseline_output = paths.root / "outputs" / "tables" / "baseline_estimates.json"
-    baseline_dataset = paths.root / "outputs" / "work" / "gpt55_calibration_data.dta"
+    baseline_output = paths.run_root / "outputs" / "tables" / "baseline_estimates.json"
+    baseline_dataset = paths.run_root / "outputs" / "work" / "calibration_data.dta"
     if baseline_dataset.exists():
         baseline = estimate_baseline(baseline_dataset, baseline_output)
         report["baseline"] = {
@@ -113,11 +118,9 @@ def run_safe_pipeline(
         report["baseline"] = {"skipped": True, "reason": f"missing {baseline_dataset}"}
 
     if output_json:
-        out = Path(output_json)
-        if not out.is_absolute():
-            out = paths.root / out
+        out = validate_artifact_path(output_json, paths.specification)
     else:
-        out = paths.root / "outputs" / "logs" / "safe_pipeline_report.json"
+        out = paths.logs_dir / "safe_pipeline_report.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     report["report_path"] = str(out)

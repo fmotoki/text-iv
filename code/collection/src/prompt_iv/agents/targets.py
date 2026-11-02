@@ -2,7 +2,8 @@ from __future__ import annotations
 
 
 MEETING_YEAR_RANGES = [
-    (268, None, 2025),
+    (276, 281, 2026),
+    (268, 275, 2025),
     (260, 267, 2024),
     (252, 259, 2023),
     (244, 251, 2022),
@@ -28,6 +29,7 @@ MEETING_YEAR_RANGES = [
 ]
 
 INFLATION_TARGETS = {
+    2026: 3.0,
     2025: 3.0,
     2024: 3.0,
     2023: 3.25,
@@ -61,8 +63,8 @@ def inferred_year_for_meeting(meeting_number: int) -> int:
                 return year
         elif start <= meeting_number <= end:
             return year
-    return 1999
+    raise ValueError(f"No verified year mapping for meeting {meeting_number}")
 
 
 def inflation_target_for_meeting(meeting_number: int) -> float:
-    return INFLATION_TARGETS.get(inferred_year_for_meeting(meeting_number), 4.5)
+    return INFLATION_TARGETS[inferred_year_for_meeting(meeting_number)]
