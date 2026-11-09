@@ -1,0 +1,98 @@
+test_actual_schedule_announcement_and_public_date (test_terra56_acquisition.AcquisitionContracts.test_actual_schedule_announcement_and_public_date) ... ok
+Downloading sgs_24364_metadata.json
+Downloading sgs_24364_2016.json
+Downloading focus_metadata.xml
+Downloading focus_ExpectativasMercadoInflacao12Meses_0.json
+Downloading focus_ExpectativasMercadoInflacao12Meses_2.json
+Downloading focus_ExpectativasMercadoTop5Inflacao12Meses_0.json
+Downloading focus_ExpectativasMercadoTop5Inflacao12Meses_2.json
+Downloading focus_ExpectativasMercadoSelic_0.json
+Downloading focus_ExpectativasMercadoSelic_2.json
+Downloading history_page.json
+Downloading ibc_page.json
+Downloading notes_2016.json
+Downloading note_1.json
+Downloading calendar_2016.json
+Downloading IBC-Br_todas_publicacoes.xlsx
+Downloading sgs_7478_metadata.json
+Downloading sgs_7478_metadata.html
+Downloading sgs_7478_2016.json
+Downloading focus_metadata.xml
+Downloading focus_ExpectativasMercadoInflacao12Meses_0.json
+Downloading focus_ExpectativasMercadoInflacao12Meses_2.json
+Downloading focus_ExpectativasMercadoTop5Inflacao12Meses_0.json
+Downloading focus_ExpectativasMercadoTop5Inflacao12Meses_2.json
+Downloading focus_ExpectativasMercadoSelic_0.json
+Downloading focus_ExpectativasMercadoSelic_2.json
+Downloading history_page.json
+Downloading ibc_page.json
+Downloading notes_2016.json
+Downloading note_1.json
+Downloading calendar_2016.json
+Downloading IBC-Br_todas_publicacoes.xlsx
+Downloading sgs_24364_metadata.json
+Downloading sgs_24364_2016.json
+Downloading focus_metadata.xml
+Downloading focus_ExpectativasMercadoInflacao12Meses_0.json
+Downloading focus_ExpectativasMercadoInflacao12Meses_2.json
+Downloading focus_ExpectativasMercadoTop5Inflacao12Meses_0.json
+Downloading focus_ExpectativasMercadoTop5Inflacao12Meses_2.json
+Downloading focus_ExpectativasMercadoSelic_0.json
+Downloading focus_ExpectativasMercadoSelic_2.json
+Downloading history_page.json
+Downloading ibc_page.json
+Downloading notes_2016.json
+Downloading note_1.json
+Downloading calendar_2016.json
+Downloading IBC-Br_todas_publicacoes.xlsx
+Downloading sgs_7478_metadata.json
+test_pagination_year_checks_and_atomic_failure (test_terra56_acquisition.AcquisitionContracts.test_pagination_year_checks_and_atomic_failure) ... ok
+test_sgs_schema_and_duplicates (test_terra56_acquisition.AcquisitionContracts.test_sgs_schema_and_duplicates) ... ok
+test_duplicate_release_fails_closed (test_terra56_acquisition.BcbOfflineFixture.test_duplicate_release_fails_closed) ... ok
+test_full_membership_public_availability (test_terra56_acquisition.BcbOfflineFixture.test_full_membership_public_availability) ... ok
+test_future_and_scheduled_release_are_ineligible (test_terra56_acquisition.BcbOfflineFixture.test_future_and_scheduled_release_are_ineligible) ... ok
+test_latest_vintage_and_aggregate_units (test_terra56_acquisition.BcbOfflineFixture.test_latest_vintage_and_aggregate_units) ... ok
+test_missing_vintage_never_uses_current (test_terra56_acquisition.BcbOfflineFixture.test_missing_vintage_never_uses_current) ... ok
+test_offline_import_sentinels_resume_and_duplicate_target (test_terra56_acquisition.BcbOfflineFixture.test_offline_import_sentinels_resume_and_duplicate_target) ... ok
+test_same_day_equality_and_ambiguity (test_terra56_acquisition.BcbOfflineFixture.test_same_day_equality_and_ambiguity) ... ok
+test_cli_calibration_summary_uses_current_report_contract (test_terra56_collection.TerraCollectionTests.test_cli_calibration_summary_uses_current_report_contract) ... ok
+test_cli_direct_writer_rejects_frozen_output (test_terra56_collection.TerraCollectionTests.test_cli_direct_writer_rejects_frozen_output) ... ok
+test_codex_usage_and_tool_event_rejection_without_remote_calls (test_terra56_collection.TerraCollectionTests.test_codex_usage_and_tool_event_rejection_without_remote_calls) ... ok
+test_configuration_warning_is_not_a_tool_event (test_terra56_collection.TerraCollectionTests.test_configuration_warning_is_not_a_tool_event) ... ok
+test_database_fingerprint_is_immutable (test_terra56_collection.TerraCollectionTests.test_database_fingerprint_is_immutable) ... ok
+test_exact_selection_and_year_boundary (test_terra56_collection.TerraCollectionTests.test_exact_selection_and_year_boundary) ... ok
+test_original_chronology_pair_priors_and_recursive_state (test_terra56_collection.TerraCollectionTests.test_original_chronology_pair_priors_and_recursive_state) ... ok
+test_path_and_frozen_database_protection (test_terra56_collection.TerraCollectionTests.test_path_and_frozen_database_protection) ... ok
+test_rewrite_resume_and_dry_run_transition (test_terra56_collection.TerraCollectionTests.test_rewrite_resume_and_dry_run_transition) ... ok
+test_symlink_escape (test_terra56_collection.TerraCollectionTests.test_symlink_escape) ... ok
+test_timeout_reserves_attempt_across_runner_restart (test_terra56_collection.TerraCollectionTests.test_timeout_reserves_attempt_across_runner_restart) ... ok
+test_candidate_and_overwrite_protection (test_terra56_exporter.CandidateExporterTests.test_candidate_and_overwrite_protection) ... ok
+test_forecast_raw_sql_values_and_schema_are_required (test_terra56_exporter.CandidateExporterTests.test_forecast_raw_sql_values_and_schema_are_required) ... ok
+test_partial_copy_failure_retains_audit_and_removes_only_candidate (test_terra56_exporter.CandidateExporterTests.test_partial_copy_failure_retains_audit_and_removes_only_candidate) ... ok
+test_wrong_model_keys_hash_and_missing_state_are_rejected (test_terra56_exporter.CandidateExporterTests.test_wrong_model_keys_hash_and_missing_state_are_rejected) ... ok
+test_alternate_three_role_protocol_remains_separate (test_terra56_scoring.ScoringFixture.test_alternate_three_role_protocol_remains_separate) ... ok
+{
+  "dataset": "C:\\Users\\csg690\\AppData\\Local\\Temp\\terra56-collection-fixture-6kr8w1wc\\run\\outputs\\work\\calibration_data.dta",
+  "output": "C:\\Users\\csg690\\AppData\\Local\\Temp\\terra56-collection-fixture-6kr8w1wc\\run\\outputs\\tables\\calibration.json",
+  "n_meetings": 79,
+  "mixture_r2": 0.2,
+  "llm_fit_r2": 0.3,
+  "focus_tone_observational": 0.1,
+  "focus_persistence": 0.8,
+  "design_status": "qa_fixture"
+}
+Embedding 8 sampled sentence segments from 8 unique texts...
+Stored 9 logical embeddings and 7 rewrite-original pair metrics directly in SQLite.
+test_embedding_recompute_preserves_old_model_rows (test_terra56_scoring.ScoringFixture.test_embedding_recompute_preserves_old_model_rows) ... ok
+test_embedding_selected_fetch_and_new_manifest (test_terra56_scoring.ScoringFixture.test_embedding_selected_fetch_and_new_manifest) ... ok
+test_exact_manifests_and_model_propagation (test_terra56_scoring.ScoringFixture.test_exact_manifests_and_model_propagation) ... ok
+test_failed_runner_and_nonfinite_scores (test_terra56_scoring.ScoringFixture.test_failed_runner_and_nonfinite_scores) ... ok
+test_postprocess_assembles_complete_blocks (test_terra56_scoring.ScoringFixture.test_postprocess_assembles_complete_blocks) ... ok
+test_realized_hash_and_missing_counterpart_fail_closed (test_terra56_scoring.ScoringFixture.test_realized_hash_and_missing_counterpart_fail_closed) ... ok
+test_resume_dry_run_promotion_and_changed_prompt (test_terra56_scoring.ScoringFixture.test_resume_dry_run_promotion_and_changed_prompt) ... ok
+test_transactional_import_preserves_old_sentinels (test_terra56_scoring.ScoringFixture.test_transactional_import_preserves_old_sentinels) ... ok
+
+----------------------------------------------------------------------
+Ran 34 tests in 79.403s
+
+OK

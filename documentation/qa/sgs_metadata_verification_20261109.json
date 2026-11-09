@@ -1,0 +1,37 @@
+{
+  "verification_date": "2026-11-09",
+  "scope": "Confirm the identities, units and frequencies of SGS 7478, 13522 and 433 using the official BCB series pages.",
+  "result": "All three series match the definitions expected by the downloader.",
+  "evidence_method": "Official BCB SGS pages inspected through the web tool. The fields below transcribe the series-specific table, not the generic page banner.",
+  "series": [
+    {
+      "code": 7478,
+      "official_name": "National Consumer Price Index-Extended 15 (IPCA-15)",
+      "official_unit": "Monthly % var.",
+      "official_frequency": "M",
+      "interpretation": "Monthly percentage change in IPCA-15.",
+      "source_url": "https://www3.bcb.gov.br/sgspub/consultarvalores/consultarValoresSeries.do?hdOidSeriesSelecionadas=7478&method=consultarGraficoPorId"
+    },
+    {
+      "code": 13522,
+      "official_name": "Broad national consumer price index (IPCA) - in 12 months",
+      "official_unit": "%",
+      "official_frequency": "M",
+      "interpretation": "IPCA percentage change over the preceding twelve months, reported monthly.",
+      "source_url": "https://www3.bcb.gov.br/sgspub/consultarvalores/consultarValoresSeries.do?hdOidSeriesSelecionadas=13522&method=consultarGraficoPorId"
+    },
+    {
+      "code": 433,
+      "official_name": "Broad National Consumer Price Index (IPCA)",
+      "official_unit": "Monthly % var.",
+      "official_frequency": "M",
+      "interpretation": "Monthly percentage change in IPCA.",
+      "source_url": "https://www3.bcb.gov.br/sgspub/consultarvalores/consultarValoresSeries.do?hdOidSeriesSelecionadas=433&method=consultarGraficoPorId"
+    }
+  ],
+  "limits": [
+    "This check confirms series definitions and units. It does not establish historical publication dates or values before later revisions.",
+    "The original downloaded snapshot remains unchanged. The current snapshot is data/raw/bcb/20261109_rebuild.",
+    "The downloader now uses this endpoint when catalogue entries are missing. All ten SGS definitions passed the rebuilt snapshot's automated verification."
+  ]
+}

@@ -42,14 +42,25 @@ class AcquisitionContracts(unittest.TestCase):
         self.assertEqual(len(events),5)
         self.assertEqual(events[0]["reference_month"],"2026-08")
         self.assertEqual(events[0]["event_status"],"actual")
+        # Retained BCB note 17159 starts with a space and reports June in August.
+        june=dict(actual,titulo=" BC divulga o IBC-Br de junho de 2020",Id=17159,DataPublicacao="2020-08-14T12:02:09Z",Url="/detalhenoticia/17159/nota")
+        june_events=bcb.normalize_release(june,"retrieved","a"*64)
+        self.assertEqual({e["series_code"] for e in june_events},{24363,24364})
+        self.assertEqual(june_events[0]["reference_month"],"2020-06")
+        self.assertEqual(june_events[0]["event_status"],"actual")
+        self.assertEqual(june_events[0]["actual_release_timestamp"],"2020-08-14T12:02:09Z")
         scheduled=bcb.normalize_release({"Id":1,"descricao":"Referência agosto de 2026","dataEvento":"2026-10-16T12:00:00Z"},"retrieved","a"*64,True)
         self.assertEqual(scheduled[0]["actual_release_timestamp"],"")
-        announced=dict(actual,titulo="BC divulga IBC-Br de agosto de 2026 na sexta-feira (16/10)")
+        announced=dict(actual,titulo=" BC divulga IBC-Br de agosto de 2026 na sexta-feira (16/10) ")
         self.assertEqual(bcb.normalize_release(announced,"retrieved","a"*64)[0]["event_status"],"announcement")
         old=dict(actual,DataPublicacao="2025-03-15T12:00:00Z",titulo="BC divulga IBC-Br de janeiro de 2025")
         self.assertEqual({e["series_code"] for e in bcb.normalize_release(old,"r","a"*64)},{24363,24364})
         no_year=dict(actual,titulo="BC divulga IBC-Br de agosto")
         self.assertEqual(bcb.normalize_release(no_year,"r","a"*64)[0]["reference_month"],"")
+        explicit={"corpo":"<p>IBC-Br referente a agosto de 2026.</p>"}
+        self.assertEqual(bcb.normalize_release(no_year,"r","a"*64,detail=explicit)[0]["reference_month"],"2026-08")
+        conflicting={"corpo":"Agosto de 2025 e agosto de 2026."}
+        self.assertEqual(bcb.normalize_release(no_year,"r","a"*64,detail=conflicting)[0]["reference_month"],"")
         with self.assertRaises(ValueError): bcb.normalize_release(dict(actual,DataPublicacao="2026-10-16T12:00:00"),"r","a"*64)
 
     def test_pagination_year_checks_and_atomic_failure(self):
@@ -71,6 +82,7 @@ class AcquisitionContracts(unittest.TestCase):
                     parsed=urlparse(url)
                     params=parse_qs(parsed.query)
                     if "package_search" in url:return Response({"success":True,"result":{"count":1,"results":[{"codigo_sgs":"24364","title":"IBC-Br com ajuste sazonal","periodicidade":"mensal","unidade_medida":"Indice"}]}})
+                    if "consultarValoresSeries.do" in url:return Response(b"<table><tr><td>7478</td><td>IPCA-15</td><td>Monthly % var.</td><td>M</td></tr></table>")
                     if "bcdata.sgs" in url:return Response([{"data":"01/01/2016","valor":"100"}])
                     if "$metadata" in url:return Response(b"<metadata/>")
                     if "odata/Expectativas" in url:
@@ -97,13 +109,14 @@ class AcquisitionContracts(unittest.TestCase):
                 bcb.acquire_support(Session(),dest,date(2016,12,31))
             saved=json.loads((dest/"source_manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(saved["status"],"acquired_current_values_vintages_unverified")
-            # Collection can retain undocumented values, but cannot mark them import-ready.
+            # The official SGS table verifies a definition absent from the catalogue.
             missing_metadata=Path(temporary)/"missing_metadata"
             with patch.dict(bcb.SGS,{7478:bcb.SGS[7478]},clear=True),patch.object(bcb,"ODATA_PAGE_SIZE",2):
                 bcb.acquire_support(Session(),missing_metadata,date(2016,12,31))
             incomplete=json.loads((missing_metadata/"source_manifest.json").read_text(encoding="utf-8"))
-            self.assertEqual(incomplete["status"],"acquired_current_values_metadata_incomplete")
-            self.assertEqual(incomplete["metadata_unverified_series"],[7478])
+            self.assertEqual(incomplete["status"],"acquired_current_values_vintages_unverified")
+            self.assertEqual(incomplete["metadata_unverified_series"],[])
+            self.assertTrue(any(r.get("metadata_status")=="verified" and r.get("series_code")==7478 for r in incomplete["requests"]))
             with (dest/"focus.csv").open(encoding="utf-8") as focus_file:
                 self.assertEqual(len(list(csv.DictReader(focus_file))),9)
             self.assertTrue(any("%20" in u and "$skip" not in u and "%24skip=2" in u for u in calls))
@@ -111,6 +124,11 @@ class AcquisitionContracts(unittest.TestCase):
             with self.assertRaises(FileExistsError):bcb.acquire_support(Session(),dest,date(2016,12,31))
             class BadSession:
                 def get(self,url,timeout):return Response({"not":"a SGS response"})
+            replay=Path(temporary)/"replayed_snapshot"
+            with patch.dict(bcb.SGS,{24364:bcb.SGS[24364]},clear=True),patch.object(bcb,"ODATA_PAGE_SIZE",2):
+                bcb.acquire_support(BadSession(),replay,date(2026,11,9),replay_from=dest)
+            self.assertEqual((replay/"sgs.csv").read_bytes(),(dest/"sgs.csv").read_bytes())
+            self.assertEqual((replay/"focus.csv").read_bytes(),(dest/"focus.csv").read_bytes())
             failed=Path(temporary)/"failed_snapshot"
             with self.assertRaises(ValueError):bcb.acquire_support(BadSession(),failed,date(2016,12,31))
             self.assertFalse((failed/"sgs.csv").exists())

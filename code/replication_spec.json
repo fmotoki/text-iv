@@ -3,9 +3,9 @@
   "design_type": "production",
   "source_root": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication",
   "artifact_root": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication_artifacts",
-  "release_id": "terra56_bcb_20261108_267de531",
-  "run_root": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication_artifacts/runs/terra56/terra56_bcb_20261108_267de531",
-  "result_stamp": "20261108_267de531",
+  "release_id": "terra56_bcb_20261109_rebuild",
+  "run_root": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication_artifacts/runs/terra56/terra56_bcb_20261109_rebuild",
+  "result_stamp": "20261109_rebuild",
   "model": "gpt-5.6-terra",
   "reasoning_effort": "high",
   "service_tier": "default",
@@ -172,13 +172,13 @@
     "alternate_three_role_pairwise": "pairwise_tone_v0.1"
   },
   "run_ids": {
-    "main_text": "terra56_main_text_20261108_267de531",
-    "dose_text": "terra56_dose_text_20261108_267de531",
-    "original_priors": "terra56_original_priors_20261108_267de531",
-    "common_prior_main": "terra56_common_prior_main_20261108_267de531",
-    "common_prior_dose": "terra56_common_prior_dose_20261108_267de531",
-    "recursive_dose": "terra56_recursive_dose_20261108_267de531",
-    "blinded_scoring": "terra56_blinded_scoring_20261108_267de531"
+    "main_text": "terra56_main_text_20261109_rebuild",
+    "dose_text": "terra56_dose_text_20261109_rebuild",
+    "original_priors": "terra56_original_priors_20261109_rebuild",
+    "common_prior_main": "terra56_common_prior_main_20261109_rebuild",
+    "common_prior_dose": "terra56_common_prior_dose_20261109_rebuild",
+    "recursive_dose": "terra56_recursive_dose_20261109_rebuild",
+    "blinded_scoring": "terra56_blinded_scoring_20261109_rebuild"
   },
   "source_links": {
     "common_prior_main": {
@@ -198,10 +198,10 @@
     }
   },
   "raw_snapshot": {
-    "download_stamp": "20261108_267de531",
-    "path": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication/data/raw/bcb/20261108_267de531",
-    "status": "downloaded_metadata_incomplete",
-    "manifest_sha256": "4d312c5277e67d7ea4616b33183263a7d8b3079a10549411e3b0047b9ff6811c"
+    "download_stamp": "20261109_rebuild",
+    "path": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication/data/raw/bcb/20261109_rebuild",
+    "status": "downloaded_metadata_verified_vintages_pending",
+    "manifest_sha256": "17d75c234323f5fac1f1c9e697458817699911369dfa863203420c016a116931"
   },
   "activity_controls": {
     "alignment": "latest_published_as_of_meeting",
@@ -215,7 +215,7 @@
     "calendar_file": "ibc_release_calendar.csv",
     "enriched_file": "ibc_series_enriched.csv",
     "vintages_file": "ibc_vintage_observations.csv",
-    "cutoffs_file": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication_artifacts/runs/terra56/terra56_bcb_20261108_267de531/data/analysis/meeting_information_cutoffs.csv",
+    "cutoffs_file": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication_artifacts/runs/terra56/terra56_bcb_20261109_rebuild/data/analysis/meeting_information_cutoffs.csv",
     "calendar_source": "https://www.bcb.gov.br/estatisticas/ibc-br",
     "history_source": "https://www.bcb.gov.br/notasporano",
     "release_event_status": "NOT_ACQUIRED",

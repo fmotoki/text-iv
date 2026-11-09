@@ -6,7 +6,7 @@ Authors are Fernando Barros Jr., Fabio Y. S. Motoki, Valdemar Pinho Neto, and Vi
 
 ## Coauthor starting point
 
-Read the [coauthor handoff](documentation/COAUTHOR_HANDOFF.md) for the current code/data map, completed checks, setup commands, ordered remaining work and AEA deposit checklist. The BCB download is complete at `data/raw/bcb/20261108_267de531/`, but that folder is excluded from Git and must accompany a transfer to another machine. The handoff distinguishes downloaded data from analysis-ready inputs. The prospective Terra package is not yet deposit-ready.
+Read the [coauthor handoff](documentation/COAUTHOR_HANDOFF.md) for the current code/data map, completed checks, setup commands, ordered remaining work and AEA deposit checklist. The corrected BCB snapshot is `data/raw/bcb/20261109_rebuild/`; it is excluded from Git and must accompany a transfer to another machine. The rebuild verified definitions for all ten SGS series and publication-date coverage for meetings 203 through 281. Original-release values and the remaining research decisions are documented in the handoff. The prospective Terra package is not yet deposit-ready.
 
 Use this Markdown README for current status. `README.pdf`, the version 2.0.0 citation, and the historical clean-room record have not been regenerated as a new Terra release.
 

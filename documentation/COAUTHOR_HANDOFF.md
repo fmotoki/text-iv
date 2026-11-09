@@ -1,6 +1,6 @@
 # Coauthor handoff
 
-Updated November 8, 2026. Read paths below relative to the `replication/` repository root unless a sibling directory is explicitly named.
+Updated November 9, 2026. Read paths below relative to the `replication/` repository root unless a sibling directory is explicitly named.
 
 ## Start here
 
@@ -12,6 +12,8 @@ First obtain the code branch and the separate BCB snapshot described below. Then
 
 The paper-facing design uses meetings 203 through 281, inclusive, with 79 meetings, 25 main draws, five dose draws, five rewrite blocks, and anchored/unanchored profiles. The requested model is `gpt-5.6-terra` with high reasoning and Standard service. Common-prior responses and arm-specific recursive paths remain distinct designs.
 
+The required data coverage starts at meeting 203, held on November 30, 2016. Earlier meetings are outside the requested sample. Check that every meeting from 203 through 281 has the required data and that each activity figure had been published by that meeting. Earlier monthly observations are needed only where they supply the latest available figure or a required lag or growth calculation for an included meeting. There is no requirement to repair the entire historical release calendar.
+
 The new cutoff diagnostic fits an unrestricted calibration on meetings 203–271 only. It compares five meetings before the February 16, 2026 model cutoff with five afterward, using same-date Focus twelve-month IPCA expectations. Its benchmark is previous-meeting Focus. It measures descriptive agreement, not realized inflation forecast accuracy or a causal effect on human beliefs. The main calibration still uses the separate full-79 sample.
 
 ## What is complete
@@ -21,14 +23,14 @@ The new cutoff diagnostic fits an unrestricted calibration on meetings 203–271
 | Collection, calibration, cutoff and reporting source | Implemented, with bounded fixture checks. Full production integration remains unrun. |
 | Original minute texts | The repository contains the historical text collection. Select exactly 203–281 through `_dates.csv`, rather than taking the first 79 filenames. |
 | New public BCB snapshot | Download completed with exit 0. Ten SGS series, three Focus entities, release evidence and the revisions workbook are saved. |
-| Download verification | 338 original response hashes and five normalized-file hashes passed. SGS, Focus and release keys are unique. Selected Focus targets exist on all 79 meeting dates. |
+| Download verification | The corrected snapshot passed 341 original response hashes and five normalized-file hashes. SGS definitions are verified for all ten series. IBC-Br publication-date coverage and selected Focus targets cover every meeting from 203 through 281. See [the coverage check](qa/bcb_rebuild_20261109/bcb_validation.json) and [meeting-level dates and lags](qa/bcb_rebuild_20261109/meeting_bcb_coverage.csv). |
 | Frozen-cutoff fixture | Five cases passed, including held-out-target perturbation, zero benchmark error, missing neutral and changed source hash. These were synthetic checks. |
 | Limited live model checks | The earlier implementation handoff reports four request families and five paid attempts. The planned 92-request smoke and full trajectories were not completed. |
 | Existing results | GPT-5.5 source data, estimates, reference exhibits and the earlier recovery archive were preserved. They are not new Terra results. |
 
-The final offline suite was rerun on November 8: 34 tests passed in 34.111 seconds, with zero skips and no model calls. The [portable verification receipt](qa/handoff_verification_20261108.json) records the source hashes, download checks and scope limits.
+The final offline suite was rerun on November 9: 34 tests passed in 79.403 seconds, with zero skips and no model calls. The [current verification receipt](qa/handoff_verification_20261109.json) records the source hashes, data checks and scope limits. The November 8 receipt is retained as historical evidence.
 
-The full public-data run exposed two faults not reached by the initial smoke checks. The old SGS metadata server returned HTTP 502, and some note IDs were JSON floats that produced invalid detail URLs. The downloader now uses the official catalogue, records missing descriptors explicitly, and converts validated integral note IDs to the required URL form. The offline importer rejects incomplete metadata before creating a database.
+The full public-data run and follow-up checks exposed faults not reached by the initial smoke checks: metadata were missing from the catalogue, some note IDs were JSON floats, some titles had surrounding whitespace, and older titles omitted a reference year that was stated in the notice body. These are corrected. The downloader retains and checks the official SGS table when the catalogue lacks a definition, normalizes integral note IDs, strips title whitespace and reads explicit reference years from the linked notices. The rebuilt files passed the real-data coverage check as well as the offline fixtures.
 
 ## Code and data organization
 
@@ -36,7 +38,7 @@ The full public-data run exposed two faults not reached by the initial smoke che
 | --- | --- | --- |
 | `code/` | Native Python, R and PowerShell source, prompts and tests | Versioned in Git. |
 | `data/raw/copom_minutes/` | Existing texts and the canonical meeting-date map | Texts and date map are included in the code handoff. Preserve their bytes. |
-| `data/raw/bcb/20261108_267de531/` | Newly downloaded public BCB inputs | Excluded from Git. Transfer the whole directory, including `responses/` and `source_manifest.json`. |
+| `data/raw/bcb/20261109_rebuild/` | Corrected public BCB inputs | Excluded from Git. Transfer the whole directory, including `responses/` and `source_manifest.json`. The earlier snapshot is retained locally as evidence and need not accompany the handoff. |
 | `data/raw/calibration_controls/`, `data/analysis/`, `data/generated/` | Inherited controls, analysis files and GPT-5.5 SQLite source | Historical inputs. Do not relabel them as Terra inputs. |
 | `data/metadata/` | Earlier dictionaries, source inventory and exhibit mapping | These describe the inherited release and require a new version for Terra. |
 | `outputs/`, `results/`, `reference/`, `logs/` | Earlier outputs and reproduction evidence | Preserve as historical records. New production writers use the selected run. |
@@ -48,21 +50,29 @@ The code/data separation is usable, and raw BCB inputs are now alongside the oth
 
 ### Deliver the BCB snapshot
 
-Copy `data/raw/bcb/20261108_267de531/` into the same relative location in the coauthor's checkout. A Git clone alone does not provide it. Its total size is 34,507,906 bytes, excluding the parent directory's navigation README.
+Copy `data/raw/bcb/20261109_rebuild/` into the same relative location in the coauthor's checkout. A Git clone alone does not provide it. Its total size is 34,567,711 bytes, excluding the parent directory's navigation README.
+
+For a single-file transfer, use `data/raw/bcb/bcb_handoff_20261109.zip` (2,147,468 bytes). It contains all 347 files in the current snapshot. Extract it into `data/raw/bcb/`; the archive already contains the `20261109_rebuild` directory. Every archived file was checked against its source. The ZIP checksum is `e11080b2c91b2ecc8a967d8ebea971df5cfec0dcac20e169a9dea5acfb32064d`; see [the archive receipt](qa/bcb_rebuild_20261109/archive_verification.json).
 
 The SHA-256 of `source_manifest.json` must be:
 
 ```text
-4d312c5277e67d7ea4616b33183263a7d8b3079a10549411e3b0047b9ff6811c
+17d75c234323f5fac1f1c9e697458817699911369dfa863203420c016a116931
 ```
 
 On PowerShell, check it with:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 data/raw/bcb/20261108_267de531/source_manifest.json
+Get-FileHash -Algorithm SHA256 data/raw/bcb/20261109_rebuild/source_manifest.json
 ```
 
 The manifest supplies checksums for the normalized files and original responses. Verify those after transfer as well. Do not rerun the downloader to overwrite this snapshot. A later download needs a new directory and records a different input vintage.
+
+After transfer, rerun the bounded data check below, choosing a new empty output directory. It verifies the snapshot checksums, the ten series definitions and coverage for all 79 meetings. The optional `--previous` argument also compares numeric files with an older snapshot when that snapshot is available; the coauthor does not need the older download to check the transferred data.
+
+```powershell
+python -B code/04_verification/check_bcb_snapshot.py --snapshot data/raw/bcb/20261109_rebuild --dates data/raw/copom_minutes/_dates.csv --output documentation/qa/bcb_transfer_check
+```
 
 ## Dataset inventory and provenance
 
@@ -70,11 +80,19 @@ The manifest supplies checksums for the normalized files and original responses.
 | --- | --- | --- |
 | `sgs.csv` | 7,715 rows across ten official SGS series | Values, reference dates, series codes, request URLs and retrieval times. Reference dates are not publication dates. |
 | `focus.csv` | 49,380 observations | Aggregate IPCA twelve-month expectations: 2,718. Top-5: 8,133. Selic: 38,529. |
-| `ibc_release_calendar.csv` | 652 series-by-release records | 311 actual, 102 announcements and 239 scheduled records. These are not counts of unique publication events. |
+| `ibc_release_calendar.csv` | 652 series-by-release records | 313 actual, 100 announcements and 239 scheduled records. Every actual release has an identified reference month. These are not counts of unique publication events. |
 | `ibc_series_enriched.csv` | 640 IBC-Br observations with associated evidence fields | Current retrieved values. They are not verified original-publication values. |
 | `ibc_vintage_observations.csv` | Header only, zero verified rows | Historical value extraction and validation remain to be done. |
 | `responses/IBC-Br_todas_publicacoes.xlsx` | Official historical-revisions workbook | Downloaded and ZIP integrity checked. Its contents have not been converted into verified release vintages. |
-| `responses/` and `source_manifest.json` | Original API responses, source addresses, parameters and hashes | 338 requests retained. The manifest status is `acquired_current_values_metadata_incomplete`. |
+| `responses/` and `source_manifest.json` | Original API responses, source addresses, parameters and hashes | 338 retained responses plus three newly downloaded official metadata pages. The manifest status is `acquired_current_values_vintages_unverified`: metadata are verified, but values before later revisions are not. |
+
+For each Copom meeting, use only IBC-Br figures that BCB had already published. The month measured and the publication date are different: for example, BCB published the June 2020 figure on August 14, 2020. That figure therefore cannot be used as information available at a meeting before August 14. The downloader collects publication dates from BCB notices; the analysis must use those dates rather than assume a fixed publication lag.
+
+The overall IBC-Br was publicly available before 2025. BCB began publishing separate IBC-Br indices for agriculture, industry and services in April 2025, including estimates for earlier years. Those earlier estimates cannot be treated as figures publicly available at earlier meetings. This distinction concerns publication of the sector indices, not access through the API. See BCB's announcement: https://www.bcb.gov.br/detalhenoticia/20618/nota.
+
+The November 9 rebuild corrected title whitespace and recovered reference years explicitly stated in the BCB notices. It also downloaded the three missing series descriptions from BCB's official SGS pages. The numeric SGS and Focus files are byte-for-byte identical to the original download. Publication-date coverage passed for all 79 study meetings. Meetings 214, 279 and 281 also had same-day releases: the coverage table lists the prior-date figure and flags the same-day notice for a decision-time check. It does not assume a release was available before the meeting simply because both occurred on the same date.
+
+Some rows outside the meeting-level selections remain unmatched: 327 are sector-index observations for periods before those indices were first published, and four are the aggregate indices for March and April 2022, covered by an exceptional joint BCB notice. None creates a missing prior-date match in the 79-meeting coverage check. Original-release values remain a separate task: today's value for June 2020 may differ from the value BCB published in August 2020.
 
 The SGS inventory is:
 
@@ -142,7 +160,7 @@ python -B -m unittest discover -s code/collection/tests -p 'test_terra56_*.py' -
 
 The R tests now resolve `RSCRIPT_EXECUTABLE` or Rscript on PATH instead of assuming the author's home directory. A suite with skipped R checks is incomplete; inspect the reported count and skips. To repeat the separate five-case cutoff fixture, reserve a new empty `QA_RECORD_DIR`, set that environment variable, and run `Rscript --vanilla code/04_verification/check_knowledge_cutoff.R`. It retains labelled synthetic TEMP outputs; preserve the report and clean only those owned fixtures afterward.
 
-Do not use `code/replication_spec.json` to start production now. It records the downloaded raw-manifest hash but is explicitly marked `PENDING_SOURCE_FREEZE`; remote model calls, full production and reference acceptance remain disabled. The preserved acquisition identity is `terra56_bcb_20261108_267de531`, with original fingerprint `8a7651e5e17f0cf433f255971b21bcefc52593b931fb18064a7e90fed9620cd8`. Its original effective specification and source snapshot remain under the sibling run root. Later documentation and portability edits were not substituted into that frozen acquisition record.
+Do not use `code/replication_spec.json` to start production now. It points to the corrected snapshot and its manifest hash, but remains marked `PENDING_SOURCE_FREEZE`; remote model calls, full production and reference acceptance remain disabled. The completed data-only rebuild is recorded under `../replication_artifacts/runs/terra56/terra56_bcb_20261109_rebuild/`, including its effective specification and the source bytes used for acquisition. Its fingerprint is `7219e367ce78d0ee517bacc7ba04c1d16a3860e5858b7be1378aaa0c27a787c5`. Later handoff edits are not substituted into that historical run record. A production run needs a separate specification after the remaining research decisions are settled.
 
 After the blockers below are resolved, the production order is:
 
@@ -183,9 +201,9 @@ The final manuscript table/figure numbers and every in-text number still need a 
 
 | Priority | Owner | Required action and completion evidence |
 | --- | --- | --- |
-| 1 | Authors | Decide how to handle sector controls before their first public release in April 2025. The current full-sample strict policy cannot treat backfilled values as information then available. Record the decision; do not silently drop meetings or replace controls. |
-| 2 | Data lead | Verify the missing catalogue descriptions for SGS 7478, 13522 and 433 from authoritative evidence. Keep declared units distinct from verified units, and produce a new versioned readiness record. |
-| 3 | Data lead | Resolve missing reference months in 198 series-by-release rows: 96 actual, 100 announcements and two scheduled. Use dated source evidence rather than guessing the reference year. |
+| 1 | Authors | Choose the activity controls for the earlier meetings. The overall IBC-Br was already public, but the separate IBC-Br sector indices were first published in April 2025. For earlier meetings, use indicators that were public at the time; alternatively, examine the sector indices in a separate analysis of later meetings. Explain the choice and any resulting change in the sample. |
+| 2 | Completed | All ten SGS series definitions are verified in the corrected snapshot. The downloader now uses the official SGS table when the catalogue lacks a description. Original pages and their hashes accompany the data. |
+| 3 | Completed, with same-day flags | Every meeting from 203 through 281 has an earlier IBC-Br release linked to its reference month and a selected Focus target. The [coverage CSV](qa/bcb_rebuild_20261109/meeting_bcb_coverage.csv) gives dates, publication lags and source links. Resolve same-day ordering for meetings 214, 279 and 281 as part of task 5. No wholesale repair of unrelated historical notices is required. |
 | 4 | Data lead | Extract and validate original-publication values from the revisions workbook and any necessary official archives. `ibc_vintage_observations.csv` currently has zero rows. Current revised values are not a fallback. |
 | 5 | Authors and data lead | Supply justified meeting-information cutoffs and same-day ordering. The configured cutoff file is absent. Record either source evidence or an explicit author convention. |
 | 6 | Code lead | Build the portable specification/source-freeze step, pin the completed raw snapshot and all inputs, and create a new run. Reconcile current software versions and test a fresh R/Python installation. |
@@ -211,4 +229,4 @@ This handoff follows the coverage requested by the [AEA preparation guidance](ht
 
 For the eventual deposit, keep code and data in separate subdirectories under one documented package root. Include required frozen model outputs so exact replication does not depend on remote model access. Exclude credentials, caches, installed environments, backup archives, failed snapshots and superseded working runs. Curate the actual file count before applying the AEA repository's file-count/ZIP guidance. The current whole working tree is not the deposit selection.
 
-The coauthor can begin with source review, local environment setup, the raw-data transfer and the first five evidence/decision tasks. Full collection and deposit acceptance should wait for their explicit completion.
+The coauthor can begin with source review, local environment setup and the corrected raw-data transfer. Metadata verification and coverage from meeting 203 onward are complete. The remaining tasks concern the choice of activity controls, historical values before later revisions, meeting timing, full collection and final replication. Full collection and deposit acceptance should wait for the relevant decisions and inputs.

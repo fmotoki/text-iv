@@ -1,0 +1,28 @@
+{
+  "status": "PASS_PUBLICATION_DATE_COVERAGE",
+  "meetings": 79,
+  "first_meeting": 203,
+  "last_meeting": 281,
+  "numeric_files_unchanged": true,
+  "verified_sgs_series": [
+    432,
+    433,
+    7478,
+    10813,
+    13522,
+    24363,
+    24364,
+    29602,
+    29604,
+    29606
+  ],
+  "original_response_hashes_verified": 341,
+  "normalized_hashes_verified": 5,
+  "missing_reference_months_actual": 0,
+  "same_day_meetings": [
+    214,
+    279,
+    281
+  ],
+  "vintage_limitation": "Current values remain distinct from original-release values; this is not full model readiness."
+}

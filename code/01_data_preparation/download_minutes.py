@@ -64,9 +64,10 @@ def normalize_sgs(payload, code, source_url, fetched_at):
     return list(rows.values())
 
 
-def normalize_release(record, retrieved_at, source_hash, scheduled=False):
+def normalize_release(record, retrieved_at, source_hash, scheduled=False, detail=None):
     title = BeautifulSoup(record.get("descricao", ""), "html.parser").get_text(" ") if scheduled else record.get("titulo", "")
-    title = re.sub(r"[\u200b-\u200d\ufeff]", "", title).lower()
+    # BCB titles can contain surrounding spaces; these do not change event status.
+    title = re.sub(r"[\u200b-\u200d\ufeff]", "", title).strip().lower()
     match = re.search(r"(?:referência\s*|ibc-br\s+de\s+)(" + "|".join(MONTHS) + r")(?:\s+de)?\s*(20\d{2})?", title)
     if not match:
         return []
@@ -75,8 +76,13 @@ def normalize_release(record, retrieved_at, source_hash, scheduled=False):
     if parsed.tzinfo is None:
         raise ValueError("Release timestamp lacks an offset")
     refmonth = f"{int(match.group(2)):04d}-{MONTHS[match.group(1)]:02d}" if match.group(2) else ""
-    # Missing reference-year evidence remains unmatched. Publication year alone
-    # does not establish an observation year.
+    # Older titles omit the year, but the linked BCB notice often states it.
+    # Use that explicit statement; never infer it from the publication year.
+    if not refmonth and detail is not None:
+        body = BeautifulSoup(detail.get("corpo", ""), "html.parser").get_text(" ").lower()
+        years = set(re.findall(r"\b" + match.group(1) + r"\s+de\s+(20\d{2})\b", body))
+        if len(years) == 1:
+            refmonth = f"{int(next(iter(years))):04d}-{MONTHS[match.group(1)]:02d}"
     # A forward-looking announcement is retained but cannot become an actual event.
     actual = not scheduled and bool(re.match(r"^bc divulga (?:o )?ibc-br de ", title)) and not re.search(r"(?:na |no dia|amanhã|será|quinta-feira|sexta-feira|segunda-feira|terça-feira|quarta-feira)", title)
     status = "scheduled" if scheduled else ("actual" if actual else "announcement")
@@ -84,7 +90,7 @@ def normalize_release(record, retrieved_at, source_hash, scheduled=False):
     return [dict(series_code=code, reference_month=refmonth, release_id=("calendar_" if scheduled else "note_") + str(record["Id"]), actual_release_date=parsed.date().isoformat() if actual else "", actual_release_timestamp=timestamp if actual else "", timezone="UTC" if actual else "", timestamp_precision="second" if actual else "", scheduled_release_date=parsed.date().isoformat() if scheduled else "", event_status=status, evidence_url=("https://www.bcb.gov.br/estatisticas/ibc-br" if scheduled else "https://www.bcb.gov.br" + record["Url"]), retrieved_at=retrieved_at, source_hash=source_hash) for code in codes]
 
 
-def acquire_support(session, destination, end_date):
+def acquire_support(session, destination, end_date, replay_from=None):
     """BCB-specific acquisition cannot be supplied by a generic download library."""
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=False)
@@ -92,17 +98,39 @@ def acquire_support(session, destination, end_date):
     raw.mkdir()
     retrieved = datetime.now(timezone.utc).isoformat()
     manifest, sgs, focus, events = [], [], [], []
-    unverified_series = []
+    # Rebuild corrected tables from the exact retained responses rather than
+    # download a different numeric vintage. Only new metadata requests go live.
+    replay_requests = {}
+    if replay_from is not None:
+        replay_from = Path(replay_from).resolve(strict=True)
+        replay_manifest = json.loads((replay_from / "source_manifest.json").read_text(encoding="utf-8"))
+        replay_requests = {item["request_url"]: item for item in replay_manifest["requests"]}
+        if len(replay_requests) != len(replay_manifest["requests"]):
+            raise ValueError("Duplicate retained request URL")
+        retrieved = replay_manifest["retrieved_at"]
+        end_date = max(datetime.strptime(item["parameters"]["dataFinal"], "%d/%m/%Y").date() for item in replay_manifest["requests"] if "dataFinal" in item["parameters"])
     # Request persistence is coupled to provenance. No existing response is replaced.
     def request_payload(url, params, filename, kind="json"):
         request_url = url + ("?" + urlencode(params, quote_via=quote) if params else "")
         print(f"Downloading {filename}", flush=True)
-        response = session.get(request_url, timeout=90)
-        response.raise_for_status()
-        payload = response.json() if kind == "json" else response.content
-        content = response.content
+        retained = replay_requests.get(request_url)
+        if retained is not None:
+            source = (replay_from / retained["file"]).resolve(strict=True)
+            if not source.is_relative_to(replay_from):
+                raise ValueError("Retained response escapes its snapshot")
+            content = source.read_bytes()
+            if hashlib.sha256(content).hexdigest() != retained["sha256"]:
+                raise ValueError("Retained response hash mismatch")
+            payload = json.loads(content) if kind == "json" else content
+        else:
+            if replay_from is not None and not url.startswith("https://www3.bcb.gov.br/sgspub/consultarvalores/"):
+                raise ValueError("Replay cannot substitute a new numeric or release response")
+            response = session.get(request_url, timeout=90)
+            response.raise_for_status()
+            payload = response.json() if kind == "json" else response.content
+            content = response.content
         (raw / filename).write_bytes(content)
-        manifest.append(dict(file="responses/" + filename, url=url, parameters=params, request_url=request_url, retrieved_at=retrieved, sha256=hashlib.sha256(content).hexdigest()))
+        manifest.append(dict(file="responses/" + filename, url=url, parameters=params, request_url=request_url, retrieved_at=retained["retrieved_at"] if retained else datetime.now(timezone.utc).isoformat(), sha256=hashlib.sha256(content).hexdigest()))
         return payload
     try:
         # Annual chunks also keep all daily requests below BCB's ten-year limit.
@@ -126,9 +154,21 @@ def acquire_support(session, destination, end_date):
                     raise ValueError(f"Conflicting official frequency/unit metadata for SGS {code}")
                 manifest[-1].update(series_code=code, metadata_status="verified", catalogue_title=matches[0]["title"], verified_frequency=frequency, verified_unit=unit, seasonal_adjustment=seasonal)
             else:
-                unverified_series.append(code)
-                manifest[-1].update(series_code=code, metadata_status="missing_catalogue_entry", declared_frequency=frequency, declared_unit=unit)
-                print(f"SGS {code}: catalogue description unavailable; analysis import remains blocked", flush=True)
+                # The official series table supplies definitions absent from CKAN.
+                graph_url = "https://www3.bcb.gov.br/sgspub/consultarvalores/consultarValoresSeries.do"
+                html = request_payload(graph_url, {"hdOidSeriesSelecionadas":code,"method":"consultarGraficoPorId"}, f"sgs_{code}_metadata.html", "bytes")
+                table_rows = [row.find_all(["td", "th"]) for row in BeautifulSoup(html, "html.parser").find_all("tr")]
+                series_rows = [[cell.get_text(" ", strip=True) for cell in row] for row in table_rows if len(row) >= 4 and row[0].get_text(strip=True) == str(code)]
+                if len(series_rows) != 1:
+                    raise ValueError(f"Missing/ambiguous official SGS table row for {code}")
+                cells = series_rows[0]
+                unit_text = unicodedata.normalize("NFKD", cells[2]).encode("ascii", "ignore").decode().lower()
+                frequency_text = cells[3].strip().lower()
+                frequency_verified = frequency_text in (("m", "mensal", "monthly") if frequency == "monthly" else ("d", "diaria", "daily"))
+                unit_verified = any(token in unit_text for token in (("indice", "index") if unit == "Index" else (("dolar", "usd", "us$") if unit == "BRL/USD" else ("percent", "%"))))
+                if not frequency_verified or not unit_verified:
+                    raise ValueError(f"Conflicting official SGS table frequency/unit for {code}")
+                manifest[-1].update(series_code=code, metadata_status="verified", catalogue_title=cells[1], official_unit=cells[2], official_frequency=cells[3], verified_frequency=frequency, verified_unit=unit, seasonal_adjustment=seasonal)
             for year in range(2016, end_date.year + 1):
                 start, end = date(year, 1, 1), min(date(year, 12, 31), end_date)
                 url = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{code}/dados"
@@ -204,7 +244,7 @@ def acquire_support(session, destination, end_date):
                 detail = request_payload("https://www.bcb.gov.br/api/servico/sitebcb/notasImprensa/" + str(item["Id"]), {"listsite":"conteudo/home-ptbr", "listname":"Notas à Imprensa"}, f"note_{item['Id']}.json")
                 if len(detail.get("conteudo", [])) != 1 or detail["conteudo"][0].get("dataPublicacao") != item["DataPublicacao"]:
                     raise ValueError("Conflicting index/detail disclosure evidence")
-                events.extend(normalize_release(item, retrieved, manifest[-1]["sha256"]))
+                events.extend(normalize_release(item, retrieved, manifest[-1]["sha256"], detail=detail["conteudo"][0]))
             calendar = request_payload("https://www.bcb.gov.br/api/servico/sitebcb/calendario/anual", {"lista":"Índice de atividade econômica (IBC-Br)","inicioAgenda":f"'{year}-01-01'","fimAgenda":f"'{year}-12-31'"}, f"calendar_{year}.json")
             for item in calendar.get("conteudo", []):
                 if not item.get("dataEvento", "").startswith(str(year)):
@@ -227,8 +267,8 @@ def acquire_support(session, destination, end_date):
         identities = {p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in destination.glob("*.csv")}
         with tempfile.NamedTemporaryFile(dir=destination, delete=False) as temporary_manifest:
             manifest_temp = Path(temporary_manifest.name)
-            status = "acquired_current_values_metadata_incomplete" if unverified_series else "acquired_current_values_vintages_unverified"
-            temporary_manifest.write(json.dumps(dict(status=status,metadata_unverified_series=unverified_series,retrieved_at=retrieved,requests=manifest,normalized_sha256=identities),ensure_ascii=False,indent=2).encode("utf-8"))
+            status = "acquired_current_values_vintages_unverified"
+            temporary_manifest.write(json.dumps(dict(status=status,metadata_unverified_series=[],retrieved_at=retrieved,end_date=end_date.isoformat(),reprocessed_at=datetime.now(timezone.utc).isoformat() if replay_from else None,replayed_from=str(replay_from) if replay_from else None,requests=manifest,normalized_sha256=identities),ensure_ascii=False,indent=2).encode("utf-8"))
         manifest_temp.replace(destination / "source_manifest.json")
     except Exception:
         # Retain raw evidence but do not leave partial normalized inputs pretending ready.
@@ -241,6 +281,7 @@ def acquire_support(session, destination, end_date):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--spec", default=os.environ.get("REPLICATION_SPEC_PATH"))
+    parser.add_argument("--replay-from", type=Path, help="Rebuild from hash-checked retained responses; fetch only missing requests")
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument("--data-only", action="store_true")
     modes.add_argument("--minutes-only", action="store_true")
@@ -278,7 +319,7 @@ if __name__ == "__main__":
             raise ValueError("BCB raw-data directory must not redirect through a filesystem link")
         if not snapshot.is_absolute() or snapshot.parent != raw_parent or snapshot.exists() or snapshot.is_symlink() or not spec["raw_snapshot"].get("download_stamp") or snapshot.name != spec["raw_snapshot"]["download_stamp"]:
             raise ValueError("A new named immutable BCB snapshot under SOURCE_ROOT/data/raw/bcb is required")
-        acquire_support(session, snapshot, date.today())
+        acquire_support(session, snapshot, date.today(), replay_from=args.replay_from)
     if args.minutes_only or args.all:
         existing_minute_hashes = {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in MINUTES_DIR.glob("ata*.txt")}
         # Increase the requested count if the listing fills the current limit.

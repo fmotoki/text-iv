@@ -1,0 +1,42 @@
+{
+  "checked_on": "2026-11-09",
+  "status": "PASS_BOUNDED_DATA_REBUILD_AND_TESTS",
+  "offline_tests": {
+    "tests": 34,
+    "skips": 0,
+    "seconds": 79.403,
+    "exit_code": 0,
+    "log": "quality_reports/qa/out-of-sample_add-on/clean_handoff_20261109/tests_verified.log"
+  },
+  "public_data": {
+    "snapshot": "data/raw/bcb/20261109_rebuild",
+    "manifest_sha256": "17d75c234323f5fac1f1c9e697458817699911369dfa863203420c016a116931",
+    "coverage_receipt": "documentation/qa/bcb_rebuild_20261109/bcb_validation.json",
+    "archive_receipt": "documentation/qa/bcb_rebuild_20261109/archive_verification.json",
+    "meetings": 79,
+    "first_meeting": 203,
+    "last_meeting": 281,
+    "sgs_definitions_verified": 10,
+    "original_response_hashes_verified": 341,
+    "normalized_hashes_verified": 5,
+    "numeric_files_identical_to_previous": true,
+    "original_manifest_unchanged": true,
+    "protected_input_hashes_unchanged": 91,
+    "same_day_meetings": [
+      214,
+      279,
+      281
+    ]
+  },
+  "source_sha256": {
+    "code/01_data_preparation/download_minutes.py": "928ab9443e1dbacf8caf63c261e4663a851b4a8795c57bf770985cba04a29dda",
+    "code/collection/tests/test_terra56_acquisition.py": "3acf47b726623bded0ca307fc6d4463eb457f5c5803ddb684bc1f8ed932b161f",
+    "code/04_verification/check_bcb_snapshot.py": "e0853001d69039fc5055d65ffa0c7b206350c6b49c2b4f7bcb213a4663223b03"
+  },
+  "limits": [
+    "No full statistical or paid model run was performed.",
+    "Original-release numeric values still require extraction and verification.",
+    "The authors must decide the sector-control policy and meeting cutoffs.",
+    "The canonical specification remains disabled for production until a new production source freeze."
+  ]
+}

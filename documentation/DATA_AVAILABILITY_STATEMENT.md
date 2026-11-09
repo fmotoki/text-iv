@@ -3,17 +3,17 @@
 ## Current source status
 
 The [Terra implementation](terra56_collection_validation_protocol.md) uses
-meetings 203 through 281. Public BCB inputs were downloaded on November 8, 2026
-to `data/raw/bcb/20261108_267de531/`. That directory is excluded from Git and
+meetings 203 through 281. The current BCB snapshot was rebuilt on November 9, 2026
+at `data/raw/bcb/20261109_rebuild/`. That directory is excluded from Git and
 must accompany a data transfer. It contains 7,715 SGS observations, 49,380
 Focus observations, release evidence and the historical-revisions workbook.
 See the [coauthor handoff](COAUTHOR_HANDOFF.md) for the file list, provenance,
 checksums and remaining limitations.
 
 Production Terra outcomes have not been collected or accepted. New derived
-artifacts remain isolated in the sibling run directory. Missing series metadata,
-release-month links, verified historical values and meeting cutoff evidence
-still block analysis readiness. Sector public availability before April 2025
+artifacts remain isolated in the sibling run directory. All ten SGS definitions
+and publication-date coverage for all 79 meetings passed verification. Original-release
+values and meeting cutoff evidence still require completion. Sector public availability before April 2025
 requires an author decision. Existing minute texts and GPT-5.5 results remain
 unchanged. The historical claims below do not certify the new data or code.
 
