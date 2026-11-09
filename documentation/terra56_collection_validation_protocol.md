@@ -7,8 +7,9 @@ The implementation handoff records the actual limited QA and live request count.
 ## Code and artifact versions
 
 Git versions source code, prompts, configuration, and documentation under
-`replication/`. New raw supporting data and run artifacts live in the sibling
-`replication_artifacts/` directory. `code/replication_spec.json` identifies both
+`replication/`. Raw supporting data live under `replication/data/raw/bcb/`.
+Derived run artifacts live in the sibling `replication_artifacts/` directory.
+`code/replication_spec.json` identifies both
 roots, the release ID, every collection ID, source/input hashes, and the selected
 run. Each run retains its effective specification, source snapshot, Git commit,
 model metadata, and output inventory. Existing GPT-5.5 results and reference
@@ -19,7 +20,7 @@ An unfinished run may resume only with the same effective specification and
 fingerprint. A changed substantive specification or input vintage needs a new
 release ID. Source lookup always uses `source_root`. Runtime artifacts resolve
 inside `run_root`. The new immutable BCB snapshot is a separate recorded input
-under `artifact_root/data/raw/bcb/`.
+under `source_root/data/raw/bcb/<download_stamp>/`.
 
 ## Fixed design
 

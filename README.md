@@ -4,6 +4,12 @@
 
 Authors are Fernando Barros Jr., Fabio Y. S. Motoki, Valdemar Pinho Neto, and Victor Rangel. Contact is victorrsr@al.insper.edu.br.
 
+## Coauthor starting point
+
+Read the [coauthor handoff](documentation/COAUTHOR_HANDOFF.md) for the current code/data map, completed checks, setup commands, ordered remaining work and AEA deposit checklist. The BCB download is complete at `data/raw/bcb/20261108_267de531/`, but that folder is excluded from Git and must accompany a transfer to another machine. The handoff distinguishes downloaded data from analysis-ready inputs. The prospective Terra package is not yet deposit-ready.
+
+Use this Markdown README for current status. `README.pdf`, the version 2.0.0 citation, and the historical clean-room record have not been regenerated as a new Terra release.
+
 The current branch implements a prospective GPT-5.6 Terra migration and a frozen-calibration Focus agreement diagnostic. It has limited QA, not a new production result release. Full recollection, statistical regeneration, reference acceptance, and clean-room validation have not run.
 
 The inherited GPT-5.5 inputs, results, metadata, references, and historical clean-room record remain in their existing locations. A verified recovery copy was created before source edits. Current code requires a new selected Terra run and cannot silently treat older outputs as new-model evidence.
@@ -12,7 +18,7 @@ The inherited GPT-5.5 inputs, results, metadata, references, and historical clea
 
 Git versions source, prompts, configuration, and documentation in this directory. Pre-task downloader edits have a separate baseline commit. Run manifests identify the exact source commit and file hashes used by each data/result version.
 
-New data, results, models, logs, and manifests live beside the Git repository in `../replication_artifacts/`. A run uses `artifact_root/runs/terra56/<release_id>/`. Supporting BCB snapshots use `artifact_root/data/raw/bcb/<download_stamp>/`. Existing minute texts remain read-only under `data/raw/copom_minutes/`. Recovery archives remain under `archives/`, excluded from Git.
+Raw inputs stay together under `data/raw/`. Supporting BCB snapshots use `data/raw/bcb/<download_stamp>/`, and existing minute texts remain read-only under `data/raw/copom_minutes/`. BCB snapshots are excluded from Git and identified by their download manifests. Derived data, results, models, logs, and run manifests remain in `../replication_artifacts/runs/terra56/<release_id>/`. Recovery archives remain under `archives/`, excluded from Git.
 
 `code/replication_spec.json` is the cross-language specification. It identifies both roots, model/effort, sample, run IDs, raw snapshot, source/input hashes, and release status. Runtime scripts require an explicit specification through `REPLICATION_SPEC_PATH` or the documented CLI argument. Each run keeps a matching `effective_spec.json`. Missing or changed identities fail before collection, output writes, or master cleanup.
 

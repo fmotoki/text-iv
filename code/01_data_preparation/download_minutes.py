@@ -23,6 +23,7 @@ from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 
 API_URL = "https://www.bcb.gov.br/api/servico/sitebcb/copom"
+FOCUS_DATASET_URL = "https://dadosabertos.bcb.gov.br/dataset/expectativas-mercado"
 OLINDA = "https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata"
 SECTORS = (29602, 29604, 29606)
 IBC_CODES = (24363, 24364, *SECTORS)
@@ -91,9 +92,11 @@ def acquire_support(session, destination, end_date):
     raw.mkdir()
     retrieved = datetime.now(timezone.utc).isoformat()
     manifest, sgs, focus, events = [], [], [], []
+    unverified_series = []
     # Request persistence is coupled to provenance. No existing response is replaced.
     def request_payload(url, params, filename, kind="json"):
         request_url = url + ("?" + urlencode(params, quote_via=quote) if params else "")
+        print(f"Downloading {filename}", flush=True)
         response = session.get(request_url, timeout=90)
         response.raise_for_status()
         payload = response.json() if kind == "json" else response.content
@@ -104,15 +107,28 @@ def acquire_support(session, destination, end_date):
     try:
         # Annual chunks also keep all daily requests below BCB's ten-year limit.
         for code, (name, unit, frequency, seasonal) in SGS.items():
-            mdurl = "https://www3.bcb.gov.br/sgspub/consultarmetadados/consultarMetadadosSeries.do"
-            md = request_payload(mdurl, {"method":"consultarMetadadosSeriesInternet", "hdOidSerieSelecionada":code}, f"sgs_{code}_metadata.html", "bytes")
-            metadata_text = BeautifulSoup(md, "html.parser").get_text(" ", strip=True)
-            metadata_text = unicodedata.normalize("NFKD", metadata_text).encode("ascii", "ignore").decode().lower()
-            frequency_verified = any(token in metadata_text for token in (("mensal", "monthly") if frequency == "monthly" else ("diaria", "daily")))
-            unit_verified = any(token in metadata_text for token in (("indice", "index") if unit == "Index" else (("dolar", "usd") if unit == "BRL/USD" else ("percent", "%"))))
-            if str(code) not in metadata_text or len(md) < 500 or not frequency_verified or not unit_verified:
-                raise ValueError(f"Unverified official concept/frequency/unit metadata for SGS {code}")
-            manifest[-1].update(series_code=code, verified_frequency=frequency, verified_unit=unit, seasonal_adjustment=seasonal)
+            # The older SGS metadata server returned repeated HTTP 502 errors.
+            # Use BCB's structured catalogue. Missing entries permit collection,
+            # but the snapshot status must still block the offline importer.
+            mdurl = "https://dadosabertos.bcb.gov.br/api/3/action/package_search"
+            md = request_payload(mdurl, {"q":str(code), "rows":100}, f"sgs_{code}_metadata.json")
+            if md.get("success") is not True or not isinstance(md.get("result", {}).get("results"), list) or md["result"].get("count", 0) > 100:
+                raise ValueError(f"Malformed/incomplete official catalogue response for SGS {code}")
+            matches = [item for item in md["result"]["results"] if str(item.get("codigo_sgs")) == str(code)]
+            if len(matches) > 1:
+                raise ValueError(f"Ambiguous official catalogue metadata for SGS {code}")
+            if matches:
+                frequency_text = unicodedata.normalize("NFKD", matches[0].get("periodicidade", "")).encode("ascii", "ignore").decode().lower()
+                unit_text = unicodedata.normalize("NFKD", matches[0].get("unidade_medida", "")).encode("ascii", "ignore").decode().lower()
+                frequency_verified = any(token in frequency_text for token in (("mensal", "monthly") if frequency == "monthly" else ("diaria", "daily")))
+                unit_verified = any(token in unit_text for token in (("indice", "index") if unit == "Index" else (("dolar", "usd", "us$") if unit == "BRL/USD" else ("percent", "%"))))
+                if not frequency_verified or not unit_verified:
+                    raise ValueError(f"Conflicting official frequency/unit metadata for SGS {code}")
+                manifest[-1].update(series_code=code, metadata_status="verified", catalogue_title=matches[0]["title"], verified_frequency=frequency, verified_unit=unit, seasonal_adjustment=seasonal)
+            else:
+                unverified_series.append(code)
+                manifest[-1].update(series_code=code, metadata_status="missing_catalogue_entry", declared_frequency=frequency, declared_unit=unit)
+                print(f"SGS {code}: catalogue description unavailable; analysis import remains blocked", flush=True)
             for year in range(2016, end_date.year + 1):
                 start, end = date(year, 1, 1), min(date(year, 12, 31), end_date)
                 url = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{code}/dados"
@@ -127,6 +143,9 @@ def acquire_support(session, destination, end_date):
         if len(set(keys)) != len(keys):
             raise ValueError("Duplicate SGS chunk-boundary key")
         request_payload(OLINDA + "/$metadata", {}, "focus_metadata.xml", "bytes")
+        manifest[-1]["dataset_url"] = FOCUS_DATASET_URL
+        # These are the catalogue's Focus series used by the analysis. Data is the
+        # statistics date, not evidence that the values were published that day.
         queries = {
           "ExpectativasMercadoInflacao12Meses": "Indicador eq 'IPCA' and Suavizada eq 'N' and baseCalculo eq 0",
           "ExpectativasMercadoTop5Inflacao12Meses": "Indicador eq 'IPCA' and Suavizada eq 'N'",
@@ -137,6 +156,8 @@ def acquire_support(session, destination, end_date):
             for skip in range(0, 1000001, ODATA_PAGE_SIZE):
                 params = {"$filter": selector + f" and Data ge '2016-01-01' and Data le '{end_date.isoformat()}'", "$orderby":"Data asc", "$top":ODATA_PAGE_SIZE, "$skip":skip, "$format":"json"}
                 page = request_payload(OLINDA + "/" + entity, params, f"focus_{entity}_{skip}.json")
+                manifest[-1].update(dataset_url=FOCUS_DATASET_URL,
+                                    date_field="Data", date_meaning="statistics_date_not_verified_publication_time")
                 if not isinstance(page, dict) or not isinstance(page.get("value"), list):
                     raise ValueError("Malformed Focus page")
                 for row in page["value"]:
@@ -174,6 +195,12 @@ def acquire_support(session, destination, end_date):
                     raise ValueError("Annual note index ignored requested year")
                 if "ibc-br" not in item.get("titulo", "").lower():
                     continue
+                # The annual index can encode integral note IDs as JSON floats.
+                # Detail URLs require the integer form, without a trailing .0.
+                note_id = int(item["Id"])
+                if note_id <= 0 or float(item["Id"]) != note_id:
+                    raise ValueError("Invalid release-note identifier")
+                item = dict(item, Id=note_id)
                 detail = request_payload("https://www.bcb.gov.br/api/servico/sitebcb/notasImprensa/" + str(item["Id"]), {"listsite":"conteudo/home-ptbr", "listname":"Notas à Imprensa"}, f"note_{item['Id']}.json")
                 if len(detail.get("conteudo", [])) != 1 or detail["conteudo"][0].get("dataPublicacao") != item["DataPublicacao"]:
                     raise ValueError("Conflicting index/detail disclosure evidence")
@@ -200,7 +227,8 @@ def acquire_support(session, destination, end_date):
         identities = {p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in destination.glob("*.csv")}
         with tempfile.NamedTemporaryFile(dir=destination, delete=False) as temporary_manifest:
             manifest_temp = Path(temporary_manifest.name)
-            temporary_manifest.write(json.dumps(dict(status="acquired_current_values_vintages_unverified",retrieved_at=retrieved,requests=manifest,normalized_sha256=identities),ensure_ascii=False,indent=2).encode("utf-8"))
+            status = "acquired_current_values_metadata_incomplete" if unverified_series else "acquired_current_values_vintages_unverified"
+            temporary_manifest.write(json.dumps(dict(status=status,metadata_unverified_series=unverified_series,retrieved_at=retrieved,requests=manifest,normalized_sha256=identities),ensure_ascii=False,indent=2).encode("utf-8"))
         manifest_temp.replace(destination / "source_manifest.json")
     except Exception:
         # Retain raw evidence but do not leave partial normalized inputs pretending ready.
@@ -242,13 +270,14 @@ if __name__ == "__main__":
     session = requests.Session()
     session.mount("https://", HTTPAdapter(max_retries=Retry(total=4,backoff_factor=1,status_forcelist=[429,500,502,503,504],allowed_methods=["GET"])))
     if args.data_only or args.all:
-        snapshot = Path(spec["raw_snapshot"]["path"]).resolve()
-        artifact_root = Path(spec["artifact_root"]).resolve(strict=True)
-        if artifact_root == source_root or artifact_root.is_relative_to(source_root):
-            raise ValueError("New raw snapshots require the external artifact root")
-        raw_parent = (artifact_root / "data" / "raw" / "bcb").resolve()
-        if not raw_parent.is_relative_to(artifact_root) or snapshot.parent != raw_parent or snapshot.exists() or not spec["raw_snapshot"].get("download_stamp") or snapshot.name != spec["raw_snapshot"]["download_stamp"]:
-            raise ValueError("A new named immutable BCB snapshot is required")
+        # Keep official raw inputs together. Each download gets a new directory
+        # so earlier input versions remain available and cannot be overwritten.
+        snapshot = Path(spec["raw_snapshot"]["path"])
+        raw_parent = source_root / "data" / "raw" / "bcb"
+        if raw_parent.resolve() != raw_parent:
+            raise ValueError("BCB raw-data directory must not redirect through a filesystem link")
+        if not snapshot.is_absolute() or snapshot.parent != raw_parent or snapshot.exists() or snapshot.is_symlink() or not spec["raw_snapshot"].get("download_stamp") or snapshot.name != spec["raw_snapshot"]["download_stamp"]:
+            raise ValueError("A new named immutable BCB snapshot under SOURCE_ROOT/data/raw/bcb is required")
         acquire_support(session, snapshot, date.today())
     if args.minutes_only or args.all:
         existing_minute_hashes = {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in MINUTES_DIR.glob("ata*.txt")}

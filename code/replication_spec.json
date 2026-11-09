@@ -3,9 +3,9 @@
   "design_type": "production",
   "source_root": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication",
   "artifact_root": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication_artifacts",
-  "release_id": "terra56_20261101T225332Z_g0_5b2042_r4",
-  "run_root": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication_artifacts/runs/terra56/terra56_20261101T225332Z_g0_5b2042_r4",
-  "result_stamp": "20261101T225332Z_g0_5b2042_r4",
+  "release_id": "terra56_bcb_20261108_267de531",
+  "run_root": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication_artifacts/runs/terra56/terra56_bcb_20261108_267de531",
+  "result_stamp": "20261108_267de531",
   "model": "gpt-5.6-terra",
   "reasoning_effort": "high",
   "service_tier": "default",
@@ -172,13 +172,13 @@
     "alternate_three_role_pairwise": "pairwise_tone_v0.1"
   },
   "run_ids": {
-    "main_text": "terra56_main_text_20261101T225332Z_g0_5b2042_r4",
-    "dose_text": "terra56_dose_text_20261101T225332Z_g0_5b2042_r4",
-    "original_priors": "terra56_original_priors_20261101T225332Z_g0_5b2042_r4",
-    "common_prior_main": "terra56_common_prior_main_20261101T225332Z_g0_5b2042_r4",
-    "common_prior_dose": "terra56_common_prior_dose_20261101T225332Z_g0_5b2042_r4",
-    "recursive_dose": "terra56_recursive_dose_20261101T225332Z_g0_5b2042_r4",
-    "blinded_scoring": "terra56_blinded_scoring_20261101T225332Z_g0_5b2042_r4"
+    "main_text": "terra56_main_text_20261108_267de531",
+    "dose_text": "terra56_dose_text_20261108_267de531",
+    "original_priors": "terra56_original_priors_20261108_267de531",
+    "common_prior_main": "terra56_common_prior_main_20261108_267de531",
+    "common_prior_dose": "terra56_common_prior_dose_20261108_267de531",
+    "recursive_dose": "terra56_recursive_dose_20261108_267de531",
+    "blinded_scoring": "terra56_blinded_scoring_20261108_267de531"
   },
   "source_links": {
     "common_prior_main": {
@@ -198,10 +198,10 @@
     }
   },
   "raw_snapshot": {
-    "download_stamp": "20261101T225332Z_g0_5b2042",
-    "path": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication_artifacts/data/raw/bcb/20261101T225332Z_g0_5b2042",
-    "status": "unpopulated",
-    "manifest_sha256": null
+    "download_stamp": "20261108_267de531",
+    "path": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication/data/raw/bcb/20261108_267de531",
+    "status": "downloaded_metadata_incomplete",
+    "manifest_sha256": "4d312c5277e67d7ea4616b33183263a7d8b3079a10549411e3b0047b9ff6811c"
   },
   "activity_controls": {
     "alignment": "latest_published_as_of_meeting",
@@ -215,7 +215,7 @@
     "calendar_file": "ibc_release_calendar.csv",
     "enriched_file": "ibc_series_enriched.csv",
     "vintages_file": "ibc_vintage_observations.csv",
-    "cutoffs_file": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication_artifacts/runs/terra56/terra56_20261101T225332Z_g0_5b2042_r4/data/analysis/meeting_information_cutoffs.csv",
+    "cutoffs_file": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication_artifacts/runs/terra56/terra56_bcb_20261108_267de531/data/analysis/meeting_information_cutoffs.csv",
     "calendar_source": "https://www.bcb.gov.br/estatisticas/ibc-br",
     "history_source": "https://www.bcb.gov.br/notasporano",
     "release_event_status": "NOT_ACQUIRED",
@@ -265,13 +265,13 @@
     "fiscal_flags": "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication/data/analysis/fiscal_sample_flags_by_meeting_20260630.csv"
   },
   "execution": {
-    "status": "implementation_only",
+    "status": "handoff_requires_new_source_freeze",
     "allow_remote_calls": false,
     "reference_accepted": false,
     "full_production_authorized": false
   },
   "source_hashes": {
-    ".gitignore": "50f54ceac51ed85bb11e73049821a2ee9c468c2fdacdaf3bf721f875b595332c",
+    ".gitignore": "5e5af533120a430e2da910b97821a1478614ec0ef81de6b1bff9c483506a6f9d",
     ".Rprofile": "08654ee73bbfa9d016a10709f3589fea6a343a19b6539206ed2eabbac69001f6",
     "code/00_master.R": "cb6a3570f291f18fd611edd0419ce7503b74a3d8073260a0c9f98d65f2187ea5",
     "code/00_setup.R": "4bcc9cbcbe3895c98ccc2807a8edb0041d7a55290d945c3f00cdfac436cdd9ca",
@@ -280,7 +280,7 @@
     "code/01_data_preparation/build_metadata.R": "c0c8a22142ba2a3a5fcaa39d91fcecbc26c677527bafc64e3eecc9c8033e0d33",
     "code/01_data_preparation/build_replication_database.py": "c5e14ffabcc34f632f28080acf1c22e39ad177702488b67bfb1b23a8c3ab668e",
     "code/01_data_preparation/download_minutes.log": "adfae6992eeeb765003a8809c60c4be25d680a33c565670d7168e4608c46fe19",
-    "code/01_data_preparation/download_minutes.py": "2012766a5f03a595da2329c6bc9b9e7dba8c4333cf01dd0716349049719182b6",
+    "code/01_data_preparation/download_minutes.py": "b5160ba61382d71574b54dcfebe789684909c1279554f1ca9d505ecbb9a576c7",
     "code/02_analysis/analyze_arm_specific_prior_dose.R": "a82ba243e9c8ee95c64718c7ff631fde0239442cf1d4852b4bd03b44d2785ebc",
     "code/02_analysis/analyze_common_prior_full.R": "7fd5fba4d3b43beeb07a643b5b8e7fef836f255efe74addee74435a840abeb9a",
     "code/02_analysis/analyze_knowledge_cutoff.R": "c7960e2a88904d16dc3ceffb50170f44ef53f1602e0fe1b876416083577f20ab",
@@ -356,7 +356,7 @@
     "code/collection/src/prompt_iv/tone/__init__.py": "af75edb2727f2338a1c4ef91f72eadfca930008afaa9924b48080c91c96590ac",
     "code/collection/src/prompt_iv/tone/lexicon.py": "47fae47143e54563a2b5c05059119abf27dca1283f737d579c4e4b1960f295a9",
     "code/collection/src/prompt_iv/tone/scorer.py": "bed947ebe643fedd8fed400f520abb7bc6304e11440577f2b8f2637f3809ad76",
-    "code/collection/tests/test_terra56_acquisition.py": "ae6ebb3405cc0a6ba00a58693ceb2f4d1860f86fc25d9e2f58cf26e4fed8268d",
+    "code/collection/tests/test_terra56_acquisition.py": "0fa450f8aec98ad93a39d2ca619dd3e4efe4ae51ba9cc979f7b8eca7b948e14c",
     "code/collection/tests/test_terra56_collection.py": "d10f983ca2eea72c1fde65bef6495cf97db8ba4d7a7ee1d77725afe45cb91a2f",
     "code/collection/tests/test_terra56_exporter.py": "d704c68f8a3c990cd5efadbaec3f7f669adbb962fdbe772e071f41954d91b82a",
     "code/collection/tests/test_terra56_scoring.py": "5fbc234802303a1288be5a439102f2248806bcb1dde3c0442aa1c80238a934bb",
@@ -371,8 +371,8 @@
     "documentation/REPRODUCIBILITY_PROTOCOL.md": "37bc8e3bb22303f8375ab1a8fa99ac08fe3e04b688852f4359da88780e3166bb",
     "documentation/run_v10_focused_replication_reconstruction.md": "7e850fadf76b7ac3276a464c62e8178e7131b8a356936da1c8976d32cc8e11c3",
     "documentation/sqlite_database.md": "7fed420a16f468afb8c3fcaad6de6e147e5f3434aafad1a32cb061b7781e52c0",
-    "documentation/terra56_collection_validation_protocol.md": "f2431cb5e61b4a9eb6313bc11b31cd5b1953d3decfcccd7bd352593ea99016a9",
-    "README.md": "c26f8f82bed8ea5b6cc9264882a78076f53b93ccc23e5a54dbf855253c4ac58b",
+    "documentation/terra56_collection_validation_protocol.md": "27b912eb785979d90e4243d14d5a3de4c36e1fc841c31d1860b295d4c2b94fb2",
+    "README.md": "40010ea8bf7c4f22c6b1f02b1fa1c7450b3211cb12622fcd3c7aec1fff5e6002",
     "renv.lock": "53ad7946ae9e8e7a8adef0d13c8942f1a49567ec45d5b8246f5b1b00be6a3b1b"
   },
   "input_hashes": {
@@ -468,5 +468,5 @@
     "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication/data/raw/copom_minutes/ata280.txt": "f35f2155d5fa666a305f4ca04d1c9813d614eb71386ef5f4e9aeef861b1860ba",
     "C:/Users/csg690/Dropbox/Projetos/Victor Valdemar - Text IV/replication/data/raw/copom_minutes/ata281.txt": "22e3013c70e0cbbd429242e550d080aae50a132ba453fd80afc22d3c9b6b7210"
   },
-  "fingerprint": "a54ae8b4fb98bd0fd57cdf863d90b08aba6150eb00148ebeb91b0f8b3699ad49"
+  "fingerprint": "PENDING_SOURCE_FREEZE"
 }

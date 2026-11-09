@@ -1,0 +1,57 @@
+{
+  "checked_on": "2026-11-08",
+  "status": "PASS_bounded_checks_not_full_replication",
+  "offline_tests": {
+    "count": 34,
+    "seconds": 34.111,
+    "exit_code": 0,
+    "skips": 0,
+    "paid_model_calls": 0
+  },
+  "mechanical_checks": {
+    "status": "PASS",
+    "python_syntax_files": 3,
+    "acquisition_dependencies_satisfied": 3,
+    "date_rows": 79,
+    "selected_meetings": 79,
+    "date_columns": [
+      "meeting_number",
+      "meeting_date"
+    ],
+    "local_links_checked": 9,
+    "production_disabled": true,
+    "freeze_pending_explicit": true
+  },
+  "public_data": {
+    "snapshot": "data/raw/bcb/20261108_267de531",
+    "manifest_sha256": "4d312c5277e67d7ea4616b33183263a7d8b3079a10549411e3b0047b9ff6811c",
+    "response_hashes_verified": 338,
+    "normalized_files_verified": 5,
+    "sgs_rows": 7715,
+    "focus_rows": 49380,
+    "focus_target_meetings": 79,
+    "release_records": 652,
+    "metadata_unverified_series": [
+      7478,
+      13522,
+      433
+    ],
+    "verified_vintage_rows": 0
+  },
+  "source_sha256": {
+    "code/01_data_preparation/download_minutes.py": "b5160ba61382d71574b54dcfebe789684909c1279554f1ca9d505ecbb9a576c7",
+    "code/collection/pyproject.toml": "fc91119dbd7957d034a24a57f482fe76d48684c0ea116083d8ce27748c988c2c",
+    "code/collection/tests/test_terra56_acquisition.py": "f1830084f0ade3e3309872021b6bd298ad91d252f400dbb9ea19014cf5316dcb",
+    "code/collection/tests/test_terra56_scoring.py": "ced3f8f5c163671e97d546ffba5ee98fe9681ee37c00a0bc09ff99386823a694"
+  },
+  "environment": {
+    "python": "3.13.5",
+    "R": "4.5.3",
+    "full_renv_restore_tested": false
+  },
+  "limits": [
+    "No full Terra collection or statistical master run",
+    "No manuscript-number reconciliation or fresh-machine validation",
+    "Working specification explicitly requires a new source freeze"
+  ]
+}

@@ -7,6 +7,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -35,7 +36,9 @@ for name,filename in (("blind","run_v10_referee_step3_blinded_validation.py"),("
     modules[name]=module
 blind=modules["blind"]
 embedding=modules["embedding"]
-RSCRIPT=Path("C:/Users/csg690/AppData/Local/Programs/R/R-4.5.3/bin/Rscript.exe")
+# Resolve the coauthor's R installation without assuming an author's home path.
+rscript_command=os.environ.get("RSCRIPT_EXECUTABLE","Rscript")
+RSCRIPT=Path(shutil.which(rscript_command) or rscript_command)
 
 
 class ScoringFixture(unittest.TestCase):
@@ -147,7 +150,7 @@ class ScoringFixture(unittest.TestCase):
         write_jsonl(self.semantic_results,semantic)
         with self.assertRaises(ValueError):blind.build_realized_dataset(self.corpus,self.semantic_results,self.pairwise_results,output)
 
-    @unittest.skipUnless(RSCRIPT.exists(),"Documented Rscript unavailable")
+    @unittest.skipUnless(RSCRIPT.is_file(),"Set RSCRIPT_EXECUTABLE or place Rscript on PATH; R import check was not run")
     def test_transactional_import_preserves_old_sentinels(self):
         # Build a labelled complete score fixture without executing a scorer.
         semantic=[dict(task,status="completed",runner_dry_run=False,temperature=1.0,stance_score=0,label="neutral",confidence=1,raw_response_hash="c"*64,created_at="fixture",response_metadata={"returncode":0}) for task in read_jsonl(self.semantic_manifest)]

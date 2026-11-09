@@ -7,6 +7,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shutil
 import sqlite3
 import sys
 import subprocess
@@ -22,7 +23,9 @@ sys.dont_write_bytecode=True
 module_spec=importlib.util.spec_from_file_location("bcb_acquisition",MODULE_PATH)
 bcb=importlib.util.module_from_spec(module_spec)
 module_spec.loader.exec_module(bcb)
-RSCRIPT=Path("C:/Users/csg690/AppData/Local/Programs/R/R-4.5.3/bin/Rscript.exe")
+# Coauthors can use Rscript on PATH or name their installed interpreter once.
+rscript_command=os.environ.get("RSCRIPT_EXECUTABLE","Rscript")
+RSCRIPT=Path(shutil.which(rscript_command) or rscript_command)
 
 
 class AcquisitionContracts(unittest.TestCase):
@@ -67,7 +70,7 @@ class AcquisitionContracts(unittest.TestCase):
                     calls.append(url)
                     parsed=urlparse(url)
                     params=parse_qs(parsed.query)
-                    if "consultarmetadados" in url:return Response(b"24364 Monthly Index"+b" "*600)
+                    if "package_search" in url:return Response({"success":True,"result":{"count":1,"results":[{"codigo_sgs":"24364","title":"IBC-Br com ajuste sazonal","periodicidade":"mensal","unidade_medida":"Indice"}]}})
                     if "bcdata.sgs" in url:return Response([{"data":"01/01/2016","valor":"100"}])
                     if "$metadata" in url:return Response(b"<metadata/>")
                     if "odata/Expectativas" in url:
@@ -83,14 +86,24 @@ class AcquisitionContracts(unittest.TestCase):
                             rows.append(row)
                         return Response({"value":rows})
                     if "paginasite" in url:return Response({"conteudo":"verified fixture"})
-                    if "notasporano" in url:return Response({"conteudo":[dict(titulo="BC divulga o IBC-Br de novembro de 2015",Id=1,DataPublicacao="2016-01-15T12:00:00Z",Url="/detalhenoticia/1/nota")]})
-                    if "notasImprensa" in url:return Response({"conteudo":[{"dataPublicacao":"2016-01-15T12:00:00Z"}]})
+                    if "notasporano" in url:return Response({"conteudo":[dict(titulo="BC divulga o IBC-Br de novembro de 2015",Id=1.0,DataPublicacao="2016-01-15T12:00:00Z",Url="/detalhenoticia/1/nota")]})
+                    if "notasImprensa" in url:
+                        assert parsed.path.endswith("/1"), "BCB detail URLs require integer note IDs"
+                        return Response({"conteudo":[{"dataPublicacao":"2016-01-15T12:00:00Z"}]})
                     if "calendario" in url:return Response({"conteudo":[]})
                     if url.endswith(".xlsx"):return Response(b"fixture, not an empirical vintage")
                     raise AssertionError(url)
             with patch.dict(bcb.SGS,{24364:bcb.SGS[24364]},clear=True),patch.object(bcb,"ODATA_PAGE_SIZE",2):
                 bcb.acquire_support(Session(),dest,date(2016,12,31))
             saved=json.loads((dest/"source_manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(saved["status"],"acquired_current_values_vintages_unverified")
+            # Collection can retain undocumented values, but cannot mark them import-ready.
+            missing_metadata=Path(temporary)/"missing_metadata"
+            with patch.dict(bcb.SGS,{7478:bcb.SGS[7478]},clear=True),patch.object(bcb,"ODATA_PAGE_SIZE",2):
+                bcb.acquire_support(Session(),missing_metadata,date(2016,12,31))
+            incomplete=json.loads((missing_metadata/"source_manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(incomplete["status"],"acquired_current_values_metadata_incomplete")
+            self.assertEqual(incomplete["metadata_unverified_series"],[7478])
             with (dest/"focus.csv").open(encoding="utf-8") as focus_file:
                 self.assertEqual(len(list(csv.DictReader(focus_file))),9)
             self.assertTrue(any("%20" in u and "$skip" not in u and "%24skip=2" in u for u in calls))
@@ -105,7 +118,7 @@ class AcquisitionContracts(unittest.TestCase):
             self.assertEqual(old.read_bytes(),b"protected")
 
 
-@unittest.skipUnless(RSCRIPT.exists(),"The documented Rscript interpreter is unavailable")
+@unittest.skipUnless(RSCRIPT.is_file(),"Set RSCRIPT_EXECUTABLE or place Rscript on PATH; R checks were not run")
 class BcbOfflineFixture(unittest.TestCase):
     def setUp(self):
         self.temporary=tempfile.TemporaryDirectory(prefix="terra56_bcb_join_")

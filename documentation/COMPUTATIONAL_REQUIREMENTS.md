@@ -1,5 +1,11 @@
 # Computational Requirements
 
+## Current Terra status
+
+Current requirements and observed versions are in the [coauthor handoff](COAUTHOR_HANDOFF.md). November 2026 checks used Windows 11, Python 3.13.5 and R 4.5.3 with the installed global libraries. The complete locked R environment and the full Terra pipeline have not been validated. The runtime and resource statements below describe the inherited GPT-5.5 release only.
+
+## Historical GPT-5.5 environment
+
 **Package version:** 2.0.0  
 **Prepared:** 2026-08-16  
 **Validation status:** PASS -- GPT-5.5-only clean-room run

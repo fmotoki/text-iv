@@ -1,4 +1,6 @@
-# AEA-ready reproducibility protocol
+# Reproducibility protocol
+
+The prospective Terra package is not yet AEA-ready. See the [coauthor handoff](COAUTHOR_HANDOFF.md) for the current readiness checklist and blocking tasks.
 
 ## Prospective Terra implementation
 

@@ -1,5 +1,7 @@
 # Code map
 
+Start with the [coauthor handoff](../documentation/COAUTHOR_HANDOFF.md). Public-data acquisition dependencies are declared in the `acquisition` extra of `collection/pyproject.toml`. The checked-in specification records a local acquisition run, not a portable or authorized production configuration.
+
 Use an explicit frozen `REPLICATION_SPEC_PATH`. The current Terra code and its
 limited-QA boundary are documented in `../documentation/terra56_collection_validation_protocol.md`.
 Code is versioned in Git. New artifacts are written to the selected run in the
